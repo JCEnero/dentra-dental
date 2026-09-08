@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/services/mock_data.dart';
@@ -321,16 +322,43 @@ class HomeScreen extends StatelessWidget {
 
 // ── Device hero card ──────────────────────────────────────────────
 
-class _DeviceHeroCard extends StatelessWidget {
+class _DeviceHeroCard extends StatefulWidget {
   final VoidCallback onScan;
   const _DeviceHeroCard({required this.onScan});
+
+  @override
+  State<_DeviceHeroCard> createState() => _DeviceHeroCardState();
+}
+
+class _DeviceHeroCardState extends State<_DeviceHeroCard> {
+  late VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.asset('assets/videos/BUNNY.webm')
+      ..setLooping(true)
+      ..setVolume(0)
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {});
+          _controller.play();
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardDeep,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.32),
@@ -352,101 +380,133 @@ class _DeviceHeroCard extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Label + icon row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            // ── Original card content — layout completely unchanged ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'DENTRA DEVICE',
-                    style: GoogleFonts.outfit(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.4,
-                      color: Colors.white.withValues(alpha: 0.45),
+                  // Label + icon row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'DENTRA DEVICE',
+                        style: GoogleFonts.outfit(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.4,
+                          color: Colors.white.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Status
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.95),
+                        ),
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        'Ready to scan',
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 14),
+                    child: Text(
+                      'Connected · Battery 86% · Signal Strong',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.4),
+                      ),
                     ),
                   ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt_outlined,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+
+                  const SizedBox(height: 14),
+
+                  // Status pills
+                  const Row(
+                    children: [
+                      _StatusPill(
+                          icon: Icons.battery_5_bar_rounded, label: '86%'),
+                      SizedBox(width: 8),
+                      _StatusPill(icon: Icons.wifi_rounded, label: 'Strong'),
+                      SizedBox(width: 8),
+                      _StatusPill(
+                          icon: Icons.bluetooth_rounded, label: 'BLE'),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // CTA
+                  PrimaryButton(
+                    label: 'Start Dental Scan',
+                    variant: ButtonVariant.white,
+                    onTap: widget.onScan,
                   ),
                 ],
               ),
+            ),
 
-              const SizedBox(height: 12),
-
-              // Status
-              Row(
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.95),
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    'Ready to scan',
-                    style: GoogleFonts.outfit(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.white,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.only(left: 14),
-                child: Text(
-                  'Connected · Battery 86% · Signal Strong',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.4),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Status pills
-              const Row(
-                children: [
-                  _StatusPill(icon: Icons.battery_5_bar_rounded, label: '86%'),
-                  SizedBox(width: 8),
-                  _StatusPill(icon: Icons.wifi_rounded, label: 'Strong'),
-                  SizedBox(width: 8),
-                  _StatusPill(icon: Icons.bluetooth_rounded, label: 'BLE'),
-                ],
-              ),
-
-              const SizedBox(height: 14),
-
-              // CTA
-              PrimaryButton(
-                label: 'Start Dental Scan',
-                variant: ButtonVariant.white,
-                onTap: onScan,
-              ),
-            ],
-          ),
+            // ── RIGHT: Tooth Bunny — overlaid, transparent, small ──
+            Positioned(
+              right: -4,
+              bottom: 60,
+              // Fixed 100×100 square; video fills it and keeps its own ratio
+              width: 100,
+              height: 100,
+              child: _controller.value.isInitialized
+                  ? SizedBox(
+                      width: 100,
+                      height: 100,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        alignment: Alignment.bottomRight,
+                        child: SizedBox(
+                          width: _controller.value.size.width,
+                          height: _controller.value.size.height,
+                          child: VideoPlayer(_controller),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         ),
       ),
     );
