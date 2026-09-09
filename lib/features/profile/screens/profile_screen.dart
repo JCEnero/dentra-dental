@@ -29,17 +29,15 @@ class ProfileScreen extends StatelessWidget {
     ];
 
     return DecoratedBox(
-      decoration: const BoxDecoration(gradient: AppColors.pageBackground),
+      decoration: const BoxDecoration(color: Colors.white),
       child: Column(
         children: [
           // ── Profile header ──────────────────────────────────────
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
-            ),
+            color: Colors.white,
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screenH, 52, AppSpacing.screenH, 32),
+                AppSpacing.screenH, 52, AppSpacing.screenH, 24),
             child: SafeArea(
               bottom: false,
               child: Column(
@@ -51,7 +49,7 @@ class ProfileScreen extends StatelessWidget {
                     style: GoogleFonts.outfit(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.white,
+                      color: AppColors.navy,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -59,13 +57,14 @@ class ProfileScreen extends StatelessWidget {
                     'john.doe@email.com',
                     style: GoogleFonts.outfit(
                       fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.55),
+                      color: AppColors.secondaryText,
                     ),
                   ),
                 ],
               ),
             ),
           ),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
 
           // ── Sections ────────────────────────────────────────────
           Expanded(

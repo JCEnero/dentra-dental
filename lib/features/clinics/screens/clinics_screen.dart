@@ -10,17 +10,15 @@ class ClinicsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(gradient: AppColors.pageBackground),
+      decoration: const BoxDecoration(color: Colors.white),
       child: Column(
         children: [
           // ── HEADER ─────────────────────────────────────────────
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
-            ),
+            color: Colors.white,
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screenH, 52, AppSpacing.screenH, 24),
+                AppSpacing.screenH, 52, AppSpacing.screenH, 16),
             child: SafeArea(
               bottom: false,
               child: Column(
@@ -31,7 +29,7 @@ class ClinicsScreen extends StatelessWidget {
                     style: GoogleFonts.outfit(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.white,
+                      color: AppColors.navy,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -39,13 +37,14 @@ class ClinicsScreen extends StatelessWidget {
                     'Nearby dental clinics',
                     style: GoogleFonts.outfit(
                       fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: AppColors.secondaryText,
                     ),
                   ),
                 ],
               ),
             ),
           ),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
 
           // ── BODY ───────────────────────────────────────────────
           Expanded(

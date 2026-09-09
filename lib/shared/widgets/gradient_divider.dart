@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/constants/app_colors.dart';
 
-/// Subtle divider used on gradient backgrounds.
+/// Subtle divider used between sections.
 class GradientDivider extends StatelessWidget {
   const GradientDivider({super.key});
 
@@ -9,7 +10,7 @@ class GradientDivider extends StatelessWidget {
     return Container(
       height: 1,
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      color: Colors.white.withValues(alpha: 0.10),
+      color: AppColors.border,
     );
   }
 }

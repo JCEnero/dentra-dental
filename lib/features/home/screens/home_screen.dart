@@ -1,12 +1,13 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/services/mock_data.dart';
 import '../../../shared/widgets/avatar_widget.dart';
 import '../../../shared/widgets/gradient_divider.dart';
 import '../../../shared/widgets/primary_button.dart';
+import '../../../core/services/mock_data.dart';
 import '../../../shared/widgets/section_label.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -20,7 +21,7 @@ class HomeScreen extends StatelessWidget {
     final tip  = MockData.dailyTips.first;
 
     return DecoratedBox(
-      decoration: const BoxDecoration(gradient: AppColors.verticalGradient),
+      decoration: const BoxDecoration(color: Colors.white),
       child: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -28,62 +29,164 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── HEADER ────────────────────────────────────────
+              // ── HEADER ──────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                     AppSpacing.screenH, 20, AppSpacing.screenH, 0),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Good morning',
+                            'Good Morning,',
                             style: GoogleFonts.outfit(
-                              fontSize: 13,
+                              fontSize: 14,
                               fontWeight: FontWeight.w400,
-                              color: Colors.white.withValues(alpha: 0.5),
+                              color: AppColors.secondaryText,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Rommel',
-                            style: GoogleFonts.outfit(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.white,
-                              letterSpacing: -0.5,
-                              height: 1.15,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Ready for your next screening?',
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              color: Colors.white.withValues(alpha: 0.45),
-                            ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text(
+                                'Rommel',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.navy,
+                                  letterSpacing: -0.5,
+                                  height: 1.15,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.lightLavender,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.waving_hand_rounded,
+                                  size: 16,
+                                  color: AppColors.g2,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const AvatarWidget(size: 44),
+                    // Bell icon
+                    GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.lightLavender,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.notifications_none_rounded,
+                          size: 20,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const AvatarWidget(size: 40),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // ── HERO DEVICE CARD ──────────────────────────────
+              // ── DEVICE HERO CARD ──────────────────────────────
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenH),
                 child: _DeviceHeroCard(onScan: () => onNavigate(1)),
               ),
 
-              const SizedBox(height: AppSpacing.sectionGap),
+              const SizedBox(height: 28),
+
+              // ── SERVICES ─────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenH),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Services',
+                      style: GoogleFonts.outfit(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {},
+                      child: Text(
+                        'See All',
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenH),
+                child: Row(
+                  children: [
+                    _ServiceButton(
+                      icon: Icons.sentiment_satisfied_alt_rounded,
+                      label: 'My Teeth',
+                      onTap: () => onNavigate(2),
+                    ),
+                    const SizedBox(width: 12),
+                    _ServiceButton(
+                      icon: Icons.healing_rounded,
+                      label: 'Treatment',
+                      onTap: () {},
+                    ),
+                    const SizedBox(width: 12),
+                    _ServiceButton(
+                      icon: Icons.auto_awesome_rounded,
+                      label: 'AI Analysis',
+                      onTap: () {},
+                    ),
+                    const SizedBox(width: 12),
+                    _ServiceButton(
+                      icon: Icons.assignment_outlined,
+                      label: 'Reports',
+                      onTap: () => onNavigate(2),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // ── DENTAL HEALTH SCORE ───────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenH),
+                child: _DentalHealthScoreCard(),
+              ),
+
+              const SizedBox(height: 28),
               const GradientDivider(),
 
               // ── YOUR SCREENING ────────────────────────────────
@@ -94,13 +197,14 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SectionLabel('Your screening'),
+                    const SectionLabel('Your screening',
+                        color: AppColors.secondaryText),
                     const SizedBox(height: 16),
                     Text(
                       'Last screening',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.45),
+                        color: AppColors.secondaryText,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -109,7 +213,7 @@ class HomeScreen extends StatelessWidget {
                       style: GoogleFonts.outfit(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.white,
+                        color: AppColors.navy,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -117,7 +221,7 @@ class HomeScreen extends StatelessWidget {
                       '${last.teeth} teeth detected · ${last.images} images captured',
                       style: GoogleFonts.outfit(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.55),
+                        color: AppColors.secondaryText,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -140,7 +244,8 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SectionLabel('Screening overview'),
+                    const SectionLabel('Screening overview',
+                        color: AppColors.secondaryText),
                     const SizedBox(height: 20),
                     IntrinsicHeight(
                       child: Row(
@@ -168,14 +273,15 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SectionLabel('Your monitoring'),
+                    const SectionLabel('Your monitoring',
+                        color: AppColors.secondaryText),
                     const SizedBox(height: 16),
                     Text(
                       '3 screenings this month',
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.white,
+                        color: AppColors.navy,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -183,7 +289,7 @@ class HomeScreen extends StatelessWidget {
                       'Your screening history is available to help you\nreview visual observations over time.',
                       style: GoogleFonts.outfit(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.45),
+                        color: AppColors.secondaryText,
                         height: 1.5,
                       ),
                     ),
@@ -234,7 +340,7 @@ class HomeScreen extends StatelessWidget {
                                 height: 6,
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Color(0xFFC8BEFF),
+                                  color: AppColors.g1,
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -244,7 +350,7 @@ class HomeScreen extends StatelessWidget {
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 1.1,
-                                  color: Colors.white.withValues(alpha: 0.45),
+                                  color: AppColors.secondaryText,
                                 ),
                               ),
                             ],
@@ -255,7 +361,7 @@ class HomeScreen extends StatelessWidget {
                             style: GoogleFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.white,
+                              color: AppColors.navy,
                               height: 1.4,
                             ),
                           ),
@@ -278,8 +384,7 @@ class HomeScreen extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, 24,
-                    AppSpacing.screenH, 0),
+                    AppSpacing.screenH, 24, AppSpacing.screenH, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -289,7 +394,7 @@ class HomeScreen extends StatelessWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.8,
-                        color: Colors.white.withValues(alpha: 0.35),
+                        color: AppColors.secondaryText,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -297,7 +402,7 @@ class HomeScreen extends StatelessWidget {
                       'Screening information is not a diagnosis. If you have concerns about your oral health, consider speaking with a licensed dentist.',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.45),
+                        color: AppColors.secondaryText,
                         height: 1.6,
                       ),
                     ),
@@ -310,7 +415,6 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
-              // Bottom padding above nav bar
               const SizedBox(height: 32),
             ],
           ),
@@ -357,22 +461,16 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardDeep,
-        borderRadius: BorderRadius.circular(8),
+        gradient: AppColors.cardGradient,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.32),
-            blurRadius: 36,
-            offset: const Offset(0, 10),
+            color: AppColors.g2.withValues(alpha: 0.35),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-          // Inner top highlight
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.26),
+            color: Colors.white.withValues(alpha: 0.30),
             blurRadius: 0,
             spreadRadius: -1,
             offset: const Offset(0, 1.5),
@@ -380,19 +478,18 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         child: Stack(
           clipBehavior: Clip.hardEdge,
           children: [
-            // ── Original card content — layout completely unchanged ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Label + icon row
+                  // Label row
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Text(
                         'DENTRA DEVICE',
@@ -400,20 +497,7 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.4,
-                          color: Colors.white.withValues(alpha: 0.45),
-                        ),
-                      ),
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(11),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt_outlined,
-                          color: Colors.white,
-                          size: 20,
+                          color: Colors.white.withValues(alpha: 0.65),
                         ),
                       ),
                     ],
@@ -434,7 +518,7 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                       ),
                       const SizedBox(width: 7),
                       Text(
-                        'Ready to scan',
+                        'Scan your smile',
                         style: GoogleFonts.outfit(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
@@ -451,7 +535,7 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                       'Connected · Battery 86% · Signal Strong',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.4),
+                        color: Colors.white.withValues(alpha: 0.65),
                       ),
                     ),
                   ),
@@ -459,8 +543,8 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                   const SizedBox(height: 14),
 
                   // Status pills
-                  const Row(
-                    children: [
+                  Row(
+                    children: const [
                       _StatusPill(
                           icon: Icons.battery_5_bar_rounded, label: '86%'),
                       SizedBox(width: 8),
@@ -483,11 +567,10 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
               ),
             ),
 
-            // ── RIGHT: Tooth Bunny — overlaid, transparent, small ──
+            // Tooth Bunny video — overlaid right side
             Positioned(
               right: -4,
               bottom: 60,
-              // Fixed 100×100 square; video fills it and keeps its own ratio
               width: 100,
               height: 100,
               child: _controller.value.isInitialized
@@ -523,25 +606,240 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.09),
+        color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.5)),
+          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.75)),
           const SizedBox(width: 5),
           Text(
             label,
             style: GoogleFonts.outfit(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.82),
+              color: Colors.white.withValues(alpha: 0.90),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+// ── Service button ────────────────────────────────────────────────
+
+class _ServiceButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ServiceButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.g2.withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.lightLavender,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 20, color: AppColors.g2),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.navy,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Dental Health Score card ──────────────────────────────────────
+
+class _DentalHealthScoreCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    const double score = 0.85;
+    const int percent = 85;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.g2.withValues(alpha: 0.07),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Dental Health Score',
+                style: GoogleFonts.outfit(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+              Icon(Icons.more_horiz_rounded,
+                  size: 20, color: AppColors.secondaryText),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              // Circular progress
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: CustomPaint(
+                  painter: _CircularScorePainter(score: score),
+                  child: Center(
+                    child: Text(
+                      '$percent%',
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 18),
+              // Right side text
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Great!',
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.thumb_up_rounded,
+                          size: 18,
+                          color: AppColors.g2,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "You're doing an amazing job caring for your teeth.",
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: AppColors.secondaryText,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CircularScorePainter extends CustomPainter {
+  final double score; // 0.0 to 1.0
+
+  const _CircularScorePainter({required this.score});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const strokeWidth = 7.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width / 2) - strokeWidth / 2;
+
+    // Background track
+    final trackPaint = Paint()
+      ..color = AppColors.border
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, trackPaint);
+
+    // Progress arc — teal gradient effect via single color
+    final progressPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF5DE8D8), Color(0xFF2CA6A4)],
+      ).createShader(Rect.fromCircle(center: center, radius: radius))
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final sweepAngle = 2 * math.pi * score;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2, // start at top
+      sweepAngle,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_CircularScorePainter old) => old.score != score;
 }
 
 // ── Stat column ───────────────────────────────────────────────────
@@ -561,7 +859,7 @@ class _StatColumn extends StatelessWidget {
             style: GoogleFonts.outfit(
               fontSize: 34,
               fontWeight: FontWeight.w800,
-              color: AppColors.white,
+              color: AppColors.navy,
               height: 1.0,
             ),
           ),
@@ -570,7 +868,7 @@ class _StatColumn extends StatelessWidget {
             label,
             style: GoogleFonts.outfit(
               fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.4),
+              color: AppColors.secondaryText,
             ),
           ),
         ],
@@ -585,7 +883,7 @@ class _VerticalDivider extends StatelessWidget {
     return Container(
       width: 1,
       margin: const EdgeInsets.symmetric(vertical: 4),
-      color: Colors.white.withValues(alpha: 0.12),
+      color: AppColors.border,
     );
   }
 }
@@ -598,13 +896,13 @@ class _MonitoringTimeline extends StatelessWidget {
     final points = [
       {'label': 'Aug 12', 'active': false},
       {'label': 'Aug 28', 'active': false},
-      {'label': 'Sep 7',  'active': true},
+      {'label': 'Sep 7', 'active': true},
     ];
 
     return Row(
       children: List.generate(points.length, (i) {
         final isActive = points[i]['active'] as bool;
-        final label    = points[i]['label'] as String;
+        final label = points[i]['label'] as String;
         return Expanded(
           flex: i < points.length - 1 ? 1 : 0,
           child: Row(
@@ -613,17 +911,15 @@ class _MonitoringTimeline extends StatelessWidget {
                 children: [
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
-                    width: isActive ? 10 : 10,
-                    height: isActive ? 10 : 10,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isActive
-                          ? AppColors.white
-                          : Colors.white.withValues(alpha: 0.5),
+                      color: isActive ? AppColors.g2 : AppColors.border,
                       boxShadow: isActive
                           ? [
                               BoxShadow(
-                                color: Colors.white.withValues(alpha: 0.2),
+                                color: AppColors.g2.withValues(alpha: 0.3),
                                 blurRadius: 0,
                                 spreadRadius: 3,
                               ),
@@ -636,10 +932,11 @@ class _MonitoringTimeline extends StatelessWidget {
                     label,
                     style: GoogleFonts.outfit(
                       fontSize: 10,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                      fontWeight:
+                          isActive ? FontWeight.w700 : FontWeight.w400,
                       color: isActive
-                          ? AppColors.white
-                          : Colors.white.withValues(alpha: 0.4),
+                          ? AppColors.navy
+                          : AppColors.secondaryText,
                     ),
                   ),
                 ],
@@ -648,8 +945,9 @@ class _MonitoringTimeline extends StatelessWidget {
                 Expanded(
                   child: Container(
                     height: 1,
-                    margin: const EdgeInsets.only(bottom: 16, left: 4, right: 4),
-                    color: Colors.white.withValues(alpha: 0.2),
+                    margin: const EdgeInsets.only(
+                        bottom: 16, left: 4, right: 4),
+                    color: AppColors.border,
                   ),
                 ),
             ],
@@ -671,21 +969,9 @@ class _DailyTipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardDeep,
+        color: AppColors.lightLavender,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.22),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.16),
-            blurRadius: 0,
-            spreadRadius: -1,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -694,7 +980,7 @@ class _DailyTipCard extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.info_outline_rounded,
-                  size: 13, color: Colors.white.withValues(alpha: 0.55)),
+                  size: 13, color: AppColors.secondaryText),
               const SizedBox(width: 6),
               Text(
                 'DAILY TIP',
@@ -702,7 +988,7 @@ class _DailyTipCard extends StatelessWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
-                  color: Colors.white.withValues(alpha: 0.45),
+                  color: AppColors.secondaryText,
                 ),
               ),
             ],
@@ -713,7 +999,7 @@ class _DailyTipCard extends StatelessWidget {
             style: GoogleFonts.outfit(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: AppColors.white,
+              color: AppColors.navy,
             ),
           ),
           const SizedBox(height: 8),
@@ -721,7 +1007,7 @@ class _DailyTipCard extends StatelessWidget {
             body,
             style: GoogleFonts.outfit(
               fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.5),
+              color: AppColors.secondaryText,
               height: 1.6,
             ),
           ),
@@ -738,7 +1024,7 @@ class _AskAiButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        gradient: AppColors.primaryGradient,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Padding(
@@ -783,12 +1069,12 @@ class _LinkButton extends StatelessWidget {
               style: GoogleFonts.outfit(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.6),
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(width: 5),
             Icon(Icons.arrow_forward_rounded,
-                size: 14, color: Colors.white.withValues(alpha: 0.6)),
+                size: 14, color: AppColors.primary),
           ],
         ),
       ),

@@ -25,7 +25,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(gradient: AppColors.pageBackground),
+      decoration: const BoxDecoration(color: Colors.white),
       child: SafeArea(
         bottom: false,
         child: Column(
@@ -68,7 +68,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF4F46C8).withValues(alpha: 0.06),
+                      color: AppColors.g1.withValues(alpha: 0.06),
                       blurRadius: 16,
                       offset: const Offset(0, 2),
                     ),
@@ -245,12 +245,12 @@ class _ScreeningCard extends StatelessWidget {
         ? const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF6250D0), Color(0xFF3A24A0)],
+            colors: [Color(0xFF4DD8C8), Color(0xFF2CA6A4)],
           )
         : const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF6A58D8), Color(0xFF4232B0)],
+            colors: [Color(0xFF5DE0D0), Color(0xFF3BBFB8)],
           );
 
     return Container(

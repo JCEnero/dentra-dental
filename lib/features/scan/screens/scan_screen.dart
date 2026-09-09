@@ -31,7 +31,7 @@ class _DentalGuidePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final archPaint = Paint()
-      ..color = const Color(0xFFB4AAFF).withValues(alpha: 0.45)
+      ..color = AppColors.g1.withValues(alpha: 0.45)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -215,7 +215,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     Widget screen;
     switch (_state) {
       case ScanState.idle:
-        screen = _buildIdle();
+        screen = _buildIdleContent();
         break;
       case ScanState.preparing:
         screen = _buildPreparing();
@@ -252,18 +252,16 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
 
   // ── IDLE ────────────────────────────────────────────────────
 
-  Widget _buildIdle() {
+  Widget _buildIdleContent() {
     return DecoratedBox(
-      decoration: const BoxDecoration(gradient: AppColors.pageBackground),
+      decoration: const BoxDecoration(color: Colors.white),
       child: Column(
         children: [
-          // Hero header
+          // ── Plain white header ───────────────────────────────
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
-            ),
-            padding: const EdgeInsets.fromLTRB(24, 52, 24, 32),
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(24, 52, 24, 20),
             child: SafeArea(
               bottom: false,
               child: Column(
@@ -275,30 +273,30 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 1.0,
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: AppColors.secondaryText,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Text(
                     'Dental Scan',
                     style: GoogleFonts.outfit(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.white,
+                      color: AppColors.navy,
                       letterSpacing: -0.5,
                       height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
-                    'Capture guided images\nwith your DENTRA device.',
+                    'Capture guided images with your DENTRA device.',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: AppColors.secondaryText,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   Wrap(
                     spacing: 8,
                     children: ['5 regions', 'Guided positioning', 'AI-assisted']
@@ -307,7 +305,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 11, vertical: 5),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.12),
+                              color: AppColors.lightLavender,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -315,7 +313,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                               style: GoogleFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white.withValues(alpha: 0.85),
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
@@ -326,6 +324,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
 
           // Body
           Expanded(
@@ -333,22 +332,16 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // Device status card
+                  // Device status card — teal gradient
                   Container(
                     decoration: BoxDecoration(
-                      color: AppColors.cardDeep,
+                      gradient: AppColors.cardGradient,
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
+                          color: AppColors.g2.withValues(alpha: 0.25),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
-                        ),
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.20),
-                          blurRadius: 0,
-                          spreadRadius: -1,
-                          offset: const Offset(0, 1),
                         ),
                       ],
                     ),
@@ -362,7 +355,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 1,
-                            color: Colors.white.withValues(alpha: 0.45),
+                            color: Colors.white.withValues(alpha: 0.65),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -651,7 +644,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     return Stack(
       children: [
         // Dark camera background
-        Container(color: const Color(0xFF0D0B1E)),
+        Container(color: const Color(0xFF0A1F1E)),
 
         // NIR glow
         Center(
@@ -662,7 +655,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFF645ADC).withValues(alpha: 0.15),
+                  AppColors.g1.withValues(alpha: 0.18),
                   Colors.transparent,
                 ],
               ),
@@ -944,7 +937,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
           Container(
             height: 130,
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1630),
+              color: const Color(0xFF0D1F1E),
               borderRadius: BorderRadius.circular(16),
             ),
             child: ClipRRect(
@@ -1136,10 +1129,10 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     ];
 
     return DecoratedBox(
-      decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+      decoration: const BoxDecoration(color: Colors.white),
       child: SafeArea(
         bottom: false,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 52, 24, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1149,7 +1142,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                 style: GoogleFonts.outfit(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.white,
+                  color: AppColors.navy,
                 ),
               ),
               const SizedBox(height: 4),
@@ -1157,7 +1150,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                 '${_capturedRegions.length} image${_capturedRegions.length != 1 ? 's' : ''} · AI-assisted analysis',
                 style: GoogleFonts.outfit(
                   fontSize: 13,
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: AppColors.secondaryText,
                 ),
               ),
               const SizedBox(height: 32),
@@ -1197,7 +1190,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                               gradient: LinearGradient(
                                 colors: [
                                   Colors.transparent,
-                                  const Color(0xFFB4AAFF).withValues(alpha: 0.8),
+                                  AppColors.g1.withValues(alpha: 0.8),
                                   Colors.transparent,
                                 ],
                               ),
@@ -1227,27 +1220,27 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: done
-                              ? Colors.white.withValues(alpha: 0.2)
-                              : Colors.white.withValues(alpha: 0.08),
+                              ? AppColors.lightLavender
+                              : AppColors.border.withValues(alpha: 0.5),
                         ),
                         child: Center(
                           child: done
                               ? Icon(Icons.check_rounded,
                                   size: 10,
-                                  color: Colors.white.withValues(alpha: 0.9))
+                                  color: AppColors.primary)
                               : active
                                   ? Container(
                                       width: 6, height: 6,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: Colors.white.withValues(alpha: 0.6),
+                                        color: AppColors.g2.withValues(alpha: 0.7),
                                       ),
                                     )
                                   : Container(
                                       width: 5, height: 5,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: Colors.white.withValues(alpha: 0.2),
+                                        color: AppColors.border,
                                       ),
                                     ),
                         ),
@@ -1260,10 +1253,10 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                           fontWeight:
                               done ? FontWeight.w600 : FontWeight.w400,
                           color: done
-                              ? Colors.white.withValues(alpha: 0.9)
+                              ? AppColors.navy
                               : active
-                                  ? Colors.white.withValues(alpha: 0.6)
-                                  : Colors.white.withValues(alpha: 0.3),
+                                  ? AppColors.secondaryText
+                                  : AppColors.border,
                         ),
                       ),
                       if (active) ...[
@@ -1271,7 +1264,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                         Text('…',
                             style: GoogleFonts.outfit(
                               fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.4),
+                              color: AppColors.secondaryText,
                             )),
                       ],
                     ],
@@ -1419,14 +1412,14 @@ class _GradientScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(gradient: AppColors.pageBackground),
+      decoration: const BoxDecoration(color: Colors.white),
       child: Column(
         children: [
+          // ── Plain white header ──────────────────────────────
           Container(
-            decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
-            ),
-            padding: const EdgeInsets.fromLTRB(24, 52, 24, 28),
+            width: double.infinity,
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(24, 52, 24, 20),
             child: SafeArea(
               bottom: false,
               child: Column(
@@ -1436,16 +1429,16 @@ class _GradientScaffold extends StatelessWidget {
                     GestureDetector(
                       onTap: onBack,
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.only(bottom: 14),
                         child: Row(
                           children: [
-                            const Icon(Icons.chevron_left_rounded,
-                                color: Colors.white60, size: 18),
+                            Icon(Icons.chevron_left_rounded,
+                                color: AppColors.secondaryText, size: 18),
                             Text(
                               'Back',
                               style: GoogleFonts.outfit(
                                 fontSize: 13,
-                                color: Colors.white60,
+                                color: AppColors.secondaryText,
                               ),
                             ),
                           ],
@@ -1457,22 +1450,23 @@ class _GradientScaffold extends StatelessWidget {
                     style: GoogleFonts.outfit(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.white,
+                      color: AppColors.navy,
                       letterSpacing: -0.3,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: GoogleFonts.outfit(
                       fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.55),
+                      color: AppColors.secondaryText,
                     ),
                   ),
                 ],
               ),
             ),
           ),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -1739,7 +1733,7 @@ class _ScanSummaryRow extends StatelessWidget {
           Container(
             width: 36, height: 28,
             decoration: BoxDecoration(
-              color: done ? const Color(0xFF1A1630) : AppColors.border,
+              color: done ? const Color(0xFF0D1F1E) : AppColors.border,
               borderRadius: BorderRadius.circular(6),
             ),
             child: done
@@ -1747,7 +1741,7 @@ class _ScanSummaryRow extends StatelessWidget {
                     child: Container(
                       width: 20, height: 14,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF786EDC).withValues(alpha: 0.4),
+                        color: AppColors.g1.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(3),
                       ),
                     ),
