@@ -32,7 +32,7 @@ class HomeScreen extends StatelessWidget {
               // ── HEADER ──────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, 20, AppSpacing.screenH, 0),
+                    AppSpacing.screenH, 36, AppSpacing.screenH, 0),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
