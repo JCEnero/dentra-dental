@@ -12,6 +12,9 @@ dependencies:
   google_fonts: ^6.2.1
   video_player: ^2.9.2
   fvp: ^0.38.1
+  google_generative_ai: ^0.4.6
+  flutter_dotenv: ^5.2.1
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:
@@ -23,3 +26,4 @@ flutter:
   assets:
     - assets/images/
     - assets/videos/
+    - .env
