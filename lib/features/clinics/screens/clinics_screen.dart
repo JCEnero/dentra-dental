@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/services/mock_data.dart';
+import 'clinic_detail_screen.dart';
 
 class ClinicsScreen extends StatelessWidget {
   const ClinicsScreen({super.key});
@@ -94,84 +98,81 @@ class ClinicsScreen extends StatelessWidget {
   }
 }
 
-// ── Map placeholder ───────────────────────────────────────────────
+// ── Map widget ────────────────────────────────────────────────────
 
-class _MapPlaceholder extends StatelessWidget {
+class _MapPlaceholder extends StatefulWidget {
+  @override
+  State<_MapPlaceholder> createState() => _MapPlaceholderState();
+}
+
+class _MapPlaceholderState extends State<_MapPlaceholder> {
+  late GoogleMapController _mapController;
+  late Set<Marker> _markers;
+
+  @override
+  void initState() {
+    super.initState();
+    _markers = _createMarkers();
+  }
+
+  Set<Marker> _createMarkers() {
+    return MockData.clinics.map((clinic) {
+      return Marker(
+        markerId: MarkerId('clinic_${clinic.id}'),
+        position: LatLng(clinic.latitude, clinic.longitude),
+        infoWindow: InfoWindow(
+          title: clinic.name,
+          snippet: clinic.distance,
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+      );
+    }).toSet();
+  }
+
+  LatLng _calculateCenter() {
+    final avgLat = MockData.clinics
+            .map((c) => c.latitude)
+            .reduce((a, b) => a + b) /
+        MockData.clinics.length;
+    final avgLng = MockData.clinics
+            .map((c) => c.longitude)
+            .reduce((a, b) => a + b) /
+        MockData.clinics.length;
+    return LatLng(avgLat, avgLng);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: SizedBox(
-        height: 160,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Grid background
-            CustomPaint(painter: _MapGridPainter()),
-
-            // Center pin
-            Center(
-              child: Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppColors.primaryGradient,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.g1.withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.location_on_rounded,
-                    size: 16, color: Colors.white),
-              ),
-            ),
-
-            // Label
-            Positioned(
-              bottom: 10,
-              left: 12,
-              child: Text(
-                'Map view · Your location',
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  color: AppColors.secondaryText,
-                ),
-              ),
-            ),
-          ],
+        height: 220,
+        child: GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: _calculateCenter(),
+            zoom: 14.5,
+          ),
+          markers: _markers,
+          onMapCreated: (controller) {
+            _mapController = controller;
+          },
+          myLocationButtonEnabled: false,
+          zoomControlsEnabled: false,
+          mapToolbarEnabled: false,
+          compassEnabled: false,
+          gestureRecognizers: {
+            Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+          },
         ),
       ),
     );
   }
-}
 
-class _MapGridPainter extends CustomPainter {
   @override
-  void paint(Canvas canvas, Size size) {
-    final bg = Paint()..color = AppColors.lightLavender;
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bg);
-
-    final line = Paint()
-      ..color = AppColors.border
-      ..strokeWidth = 1.0;
-
-    // Horizontal lines
-    for (var i = 0; i <= 4; i++) {
-      final y = size.height / 4 * i;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
-    }
-    // Vertical lines
-    for (var i = 0; i <= 6; i++) {
-      final x = size.width / 6 * i;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), line);
-    }
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
   }
-
-  @override
-  bool shouldRepaint(_MapGridPainter old) => false;
 }
 
 // ── Clinic card ───────────────────────────────────────────────────
@@ -243,19 +244,29 @@ class _ClinicCard extends StatelessWidget {
           ),
 
           // View button
-          Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: AppColors.lightLavender,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              'View',
-              style: GoogleFonts.outfit(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ClinicDetailScreen(clinic: clinic),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.lightLavender,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'View',
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
               ),
             ),
           ),
