@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/models/clinic_model.dart';
@@ -166,8 +167,15 @@ class ClinicDetailScreen extends StatelessWidget {
                     _ActionButton(
                       icon: Icons.phone_rounded,
                       label: 'Call Clinic',
-                      onTap: () {
-                        // TODO: Implement phone call action
+                      onTap: () async {
+                        final uri = Uri(scheme: 'tel', path: clinic.phoneNumber);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Could not open the phone dialer.')),
+                          );
+                        }
                       },
                     ),
 
@@ -177,8 +185,17 @@ class ClinicDetailScreen extends StatelessWidget {
                     _ActionButton(
                       icon: Icons.directions_rounded,
                       label: 'Get Directions',
-                      onTap: () {
-                        // TODO: Implement directions action
+                      onTap: () async {
+                        final uri = Uri.parse(
+                          'https://www.google.com/maps/dir/?api=1&destination=${clinic.latitude},${clinic.longitude}',
+                        );
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Could not open maps.')),
+                          );
+                        }
                       },
                     ),
 

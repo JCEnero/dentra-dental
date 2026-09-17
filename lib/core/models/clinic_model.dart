@@ -19,6 +19,7 @@ class ClinicModel {
   final double rating;
   final double latitude;
   final double longitude;
+  final String phoneNumber;
 
   const ClinicModel({
     required this.id,
@@ -28,5 +29,6 @@ class ClinicModel {
     required this.rating,
     required this.latitude,
     required this.longitude,
+    required this.phoneNumber,
   });
 }

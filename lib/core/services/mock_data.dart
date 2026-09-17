@@ -51,6 +51,7 @@ abstract class MockData {
       rating: 4.8,
       latitude: 14.5547,   // Makati CBD (base point)
       longitude: 121.0244,
+      phoneNumber: '+63 2 8123 4567',
     ),
     ClinicModel(
       id: 2,
@@ -60,6 +61,7 @@ abstract class MockData {
       rating: 4.6,
       latitude: 14.5673,   // ~1.4 km northwest
       longitude: 121.0155,
+      phoneNumber: '+63 917 234 5678',
     ),
     ClinicModel(
       id: 3,
@@ -69,6 +71,7 @@ abstract class MockData {
       rating: 4.7,
       latitude: 14.5735,   // ~2.1 km north-northeast
       longitude: 121.0380,
+      phoneNumber: '+63 2 8765 4321',
     ),
   ];
 
