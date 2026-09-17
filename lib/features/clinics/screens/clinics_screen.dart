@@ -3,13 +3,66 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/services/mock_data.dart';
 import 'clinic_detail_screen.dart';
 
-class ClinicsScreen extends StatelessWidget {
+class ClinicsScreen extends StatefulWidget {
   const ClinicsScreen({super.key});
+
+  @override
+  State<ClinicsScreen> createState() => _ClinicsScreenState();
+}
+
+class _ClinicsScreenState extends State<ClinicsScreen> {
+  Position? _userPosition;
+  final GlobalKey<_MapPlaceholderState> _mapKey = GlobalKey<_MapPlaceholderState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _getUserLocation();
+  }
+
+  Future<void> _getUserLocation() async {
+    try {
+      // Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        // Silently fall back to calculated center
+        return;
+      }
+
+      // Check permission status
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          // Silently fall back to calculated center
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        // Silently fall back to calculated center
+        return;
+      }
+
+      // Get current position
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _userPosition = position;
+      });
+
+      // Animate camera to user's location
+      _mapKey.currentState?._animateToUserLocation(position);
+    } catch (e) {
+      // Silently fall back to calculated center on any error
+      // This is a demo, so we don't show errors
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +114,10 @@ class ClinicsScreen extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                         AppSpacing.screenH, 20, AppSpacing.screenH, 0),
-                    child: _MapPlaceholder(),
+                    child: _MapPlaceholder(
+                      key: _mapKey,
+                      userPosition: _userPosition,
+                    ),
                   ),
 
                   // Nearby Clinics label
@@ -101,13 +157,18 @@ class ClinicsScreen extends StatelessWidget {
 // ── Map widget ────────────────────────────────────────────────────
 
 class _MapPlaceholder extends StatefulWidget {
+  final Position? userPosition;
+
+  const _MapPlaceholder({super.key, this.userPosition});
+
   @override
   State<_MapPlaceholder> createState() => _MapPlaceholderState();
 }
 
 class _MapPlaceholderState extends State<_MapPlaceholder> {
-  late GoogleMapController _mapController;
+  GoogleMapController? _mapController;
   late Set<Marker> _markers;
+  bool _hasAnimatedToUserLocation = false;
 
   @override
   void initState() {
@@ -115,21 +176,78 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
     _markers = _createMarkers();
   }
 
-  Set<Marker> _createMarkers() {
-    return MockData.clinics.map((clinic) {
-      return Marker(
-        markerId: MarkerId('clinic_${clinic.id}'),
-        position: LatLng(clinic.latitude, clinic.longitude),
-        infoWindow: InfoWindow(
-          title: clinic.name,
-          snippet: clinic.distance,
+  @override
+  void didUpdateWidget(covariant _MapPlaceholder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userPosition != widget.userPosition) {
+      setState(() {
+        _markers = _createMarkers();
+      });
+    }
+  }
+
+  /// Animate camera to user's location when position first resolves
+  void _animateToUserLocation(Position position) {
+    // Only animate once when position first arrives
+    if (!_hasAnimatedToUserLocation && _mapController != null) {
+      _hasAnimatedToUserLocation = true;
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(position.latitude, position.longitude),
+          14.5,
         ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
       );
-    }).toSet();
+    }
+  }
+
+  Set<Marker> _createMarkers() {
+    final markers = <Marker>{};
+
+    // Add clinic markers
+    markers.addAll(
+      MockData.clinics.map((clinic) {
+        return Marker(
+          markerId: MarkerId('clinic_${clinic.id}'),
+          position: LatLng(clinic.latitude, clinic.longitude),
+          infoWindow: InfoWindow(
+            title: clinic.name,
+            snippet: clinic.distance,
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+        );
+      }),
+    );
+
+    // Add user location marker if available
+    if (widget.userPosition != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('user_location'),
+          position: LatLng(
+            widget.userPosition!.latitude,
+            widget.userPosition!.longitude,
+          ),
+          infoWindow: const InfoWindow(
+            title: 'Your Location',
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        ),
+      );
+    }
+
+    return markers;
   }
 
   LatLng _calculateCenter() {
+    // If we have user position, use it
+    if (widget.userPosition != null) {
+      return LatLng(
+        widget.userPosition!.latitude,
+        widget.userPosition!.longitude,
+      );
+    }
+
+    // Otherwise, calculate center of clinics
     final avgLat = MockData.clinics
             .map((c) => c.latitude)
             .reduce((a, b) => a + b) /
@@ -170,7 +288,7 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
 
   @override
   void dispose() {
-    _mapController.dispose();
+    _mapController?.dispose();
     super.dispose();
   }
 }
