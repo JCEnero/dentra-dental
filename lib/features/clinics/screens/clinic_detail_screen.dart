@@ -1,17 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/models/clinic_model.dart';
+import '../../clinic_finder/data/models/clinic_model.dart';
 
 class ClinicDetailScreen extends StatelessWidget {
   final ClinicModel clinic;
+  final Position? userPosition;
 
   const ClinicDetailScreen({
     super.key,
     required this.clinic,
+    this.userPosition,
   });
+
+  String _formatDistance() {
+    if (userPosition == null) {
+      return '-- km';
+    }
+    final distanceMeters = Geolocator.distanceBetween(
+      userPosition!.latitude,
+      userPosition!.longitude,
+      clinic.latitude,
+      clinic.longitude,
+    );
+    final distanceKm = distanceMeters / 1000;
+    return '${distanceKm.toStringAsFixed(1)} km';
+  }
+
+  String _formatServices() {
+    if (clinic.services.isEmpty) {
+      return 'No services listed';
+    }
+    return clinic.services.map((s) => s.name).join(' · ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +103,7 @@ class ClinicDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          clinic.distance,
+                          _formatDistance(),
                           style: GoogleFonts.outfit(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -139,7 +163,7 @@ class ClinicDetailScreen extends StatelessWidget {
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Text(
-                        clinic.services,
+                        _formatServices(),
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,

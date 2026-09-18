@@ -4,19 +4,21 @@ import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/services/mock_data.dart';
+import '../../clinic_finder/data/models/clinic_model.dart';
+import '../../clinic_finder/providers/clinic_provider.dart';
 import 'clinic_detail_screen.dart';
 
-class ClinicsScreen extends StatefulWidget {
+class ClinicsScreen extends ConsumerStatefulWidget {
   const ClinicsScreen({super.key});
 
   @override
-  State<ClinicsScreen> createState() => _ClinicsScreenState();
+  ConsumerState<ClinicsScreen> createState() => _ClinicsScreenState();
 }
 
-class _ClinicsScreenState extends State<ClinicsScreen> {
+class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
   Position? _userPosition;
   final GlobalKey<_MapPlaceholderState> _mapKey = GlobalKey<_MapPlaceholderState>();
 
@@ -56,6 +58,12 @@ class _ClinicsScreenState extends State<ClinicsScreen> {
         _userPosition = position;
       });
 
+      // Update the migrated logic layer's location state
+      ref.read(userLocationProvider.notifier).setLocation(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+
       // Animate camera to user's location
       _mapKey.currentState?._animateToUserLocation(position);
     } catch (e) {
@@ -66,6 +74,8 @@ class _ClinicsScreenState extends State<ClinicsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final clinicsAsync = ref.watch(clinicListProvider);
+
     return DecoratedBox(
       decoration: const BoxDecoration(color: Colors.white),
       child: Column(
@@ -105,46 +115,90 @@ class _ClinicsScreenState extends State<ClinicsScreen> {
 
           // ── BODY ───────────────────────────────────────────────
           Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Map placeholder
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.screenH, 20, AppSpacing.screenH, 0),
-                    child: _MapPlaceholder(
-                      key: _mapKey,
-                      userPosition: _userPosition,
-                    ),
+            child: clinicsAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                ),
+              ),
+              error: (error, stack) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.screenH),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: AppColors.secondaryText,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Could not load clinics',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        error.toString(),
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    ],
                   ),
-
-                  // Nearby Clinics label
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.screenH, 20, AppSpacing.screenH, 12),
-                    child: Text(
-                      'Nearby Clinics',
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
+                ),
+              ),
+              data: (clinics) => SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Map placeholder
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.screenH, 20, AppSpacing.screenH, 0),
+                      child: _MapPlaceholder(
+                        key: _mapKey,
+                        userPosition: _userPosition,
+                        clinics: clinics,
                       ),
                     ),
-                  ),
 
-                  // Clinic cards
-                  ...MockData.clinics.map(
-                    (clinic) => Padding(
+                    // Nearby Clinics label
+                    Padding(
                       padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.screenH, 0, AppSpacing.screenH, 10),
-                      child: _ClinicCard(clinic: clinic),
+                          AppSpacing.screenH, 20, AppSpacing.screenH, 12),
+                      child: Text(
+                        'Nearby Clinics',
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 24),
-                ],
+                    // Clinic cards
+                    ...clinics.map(
+                      (clinic) => Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.screenH, 0, AppSpacing.screenH, 10),
+                        child: _ClinicCard(
+                          clinic: clinic,
+                          userPosition: _userPosition,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ),
@@ -158,8 +212,13 @@ class _ClinicsScreenState extends State<ClinicsScreen> {
 
 class _MapPlaceholder extends StatefulWidget {
   final Position? userPosition;
+  final List<ClinicModel> clinics;
 
-  const _MapPlaceholder({super.key, this.userPosition});
+  const _MapPlaceholder({
+    super.key,
+    this.userPosition,
+    required this.clinics,
+  });
 
   @override
   State<_MapPlaceholder> createState() => _MapPlaceholderState();
@@ -179,7 +238,8 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
   @override
   void didUpdateWidget(covariant _MapPlaceholder oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.userPosition != widget.userPosition) {
+    if (oldWidget.userPosition != widget.userPosition ||
+        oldWidget.clinics != widget.clinics) {
       setState(() {
         _markers = _createMarkers();
       });
@@ -205,13 +265,13 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
 
     // Add clinic markers
     markers.addAll(
-      MockData.clinics.map((clinic) {
+      widget.clinics.map((clinic) {
         return Marker(
           markerId: MarkerId('clinic_${clinic.id}'),
           position: LatLng(clinic.latitude, clinic.longitude),
           infoWindow: InfoWindow(
             title: clinic.name,
-            snippet: clinic.distance,
+            snippet: _formatDistance(clinic),
           ),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
         );
@@ -238,6 +298,20 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
     return markers;
   }
 
+  String _formatDistance(ClinicModel clinic) {
+    if (widget.userPosition == null) {
+      return '-- km';
+    }
+    final distanceMeters = Geolocator.distanceBetween(
+      widget.userPosition!.latitude,
+      widget.userPosition!.longitude,
+      clinic.latitude,
+      clinic.longitude,
+    );
+    final distanceKm = distanceMeters / 1000;
+    return '${distanceKm.toStringAsFixed(1)} km';
+  }
+
   LatLng _calculateCenter() {
     // If we have user position, use it
     if (widget.userPosition != null) {
@@ -248,14 +322,19 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
     }
 
     // Otherwise, calculate center of clinics
-    final avgLat = MockData.clinics
+    if (widget.clinics.isEmpty) {
+      // Default fallback if no clinics
+      return const LatLng(14.5995, 120.9842); // Manila City Hall
+    }
+
+    final avgLat = widget.clinics
             .map((c) => c.latitude)
             .reduce((a, b) => a + b) /
-        MockData.clinics.length;
-    final avgLng = MockData.clinics
+        widget.clinics.length;
+    final avgLng = widget.clinics
             .map((c) => c.longitude)
             .reduce((a, b) => a + b) /
-        MockData.clinics.length;
+        widget.clinics.length;
     return LatLng(avgLat, avgLng);
   }
 
@@ -296,8 +375,34 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
 // ── Clinic card ───────────────────────────────────────────────────
 
 class _ClinicCard extends StatelessWidget {
-  final dynamic clinic;
-  const _ClinicCard({required this.clinic});
+  final ClinicModel clinic;
+  final Position? userPosition;
+
+  const _ClinicCard({
+    required this.clinic,
+    this.userPosition,
+  });
+
+  String _formatDistance() {
+    if (userPosition == null) {
+      return '-- km';
+    }
+    final distanceMeters = Geolocator.distanceBetween(
+      userPosition!.latitude,
+      userPosition!.longitude,
+      clinic.latitude,
+      clinic.longitude,
+    );
+    final distanceKm = distanceMeters / 1000;
+    return '${distanceKm.toStringAsFixed(1)} km';
+  }
+
+  String _formatServices() {
+    if (clinic.services.isEmpty) {
+      return 'No services listed';
+    }
+    return clinic.services.map((s) => s.name).join(' · ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -340,7 +445,7 @@ class _ClinicCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        clinic.distance,
+                        _formatDistance(),
                         style: GoogleFonts.outfit(
                           fontSize: 11,
                           color: AppColors.secondaryText,
@@ -348,11 +453,13 @@ class _ClinicCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        clinic.services,
+                        _formatServices(),
                         style: GoogleFonts.outfit(
                           fontSize: 11,
                           color: AppColors.secondaryText,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -367,7 +474,10 @@ class _ClinicCard extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ClinicDetailScreen(clinic: clinic),
+                  builder: (context) => ClinicDetailScreen(
+                    clinic: clinic,
+                    userPosition: userPosition,
+                  ),
                 ),
               );
             },

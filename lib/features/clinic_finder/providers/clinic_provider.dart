@@ -1,8 +1,11 @@
 // mobile/lib/features/clinic_finder/providers/clinic_provider.dart
 
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 
+import '../../../core/constants/api_keys.dart';
 import '../data/models/clinic_model.dart';
 
 /// Simple immutable coordinate pair for the user's current position.
@@ -251,22 +254,68 @@ final List<ClinicModel> _mockClinics = [
   ),
 ];
 
-/// Fetches the clinic list. Currently backed by [_mockClinics]; swap the
-/// body of [build] for a call into `clinic_repository.dart` once that
-/// data source is implemented.
+/// Fetches the clinic list from Google Places API (New) Nearby Search.
+/// Searches for dentists near the user's current location.
 class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
   @override
   Future<List<ClinicModel>> build() async {
-    // Simulates network/database latency for the mock data source.
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _mockClinics;
+    final userLocation = ref.watch(userLocationProvider);
+    return _fetchNearbyClinics(userLocation.latitude, userLocation.longitude);
+  }
+
+  Future<List<ClinicModel>> _fetchNearbyClinics(double lat, double lng) async {
+    final uri = Uri.parse('https://places.googleapis.com/v1/places:searchNearby');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': placesApiKey,
+        'X-Goog-FieldMask':
+            'places.id,places.displayName,places.formattedAddress,'
+            'places.location,places.rating,places.userRatingCount,'
+            'places.nationalPhoneNumber',
+      },
+      body: jsonEncode({
+        'includedTypes': ['dentist'],
+        'maxResultCount': 10,
+        'locationRestriction': {
+          'circle': {
+            'center': {'latitude': lat, 'longitude': lng},
+            'radius': 5000.0,
+          },
+        },
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Places API error: ${response.statusCode} ${response.body}');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final places = (data['places'] as List<dynamic>?) ?? [];
+
+    return places.map((p) {
+      final place = p as Map<String, dynamic>;
+      return ClinicModel(
+        id: place['id'] as String,
+        name: (place['displayName']?['text'] as String?) ?? 'Unknown Clinic',
+        address: (place['formattedAddress'] as String?) ?? '',
+        latitude: (place['location']?['latitude'] as num?)?.toDouble() ?? lat,
+        longitude: (place['location']?['longitude'] as num?)?.toDouble() ?? lng,
+        rating: (place['rating'] as num?)?.toDouble() ?? 0.0,
+        reviewCount: (place['userRatingCount'] as num?)?.toInt() ?? 0,
+        services: const [ClinicService(name: 'General Dentistry', price: 0)],
+        operatingHours: const [],
+        phoneNumber: (place['nationalPhoneNumber'] as String?) ?? 'Not available',
+      );
+    }).toList();
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await Future.delayed(const Duration(milliseconds: 300));
-      return _mockClinics;
+      final userLocation = ref.read(userLocationProvider);
+      return _fetchNearbyClinics(userLocation.latitude, userLocation.longitude);
     });
   }
 }
