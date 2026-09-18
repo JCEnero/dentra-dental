@@ -30,13 +30,6 @@ class ClinicDetailScreen extends StatelessWidget {
     return '${distanceKm.toStringAsFixed(1)} km';
   }
 
-  String _formatServices() {
-    if (clinic.services.isEmpty) {
-      return 'No services listed';
-    }
-    return clinic.services.map((s) => s.name).join(' · ');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,6 +145,16 @@ class ClinicDetailScreen extends StatelessWidget {
                       ),
                     ),
 
+                    const SizedBox(height: 4),
+
+                    Text(
+                      'Estimated services and prices. Contact clinic to confirm.',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+
                     const SizedBox(height: 12),
 
                     Container(
@@ -162,15 +165,47 @@ class ClinicDetailScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: Text(
-                        _formatServices(),
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.navy,
-                          height: 1.5,
-                        ),
-                      ),
+                      child: clinic.services.isEmpty
+                          ? Text(
+                              'No services listed',
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.navy,
+                              ),
+                            )
+                          : Column(
+                              children: clinic.services.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final service = entry.value;
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: index < clinic.services.length - 1 ? 12 : 0,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        service.name,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.navy,
+                                        ),
+                                      ),
+                                      Text(
+                                        '₱${service.price.toStringAsFixed(0)}',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
                     ),
 
                     const SizedBox(height: AppSpacing.lg),

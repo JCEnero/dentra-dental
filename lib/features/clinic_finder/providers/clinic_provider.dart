@@ -1,6 +1,7 @@
 // mobile/lib/features/clinic_finder/providers/clinic_provider.dart
 
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -254,6 +255,20 @@ final List<ClinicModel> _mockClinics = [
   ),
 ];
 
+/// Service pool for generating per-clinic service offerings.
+const _servicePool = [
+  ClinicService(name: 'Consultation', price: 500),
+  ClinicService(name: 'Cleaning', price: 900),
+  ClinicService(name: 'Filling', price: 1800),
+  ClinicService(name: 'Extraction', price: 2200),
+  ClinicService(name: 'Whitening', price: 3500),
+  ClinicService(name: 'Root Canal', price: 6500),
+  ClinicService(name: 'Dental X-Ray', price: 800),
+  ClinicService(name: 'Deep Cleaning', price: 2500),
+  ClinicService(name: 'Crown/Cap', price: 8000),
+  ClinicService(name: 'Braces Consultation', price: 1500),
+];
+
 /// Fetches the clinic list from Google Places API (New) Nearby Search.
 /// Searches for dentists near the user's current location.
 class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
@@ -296,15 +311,23 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
 
     final clinics = places.map((p) {
       final place = p as Map<String, dynamic>;
+      final placeId = place['id'] as String;
+      
+      // Generate deterministic random subset of services based on place ID
+      final random = Random(placeId.hashCode);
+      final shuffled = [..._servicePool]..shuffle(random);
+      final count = 3 + random.nextInt(3); // 3 to 5 services
+      final selectedServices = shuffled.take(count).toList();
+      
       return ClinicModel(
-        id: place['id'] as String,
+        id: placeId,
         name: (place['displayName']?['text'] as String?) ?? 'Unknown Clinic',
         address: (place['formattedAddress'] as String?) ?? '',
         latitude: (place['location']?['latitude'] as num?)?.toDouble() ?? lat,
         longitude: (place['location']?['longitude'] as num?)?.toDouble() ?? lng,
         rating: (place['rating'] as num?)?.toDouble() ?? 0.0,
         reviewCount: (place['userRatingCount'] as num?)?.toInt() ?? 0,
-        services: const [ClinicService(name: 'General Dentistry', price: 0)],
+        services: selectedServices,
         operatingHours: const [],
         phoneNumber: (place['nationalPhoneNumber'] as String?) ?? 'Not available',
       );
