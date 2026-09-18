@@ -294,7 +294,7 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     final places = (data['places'] as List<dynamic>?) ?? [];
 
-    return places.map((p) {
+    final clinics = places.map((p) {
       final place = p as Map<String, dynamic>;
       return ClinicModel(
         id: place['id'] as String,
@@ -309,6 +309,14 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
         phoneNumber: (place['nationalPhoneNumber'] as String?) ?? 'Not available',
       );
     }).toList();
+
+    clinics.sort((a, b) {
+      final distanceA = Geolocator.distanceBetween(lat, lng, a.latitude, a.longitude);
+      final distanceB = Geolocator.distanceBetween(lat, lng, b.latitude, b.longitude);
+      return distanceA.compareTo(distanceB);
+    });
+
+    return clinics;
   }
 
   Future<void> refresh() async {

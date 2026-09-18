@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/map_style.dart';
 import '../../clinic_finder/data/models/clinic_model.dart';
 import '../../clinic_finder/providers/clinic_provider.dart';
 import 'clinic_detail_screen.dart';
@@ -350,6 +351,7 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
             zoom: 14.5,
           ),
           markers: _markers,
+          style: mapStyle,
           onMapCreated: (controller) {
             _mapController = controller;
           },
