@@ -9,6 +9,7 @@ import '../../../shared/widgets/gradient_divider.dart';
 import '../../../shared/widgets/primary_button.dart';
 import '../../../core/services/mock_data.dart';
 import '../../../shared/widgets/section_label.dart';
+import '../../ai_assistant/ai_chat_controller.dart';
 
 class HomeScreen extends StatelessWidget {
   final ValueChanged<int> onNavigate;
@@ -1019,30 +1020,66 @@ class _DailyTipCard extends StatelessWidget {
 
 // ── Ask AI button ─────────────────────────────────────────────────
 
-class _AskAiButton extends StatelessWidget {
+class _AskAiButton extends StatefulWidget {
+  @override
+  State<_AskAiButton> createState() => _AskAiButtonState();
+}
+
+class _AskAiButtonState extends State<_AskAiButton> {
+  bool _hovered = false;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-        child: Row(
-          children: [
-            Text(
-              'Ask AI',
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.white,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () {
+          AiChatScope.of(context).open();
+        },
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: _hovered ? 0.78 : 1.0,
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 150),
+            scale: _hovered ? 1.04 : 1.0,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: _hovered
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primaryGradient.colors.first
+                              .withOpacity(0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                child: Row(
+                  children: [
+                    Text(
+                      'Ask AI',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Icon(Icons.arrow_forward_rounded,
+                        size: 14, color: AppColors.white),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 5),
-            const Icon(Icons.arrow_forward_rounded,
-                size: 14, color: AppColors.white),
-          ],
+          ),
         ),
       ),
     );

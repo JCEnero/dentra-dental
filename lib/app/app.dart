@@ -6,6 +6,8 @@ import '../features/history/screens/history_screen.dart';
 import '../features/clinics/screens/clinics_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../shared/widgets/app_bottom_nav.dart';
+import '../features/ai_assistant/ai_chat_controller.dart';
+import '../features/ai_assistant/ai_assistant.dart';
 
 class DentraApp extends StatelessWidget {
   const DentraApp({super.key});
@@ -30,6 +32,13 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _tab = 0;
+  final AiChatController _aiChat = AiChatController();
+
+  @override
+  void dispose() {
+    _aiChat.dispose();
+    super.dispose();
+  }
 
   void _navigate(int index) {
     setState(() => _tab = index);
@@ -45,30 +54,37 @@ class _AppShellState extends State<AppShell> {
       const ProfileScreen(),
     ];
 
-    // Use LayoutBuilder so we always get tight constraints,
-    // then Column(Expanded + nav) fills the full viewport on web too.
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFF),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return Column(
-            children: [
-              // Screen body fills all remaining space
-              Expanded(
-                child: IndexedStack(
-                  index: _tab,
-                  sizing: StackFit.expand,
-                  children: screens,
+    return AiChatScope(
+      controller: _aiChat,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFAFAFF),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            return Stack(
+              children: [
+                // ── Main app UI ─────────────────────────────────
+                Column(
+                  children: [
+                    Expanded(
+                      child: IndexedStack(
+                        index: _tab,
+                        sizing: StackFit.expand,
+                        children: screens,
+                      ),
+                    ),
+                    AppBottomNav(
+                      activeIndex: _tab,
+                      onTap: _navigate,
+                    ),
+                  ],
                 ),
-              ),
-              // Bottom nav always pinned at bottom
-              AppBottomNav(
-                activeIndex: _tab,
-                onTap: _navigate,
-              ),
-            ],
-          );
-        },
+
+                // ── AI chat overlay (floats above everything) ───
+                const AiChatOverlay(),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
