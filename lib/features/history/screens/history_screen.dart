@@ -239,41 +239,26 @@ class _ScreeningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Even cards: top-left to bottom-right, violet → deep indigo
-    // Odd cards:  slightly shifted hue, still darker than before
-    final gradient = isEven
-        ? const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF4DD8C8), Color(0xFF2CA6A4)],
-          )
-        : const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF5DE0D0), Color(0xFF3BBFB8)],
-          );
+    // White card with teal accent border — alternates teal shade per card
+    final tealBorder = isEven
+        ? const Color(0xFF2CA6A4)
+        : const Color(0xFF3BBFB8);
 
     return Container(
       decoration: BoxDecoration(
-        gradient: gradient,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tealBorder, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
+            color: tealBorder.withValues(alpha: 0.18),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
           BoxShadow(
-            color: Colors.white.withValues(alpha: 0.18),
-            blurRadius: 0,
-            spreadRadius: -1,
-            offset: const Offset(0, 1),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 0,
-            spreadRadius: -1,
-            offset: const Offset(0, -1),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -291,7 +276,7 @@ class _ScreeningCard extends StatelessWidget {
                   style: GoogleFonts.outfit(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.55),
+                    color: AppColors.navy.withValues(alpha: 0.45),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -300,7 +285,7 @@ class _ScreeningCard extends StatelessWidget {
                   style: GoogleFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.white,
+                    color: AppColors.navy,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -315,10 +300,10 @@ class _ScreeningCard extends StatelessWidget {
                           width: 22, height: 22,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white
-                                .withValues(alpha: 0.25 - j * 0.05),
+                            color: const Color(0xFF2CA6A4)
+                                .withValues(alpha: 0.18 - j * 0.04),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3),
+                              color: const Color(0xFF2CA6A4).withValues(alpha: 0.35),
                               width: 1.5,
                             ),
                           ),
@@ -330,7 +315,7 @@ class _ScreeningCard extends StatelessWidget {
                       '${screening.images} images',
                       style: GoogleFonts.outfit(
                         fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppColors.navy.withValues(alpha: 0.55),
                       ),
                     ),
                   ],
@@ -340,7 +325,7 @@ class _ScreeningCard extends StatelessWidget {
                   '${screening.teeth} teeth detected · ${screening.region}',
                   style: GoogleFonts.outfit(
                     fontSize: 11,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppColors.navy.withValues(alpha: 0.55),
                   ),
                 ),
               ],
@@ -355,7 +340,7 @@ class _ScreeningCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: const Color(0xFF2CA6A4).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -363,13 +348,13 @@ class _ScreeningCard extends StatelessWidget {
                   style: GoogleFonts.outfit(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: const Color(0xFF2CA6A4),
                   ),
                 ),
               ),
               const SizedBox(height: 8),
               Icon(Icons.arrow_forward_rounded,
-                  size: 14, color: Colors.white.withValues(alpha: 0.6)),
+                  size: 14, color: const Color(0xFF2CA6A4).withValues(alpha: 0.7)),
             ],
           ),
         ],

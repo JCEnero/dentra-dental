@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fvp/fvp.dart' as fvp;
 import 'app/app.dart';
 
@@ -18,5 +19,9 @@ Future<void> main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
-  runApp(const DentraApp());
+  runApp(
+    const ProviderScope(
+      child: DentraApp(),
+    ),
+  );
 }

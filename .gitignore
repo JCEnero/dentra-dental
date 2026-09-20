@@ -49,3 +49,5 @@ app.*.map.json
 
 # Environment variables — never commit secrets
 .env
+# API
+lib/core/constants/api_keys.dart
