@@ -49,6 +49,9 @@ abstract class MockData {
       distance: '0.8 km',
       services: 'General Dentistry · Restorative',
       rating: 4.8,
+      latitude: 14.5547,   // Makati CBD (base point)
+      longitude: 121.0244,
+      phoneNumber: '+63 2 8123 4567',
     ),
     ClinicModel(
       id: 2,
@@ -56,6 +59,9 @@ abstract class MockData {
       distance: '1.4 km',
       services: 'Orthodontics · Cosmetic',
       rating: 4.6,
+      latitude: 14.5673,   // ~1.4 km northwest
+      longitude: 121.0155,
+      phoneNumber: '+63 917 234 5678',
     ),
     ClinicModel(
       id: 3,
@@ -63,6 +69,9 @@ abstract class MockData {
       distance: '2.1 km',
       services: 'Implants · Periodontics',
       rating: 4.7,
+      latitude: 14.5735,   // ~2.1 km north-northeast
+      longitude: 121.0380,
+      phoneNumber: '+63 2 8765 4321',
     ),
   ];
 
