@@ -49,3 +49,4 @@ app.*.map.json
 
 #API
 lib\core\constants\api_keys.dart
+.env

@@ -5,8 +5,8 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import '../../../core/constants/api_keys.dart';
 import '../data/models/clinic_model.dart';
 
 /// Simple immutable coordinate pair for the user's current position.
@@ -279,6 +279,7 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
   }
 
   Future<List<ClinicModel>> _fetchNearbyClinics(double lat, double lng) async {
+    final placesApiKey = dotenv.env['PLACES_API_KEY']!;
     final uri = Uri.parse('https://places.googleapis.com/v1/places:searchNearby');
     final response = await http.post(
       uri,
