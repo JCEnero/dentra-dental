@@ -12,13 +12,7 @@ dependencies:
   google_fonts: ^6.2.1
   video_player: ^2.9.2
   fvp: ^0.38.1
-  google_generative_ai: ^0.4.6
-  flutter_dotenv: ^5.2.1
-  flutter_riverpod: ^2.6.1
-  geolocator: ^13.0.2
-  google_maps_flutter: ^2.18.0
-  url_launcher: ^6.3.2
-  http: ^1.6.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

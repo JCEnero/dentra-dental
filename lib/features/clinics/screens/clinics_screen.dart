@@ -7,10 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/constants/map_style.dart';
-import '../../clinic_finder/data/models/clinic_model.dart';
-import '../../clinic_finder/providers/clinic_provider.dart';
-import 'clinic_detail_screen.dart';
+import '../../../core/models/clinic_model.dart';
+import '../../../core/services/mock_data.dart';
 
 class ClinicsScreen extends ConsumerStatefulWidget {
   const ClinicsScreen({super.key});
@@ -378,33 +376,7 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
 
 class _ClinicCard extends StatelessWidget {
   final ClinicModel clinic;
-  final Position? userPosition;
-
-  const _ClinicCard({
-    required this.clinic,
-    this.userPosition,
-  });
-
-  String _formatDistance() {
-    if (userPosition == null) {
-      return '-- km';
-    }
-    final distanceMeters = Geolocator.distanceBetween(
-      userPosition!.latitude,
-      userPosition!.longitude,
-      clinic.latitude,
-      clinic.longitude,
-    );
-    final distanceKm = distanceMeters / 1000;
-    return '${distanceKm.toStringAsFixed(1)} km';
-  }
-
-  String _formatServices() {
-    if (clinic.services.isEmpty) {
-      return 'No services listed';
-    }
-    return clinic.services.map((s) => s.name).join(' · ');
-  }
+  const _ClinicCard({required this.clinic});
 
   @override
   Widget build(BuildContext context) {
