@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/models/screening_model.dart';
 import '../../../core/services/mock_data.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -227,7 +228,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 }
 
 class _ScreeningCard extends StatelessWidget {
-  final dynamic screening;
+  final ScreeningModel screening;
   final bool isFirst;
   final bool isEven;
 
@@ -293,7 +294,7 @@ class _ScreeningCard extends StatelessWidget {
                 Row(
                   children: [
                     ...List.generate(
-                      (screening.images as int).clamp(0, 3),
+                      screening.images.clamp(0, 3),
                       (j) => Transform.translate(
                         offset: Offset(j > 0 ? -6.0 * j : 0, 0),
                         child: Container(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/models/clinic_model.dart';
 import '../../../core/services/mock_data.dart';
 
 class ClinicsScreen extends StatelessWidget {
@@ -177,7 +178,7 @@ class _MapGridPainter extends CustomPainter {
 // ── Clinic card ───────────────────────────────────────────────────
 
 class _ClinicCard extends StatelessWidget {
-  final dynamic clinic;
+  final ClinicModel clinic;
   const _ClinicCard({required this.clinic});
 
   @override
