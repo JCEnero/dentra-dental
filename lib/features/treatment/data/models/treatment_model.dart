@@ -46,6 +46,11 @@ class TreatmentModel {
   final IconData icon;
   final Color iconColor;
   final Color iconBackground;
+
+  /// Optional custom image asset path (e.g. 'assets/images/treatments/braces.jpg').
+  /// When provided, the card renders this image instead of [icon].
+  final String? imagePath;
+
   final List<TreatmentStep> steps;
   final String duration;
   final bool requiresFollowUp;
@@ -59,6 +64,7 @@ class TreatmentModel {
     required this.icon,
     required this.iconColor,
     required this.iconBackground,
+    this.imagePath,
     required this.steps,
     required this.duration,
     this.requiresFollowUp = false,

@@ -11,6 +11,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'teeth_cleaning',
       name: 'Teeth Cleaning',
+      imagePath: 'assets/images/treatments/cleaning.jpg',
       shortDescription: 'Professional cleaning to remove plaque and tartar.',
       longDescription:
           'Professional teeth cleaning (prophylaxis) is a preventive dental procedure '
@@ -60,6 +61,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'tooth_filling',
       name: 'Tooth Filling',
+      imagePath: 'assets/images/treatments/cleaning.jpg',
       shortDescription: 'Restore cavities with tooth-colored composite resin.',
       longDescription:
           'A dental filling repairs a tooth damaged by decay, restoring its normal shape '
@@ -107,6 +109,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'root_canal',
       name: 'Root Canal',
+      imagePath: 'assets/images/treatments/cleaning.jpg',
       shortDescription: 'Treat infected tooth pulp and save the natural tooth.',
       longDescription:
           'Root canal therapy removes infected or inflamed pulp tissue from inside the '
@@ -158,6 +161,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'tooth_extraction',
       name: 'Tooth Extraction',
+      imagePath: 'assets/images/treatments/cleaning.jpg',
       shortDescription: 'Safe removal of a severely damaged or impacted tooth.',
       longDescription:
           'Tooth extraction removes a tooth that cannot be saved by other treatments. '
@@ -208,6 +212,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'teeth_whitening',
       name: 'Teeth Whitening',
+      imagePath: 'assets/images/treatments/glowing.jpg',
       shortDescription: 'Brighten your smile with safe professional whitening.',
       longDescription:
           'Professional teeth whitening uses a higher concentration of bleaching agents '
@@ -256,6 +261,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'dental_veneers',
       name: 'Dental Veneers',
+      imagePath: 'assets/images/treatments/glowing.jpg',
       shortDescription: 'Ultra-thin shells that transform the look of your smile.',
       longDescription:
           'Porcelain or composite veneers are wafer-thin shells custom-made to cover '
@@ -307,6 +313,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'orthodontics',
       name: 'Orthodontics',
+      imagePath: 'assets/images/treatments/braces.jpg',
       shortDescription: 'Braces and aligners for a straighter, perfect smile.',
       longDescription:
           'Orthodontic treatment straightens teeth and corrects bite issues using '
@@ -357,6 +364,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'clear_aligners',
       name: 'Clear Aligners',
+      imagePath: 'assets/images/treatments/braces.jpg',
       shortDescription: 'Nearly invisible trays that gradually straighten teeth.',
       longDescription:
           'Clear aligner therapy uses a series of custom, removable plastic trays to '
@@ -410,6 +418,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'dental_implants',
       name: 'Dental Implants',
+      imagePath: 'assets/images/treatments/implants.jpg',
       shortDescription: 'Permanent titanium roots for replacing missing teeth.',
       longDescription:
           'Dental implants are titanium posts surgically placed into the jawbone to '
@@ -461,6 +470,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'wisdom_tooth_removal',
       name: 'Wisdom Tooth Removal',
+      imagePath: 'assets/images/treatments/implants.jpg',
       shortDescription: 'Surgical extraction of impacted or problematic wisdom teeth.',
       longDescription:
           'Wisdom teeth (third molars) often emerge at an angle or become trapped '
@@ -504,6 +514,649 @@ abstract class TreatmentData {
               'The surgical site is cleaned and stitched closed. Gauze is placed to '
               'control bleeding. Detailed aftercare instructions — including diet, '
               'medications, and when to call the dentist — are provided.',
+        ),
+      ],
+    ),
+
+    // ── GENERAL (continued) ────────────────────────────────────
+    TreatmentModel(
+      id: 'dental_crown',
+      name: 'Dental Crown',
+      imagePath: 'assets/images/treatments/cleaning.jpg',
+      shortDescription: 'A cap that fully restores a damaged or weakened tooth.',
+      longDescription:
+          'A dental crown is a tooth-shaped cap placed over a damaged, decayed, or '
+          'weakened tooth to restore its shape, size, strength, and appearance. '
+          'Crowns can be made from porcelain, ceramic, metal alloy, or a combination, '
+          'and are custom-fabricated to blend seamlessly with surrounding teeth.',
+      category: TreatmentCategory.general,
+      icon: Icons.circle_outlined,
+      iconColor: Color(0xFF2CA6A4),
+      iconBackground: Color(0xFFE8F8F7),
+      duration: '2 visits (1 hour each)',
+      requiresFollowUp: true,
+      steps: [
+        TreatmentStep(
+          title: 'Tooth Preparation',
+          description:
+              'The dentist reshapes the tooth by filing down the outer layer to make '
+              'room for the crown. If the tooth is severely damaged, a filling may be '
+              'used to build it up first.',
+        ),
+        TreatmentStep(
+          title: 'Impression Taking',
+          description:
+              'A digital scan or putty impression captures the exact shape of your '
+              'prepared tooth and the surrounding teeth so the crown fits perfectly.',
+        ),
+        TreatmentStep(
+          title: 'Temporary Crown',
+          description:
+              'A temporary acrylic crown is placed to protect the prepared tooth '
+              'while the permanent crown is custom-fabricated in a dental laboratory.',
+        ),
+        TreatmentStep(
+          title: 'Permanent Crown Fitting',
+          description:
+              'At the second visit the temporary crown is removed, the fit and colour '
+              'of the permanent crown are checked, and it is cemented firmly into place.',
+        ),
+        TreatmentStep(
+          title: 'Bite Adjustment',
+          description:
+              'The dentist checks your bite and makes minor adjustments to ensure the '
+              'crown feels comfortable and does not interfere with surrounding teeth.',
+        ),
+      ],
+    ),
+
+    TreatmentModel(
+      id: 'dental_bridge',
+      name: 'Dental Bridge',
+      imagePath: 'assets/images/treatments/cleaning.jpg',
+      shortDescription: 'Replace one or more missing teeth with a fixed bridge.',
+      longDescription:
+          'A dental bridge literally bridges the gap left by one or more missing teeth. '
+          'It consists of two or more crowns on the teeth either side of the gap (abutment '
+          'teeth) and a false tooth (pontic) in between, all fused together into a single '
+          'fixed restoration.',
+      category: TreatmentCategory.general,
+      icon: Icons.linear_scale_rounded,
+      iconColor: Color(0xFF4CAF93),
+      iconBackground: Color(0xFFE8F5F1),
+      duration: '2 visits (1–2 hours each)',
+      requiresFollowUp: true,
+      steps: [
+        TreatmentStep(
+          title: 'Abutment Preparation',
+          description:
+              'The teeth on either side of the gap are reshaped under local anaesthesia '
+              'to accommodate the crowns that will anchor the bridge.',
+        ),
+        TreatmentStep(
+          title: 'Impressions',
+          description:
+              'Detailed impressions of the prepared teeth and the gap are taken and sent '
+              'to the lab to fabricate a perfectly fitting bridge.',
+        ),
+        TreatmentStep(
+          title: 'Temporary Bridge',
+          description:
+              'A temporary bridge protects the exposed teeth and maintains aesthetics '
+              'while the permanent bridge is being made (usually 2 weeks).',
+        ),
+        TreatmentStep(
+          title: 'Bridge Placement',
+          description:
+              'The permanent bridge is tried in for fit and appearance, then cemented '
+              'onto the abutment teeth with strong dental adhesive.',
+        ),
+        TreatmentStep(
+          title: 'Aftercare Guidance',
+          description:
+              'The dentist demonstrates how to clean under the pontic with floss '
+              'threaders or interdental brushes to prevent decay and gum disease.',
+        ),
+      ],
+    ),
+
+    TreatmentModel(
+      id: 'night_guard',
+      name: 'Night Guard',
+      imagePath: 'assets/images/treatments/cleaning.jpg',
+      shortDescription: 'Custom mouthguard to protect teeth from grinding.',
+      longDescription:
+          'Bruxism (teeth grinding) during sleep can wear down enamel, cause jaw pain, '
+          'and lead to cracked teeth. A custom-fitted night guard creates a protective '
+          'barrier between upper and lower teeth, absorbing grinding forces and '
+          'preventing long-term damage.',
+      category: TreatmentCategory.general,
+      icon: Icons.shield_outlined,
+      iconColor: Color(0xFFF4A261),
+      iconBackground: Color(0xFFFEF4EC),
+      duration: '2 visits (30 minutes each)',
+      requiresFollowUp: true,
+      steps: [
+        TreatmentStep(
+          title: 'Assessment',
+          description:
+              'The dentist examines your teeth for signs of wear, checks your jaw '
+              'muscles for tension, and confirms a bruxism diagnosis.',
+        ),
+        TreatmentStep(
+          title: 'Impressions',
+          description:
+              'Upper and lower impressions are taken to create a stone model of your '
+              'teeth that the lab uses to fabricate your custom guard.',
+        ),
+        TreatmentStep(
+          title: 'Guard Fabrication',
+          description:
+              'A hard or soft acrylic guard (depending on grind severity) is made in '
+              'the lab and usually ready within one to two weeks.',
+        ),
+        TreatmentStep(
+          title: 'Fitting & Adjustment',
+          description:
+              'The guard is seated and adjusted for comfort and correct bite. '
+              'It should feel secure but not cause pressure on any individual tooth.',
+        ),
+        TreatmentStep(
+          title: 'Care Instructions',
+          description:
+              'You are shown how to clean the guard daily with a soft brush and '
+              'cool water, and advised on storage to maintain its shape and hygiene.',
+        ),
+      ],
+    ),
+
+    TreatmentModel(
+      id: 'fluoride_treatment',
+      name: 'Fluoride Treatment',
+      imagePath: 'assets/images/treatments/cleaning.jpg',
+      shortDescription: 'Strengthen enamel and prevent cavities with fluoride.',
+      longDescription:
+          'Professional fluoride treatments deliver a high concentration of fluoride '
+          'directly to the tooth surface, remineralising weakened enamel and making '
+          'teeth more resistant to acid attacks from bacteria and dietary sugars. '
+          'Recommended for children, patients prone to cavities, and those with dry mouth.',
+      category: TreatmentCategory.general,
+      icon: Icons.water_drop_rounded,
+      iconColor: Color(0xFF2CA6A4),
+      iconBackground: Color(0xFFE8F8F7),
+      duration: '15 – 30 minutes',
+      steps: [
+        TreatmentStep(
+          title: 'Teeth Cleaning',
+          description:
+              'Teeth are polished clean first so the fluoride can make direct contact '
+              'with the enamel surface without interference from plaque or debris.',
+        ),
+        TreatmentStep(
+          title: 'Fluoride Application',
+          description:
+              'A high-concentration fluoride varnish, gel, or foam is applied to all '
+              'tooth surfaces using a tray, brush, or painted on directly.',
+        ),
+        TreatmentStep(
+          title: 'Setting Time',
+          description:
+              'The fluoride is left on the teeth for a set period (varnish sets almost '
+              'immediately; gel trays are worn for about four minutes).',
+        ),
+        TreatmentStep(
+          title: 'Post-Treatment Instructions',
+          description:
+              'You are advised not to eat, drink, or rinse for at least 30 minutes '
+              'to allow the fluoride to fully absorb into the enamel.',
+        ),
+      ],
+    ),
+
+    // ── COSMETIC (continued) ───────────────────────────────────
+    TreatmentModel(
+      id: 'dental_bonding',
+      name: 'Dental Bonding',
+      imagePath: 'assets/images/treatments/glowing.jpg',
+      shortDescription: 'Repair chips and gaps with tooth-coloured resin.',
+      longDescription:
+          'Dental bonding applies a tooth-coloured composite resin to repair chipped, '
+          'cracked, or discoloured teeth, or to close small gaps between teeth. It is '
+          'one of the quickest and most affordable cosmetic dental procedures, requiring '
+          'little to no enamel removal.',
+      category: TreatmentCategory.cosmetic,
+      icon: Icons.brush_rounded,
+      iconColor: Color(0xFFF4A261),
+      iconBackground: Color(0xFFFEF4EC),
+      duration: '30 – 60 minutes per tooth',
+      steps: [
+        TreatmentStep(
+          title: 'Shade Selection',
+          description:
+              'The dentist uses a shade guide to select a composite resin colour that '
+              'closely matches your natural tooth colour.',
+        ),
+        TreatmentStep(
+          title: 'Surface Preparation',
+          description:
+              'The tooth surface is lightly roughened and coated with a conditioning '
+              'liquid to help the bonding material adhere securely.',
+        ),
+        TreatmentStep(
+          title: 'Resin Application',
+          description:
+              'The putty-like resin is applied, moulded, and smoothed to achieve '
+              'the desired shape, filling the chip or gap naturally.',
+        ),
+        TreatmentStep(
+          title: 'Curing',
+          description:
+              'A bright UV or LED light hardens the resin in seconds, bonding it '
+              'permanently to the tooth structure.',
+        ),
+        TreatmentStep(
+          title: 'Finishing & Polishing',
+          description:
+              'The bonded area is trimmed, shaped to match your bite, and polished '
+              'until it blends seamlessly with the surrounding tooth.',
+        ),
+      ],
+    ),
+
+    TreatmentModel(
+      id: 'gum_contouring',
+      name: 'Gum Contouring',
+      imagePath: 'assets/images/treatments/glowing.jpg',
+      shortDescription: 'Reshape the gumline for a more balanced, even smile.',
+      longDescription:
+          'Gum contouring (gingivoplasty) removes or reshapes excess gum tissue to '
+          'correct a "gummy smile" or uneven gumline. Using a soft-tissue laser or '
+          'scalpel, the procedure exposes more of the tooth crown for a symmetrical, '
+          'aesthetically pleasing result.',
+      category: TreatmentCategory.cosmetic,
+      icon: Icons.format_align_center_rounded,
+      iconColor: Color(0xFF2CA6A4),
+      iconBackground: Color(0xFFE8F8F7),
+      duration: '1 – 2 hours',
+      steps: [
+        TreatmentStep(
+          title: 'Consultation & Smile Design',
+          description:
+              'The dentist maps out the new gumline with a pen or digital design tool, '
+              'showing you a preview of the anticipated result before any tissue is removed.',
+        ),
+        TreatmentStep(
+          title: 'Local Anaesthesia',
+          description:
+              'The gum tissue is numbed thoroughly with local anaesthetic so the '
+              'procedure is completely comfortable.',
+        ),
+        TreatmentStep(
+          title: 'Tissue Removal',
+          description:
+              'A soft-tissue laser or scalpel carefully removes excess gum tissue '
+              'along the planned contour line, exposing more of each tooth crown.',
+        ),
+        TreatmentStep(
+          title: 'Reshaping & Sculpting',
+          description:
+              'The gumline is sculpted to create smooth curves and symmetry across '
+              'all visible teeth, taking care to preserve healthy tissue.',
+        ),
+        TreatmentStep(
+          title: 'Healing & Aftercare',
+          description:
+              'The gums heal over 1–2 weeks. You will be advised to eat soft foods, '
+              'rinse with a prescribed mouthwash, and avoid strenuous activity initially.',
+        ),
+      ],
+    ),
+
+    TreatmentModel(
+      id: 'smile_makeover',
+      name: 'Smile Makeover',
+      imagePath: 'assets/images/treatments/glowing.jpg',
+      shortDescription: 'A personalised combination of cosmetic treatments.',
+      longDescription:
+          'A smile makeover combines two or more cosmetic dental procedures — such as '
+          'whitening, veneers, bonding, and gum contouring — into a single customised '
+          'treatment plan designed to address all of a patient\'s aesthetic concerns '
+          'and deliver a complete smile transformation.',
+      category: TreatmentCategory.cosmetic,
+      icon: Icons.auto_fix_high_rounded,
+      iconColor: Color(0xFFF4A261),
+      iconBackground: Color(0xFFFEF4EC),
+      duration: 'Varies (multiple visits)',
+      requiresFollowUp: true,
+      steps: [
+        TreatmentStep(
+          title: 'Comprehensive Smile Analysis',
+          description:
+              'The dentist evaluates facial proportions, tooth shape, colour, alignment, '
+              'and gum health to identify everything contributing to smile concerns.',
+        ),
+        TreatmentStep(
+          title: 'Digital Smile Design',
+          description:
+              'Using photos and digital software, the dentist visualises the end result '
+              'so you can approve the planned look before treatment begins.',
+        ),
+        TreatmentStep(
+          title: 'Treatment Sequencing',
+          description:
+              'Procedures are scheduled in the correct order — for example, orthodontics '
+              'first, then whitening, then veneers — to ensure each step complements '
+              'the next.',
+        ),
+        TreatmentStep(
+          title: 'Individual Procedures',
+          description:
+              'Each component treatment is carried out according to its own protocol, '
+              'with the overall plan guiding every decision on shade, shape, and position.',
+        ),
+        TreatmentStep(
+          title: 'Final Review',
+          description:
+              'Once all procedures are complete, the dentist reviews the full result '
+              'with you, makes any fine adjustments, and provides a long-term '
+              'maintenance plan.',
+        ),
+      ],
+    ),
+
+    // ── ORTHODONTICS (continued) ───────────────────────────────
+    TreatmentModel(
+      id: 'retainers',
+      name: 'Retainers',
+      imagePath: 'assets/images/treatments/braces.jpg',
+      shortDescription: 'Keep teeth in position after orthodontic treatment.',
+      longDescription:
+          'Retainers are custom appliances worn after braces or aligner therapy to '
+          'hold teeth in their corrected positions while the surrounding bone stabilises. '
+          'They can be removable (clear or Hawley wire) or fixed (bonded behind the teeth).',
+      category: TreatmentCategory.orthodontics,
+      icon: Icons.lock_outline_rounded,
+      iconColor: Color(0xFF2CA6A4),
+      iconBackground: Color(0xFFE8F8F7),
+      duration: '1 visit (30 minutes)',
+      steps: [
+        TreatmentStep(
+          title: 'Post-Treatment Scan',
+          description:
+              'Once active orthodontic treatment ends, a final digital scan or '
+              'impression is taken of your newly aligned teeth.',
+        ),
+        TreatmentStep(
+          title: 'Retainer Fabrication',
+          description:
+              'Your retainer — clear vacuum-formed, Hawley wire, or fixed lingual wire — '
+              'is custom-made from the final scan and typically ready within a week.',
+        ),
+        TreatmentStep(
+          title: 'Fitting',
+          description:
+              'The retainer is seated and checked for fit, comfort, and correct '
+              'coverage of all teeth. Adjustments are made if needed.',
+        ),
+        TreatmentStep(
+          title: 'Wear Schedule',
+          description:
+              'You are advised to wear the retainer full-time initially (except when '
+              'eating and brushing), gradually reducing to nights-only after a few months.',
+        ),
+        TreatmentStep(
+          title: 'Ongoing Monitoring',
+          description:
+              'Periodic check-ups confirm the retainer is still fitting well and teeth '
+              'have not shifted. Worn or broken retainers should be replaced promptly.',
+        ),
+      ],
+    ),
+
+    TreatmentModel(
+      id: 'space_maintainer',
+      name: 'Space Maintainer',
+      imagePath: 'assets/images/treatments/braces.jpg',
+      shortDescription: 'Hold space open after early tooth loss in children.',
+      longDescription:
+          'When a baby tooth is lost prematurely, neighbouring teeth can drift into '
+          'the empty space, blocking the permanent tooth from erupting correctly. '
+          'A space maintainer is a small fixed or removable appliance that holds the '
+          'gap open until the permanent tooth is ready to come through.',
+      category: TreatmentCategory.orthodontics,
+      icon: Icons.space_bar_rounded,
+      iconColor: Color(0xFF4DD8C8),
+      iconBackground: Color(0xFFEBFAF9),
+      duration: '1 visit (45 minutes)',
+      steps: [
+        TreatmentStep(
+          title: 'Assessment',
+          description:
+              'The dentist takes an X-ray to check the development stage of the '
+              'permanent tooth beneath the gap and confirms a maintainer is needed.',
+        ),
+        TreatmentStep(
+          title: 'Impression or Scan',
+          description:
+              'An impression or digital scan is taken of the affected area so the '
+              'appliance can be custom-made for a precise fit.',
+        ),
+        TreatmentStep(
+          title: 'Appliance Placement',
+          description:
+              'The space maintainer — usually a band-and-loop or distal shoe — is '
+              'cemented onto the adjacent tooth to hold the gap open.',
+        ),
+        TreatmentStep(
+          title: 'Monitoring',
+          description:
+              'Regular check-ups track the eruption of the permanent tooth. '
+              'The maintainer is removed as soon as the permanent tooth starts emerging.',
+        ),
+      ],
+    ),
+
+    TreatmentModel(
+      id: 'jaw_expander',
+      name: 'Jaw Expander',
+      imagePath: 'assets/images/treatments/braces.jpg',
+      shortDescription: 'Widen the upper jaw to correct crowding and crossbite.',
+      longDescription:
+          'A palatal expander applies gentle outward pressure to the two halves of '
+          'the upper jaw (palate), gradually widening it to create more space for '
+          'permanent teeth and correct crossbites. It is most effective in children '
+          'and adolescents whose palatal suture has not yet fully fused.',
+      category: TreatmentCategory.orthodontics,
+      icon: Icons.open_with_rounded,
+      iconColor: Color(0xFF2CA6A4),
+      iconBackground: Color(0xFFE8F8F7),
+      duration: '3 – 6 months',
+      requiresFollowUp: true,
+      steps: [
+        TreatmentStep(
+          title: 'Orthodontic Evaluation',
+          description:
+              'X-rays and dental models confirm the degree of crowding or crossbite '
+              'and whether expansion is the appropriate treatment approach.',
+        ),
+        TreatmentStep(
+          title: 'Expander Fitting',
+          description:
+              'The custom expander is cemented to the upper molars. The parent or '
+              'patient is taught how to use the small key to activate it each day.',
+        ),
+        TreatmentStep(
+          title: 'Active Expansion Phase',
+          description:
+              'The key is turned daily or every other day as prescribed, applying '
+              'gentle force that gradually separates the palatal suture over weeks.',
+        ),
+        TreatmentStep(
+          title: 'Retention Phase',
+          description:
+              'Once the target width is reached, the expander remains in place for '
+              'several months without further turning, allowing bone to fill in the '
+              'expanded suture.',
+        ),
+        TreatmentStep(
+          title: 'Removal & Follow-up',
+          description:
+              'The expander is removed and a retainer or braces may follow to '
+              'maintain the new arch width and complete alignment treatment.',
+        ),
+      ],
+    ),
+
+    // ── SURGICAL (continued) ───────────────────────────────────
+    TreatmentModel(
+      id: 'bone_grafting',
+      name: 'Bone Grafting',
+      imagePath: 'assets/images/treatments/implants.jpg',
+      shortDescription: 'Rebuild jawbone volume to support dental implants.',
+      longDescription:
+          'Bone grafting adds bone or bone-like material to areas of the jaw where '
+          'volume has been lost due to tooth extraction, gum disease, or trauma. '
+          'It is often a prerequisite for dental implant placement when insufficient '
+          'bone is present to anchor the implant securely.',
+      category: TreatmentCategory.surgical,
+      icon: Icons.architecture_rounded,
+      iconColor: Color(0xFF6B7B80),
+      iconBackground: Color(0xFFF0F3F4),
+      duration: '45 – 90 minutes',
+      requiresFollowUp: true,
+      steps: [
+        TreatmentStep(
+          title: 'Imaging & Planning',
+          description:
+              'A cone-beam CT scan measures the bone defect precisely, helping the '
+              'surgeon plan the graft size, material type, and surgical approach.',
+        ),
+        TreatmentStep(
+          title: 'Anaesthesia',
+          description:
+              'Local anaesthesia (with or without sedation) is administered to ensure '
+              'a comfortable, pain-free procedure.',
+        ),
+        TreatmentStep(
+          title: 'Graft Placement',
+          description:
+              'The surgeon opens the gum tissue at the defect site and places the '
+              'graft material — autograft (own bone), allograft, xenograft, or synthetic '
+              '— into the area, filling and reinforcing the deficiency.',
+        ),
+        TreatmentStep(
+          title: 'Membrane Covering',
+          description:
+              'A resorbable or non-resorbable membrane is often placed over the graft '
+              'to protect it and guide new bone growth.',
+        ),
+        TreatmentStep(
+          title: 'Healing Period',
+          description:
+              'The graft integrates with existing bone over 3–6 months. Implant '
+              'placement is planned once sufficient density and volume are confirmed '
+              'on a follow-up CT scan.',
+        ),
+      ],
+    ),
+
+    TreatmentModel(
+      id: 'sinus_lift',
+      name: 'Sinus Lift',
+      imagePath: 'assets/images/treatments/implants.jpg',
+      shortDescription: 'Add bone beneath the sinus to enable upper implants.',
+      longDescription:
+          'A sinus lift (sinus augmentation) adds bone to the upper jaw in the area '
+          'of the molars and premolars, between the jaw and the maxillary sinuses. '
+          'It is performed when the sinus is too close to the jaw to place a dental '
+          'implant without risking sinus perforation.',
+      category: TreatmentCategory.surgical,
+      icon: Icons.vertical_align_top_rounded,
+      iconColor: Color(0xFFE8896A),
+      iconBackground: Color(0xFFFDF0EB),
+      duration: '1.5 – 2 hours',
+      requiresFollowUp: true,
+      steps: [
+        TreatmentStep(
+          title: 'Pre-Surgical Imaging',
+          description:
+              'CT scans measure the height of existing bone and the anatomy of the '
+              'sinus to plan the precise volume of graft material needed.',
+        ),
+        TreatmentStep(
+          title: 'Anaesthesia & Access',
+          description:
+              'Under local anaesthesia or sedation, the surgeon makes an incision in '
+              'the gum and creates a small window in the lateral sinus wall.',
+        ),
+        TreatmentStep(
+          title: 'Sinus Membrane Elevation',
+          description:
+              'The sinus membrane is carefully lifted upward and the space beneath it '
+              'is filled with bone graft material.',
+        ),
+        TreatmentStep(
+          title: 'Wound Closure',
+          description:
+              'The incision is sutured closed. The graft material is left to integrate '
+              'with the surrounding bone over the healing period.',
+        ),
+        TreatmentStep(
+          title: 'Healing & Implant Placement',
+          description:
+              'After 4–9 months of healing, a follow-up CT scan confirms adequate bone '
+              'volume, and dental implant placement proceeds as planned.',
+        ),
+      ],
+    ),
+
+    TreatmentModel(
+      id: 'frenectomy',
+      name: 'Frenectomy',
+      imagePath: 'assets/images/treatments/implants.jpg',
+      shortDescription: 'Remove restrictive tissue causing tongue-tie or lip-tie.',
+      longDescription:
+          'A frenectomy removes or modifies the frenum — a small fold of tissue that '
+          'connects the lip or tongue to the gum or floor of the mouth. When this '
+          'tissue is too tight (tongue-tie or lip-tie), it can restrict movement, '
+          'affect speech, feeding, and orthodontic outcomes. A laser frenectomy is '
+          'quick, precise, and virtually bloodless.',
+      category: TreatmentCategory.surgical,
+      icon: Icons.content_cut_rounded,
+      iconColor: Color(0xFF6B7B80),
+      iconBackground: Color(0xFFF0F3F4),
+      duration: '15 – 30 minutes',
+      steps: [
+        TreatmentStep(
+          title: 'Diagnosis',
+          description:
+              'The dentist or oral surgeon evaluates the frenum attachment and its '
+              'functional impact on tongue movement, speech, or the gap between teeth.',
+        ),
+        TreatmentStep(
+          title: 'Anaesthesia',
+          description:
+              'A topical anaesthetic is applied first, followed by a small injection '
+              'of local anaesthetic to numb the area completely.',
+        ),
+        TreatmentStep(
+          title: 'Frenum Release',
+          description:
+              'A soft-tissue laser or surgical scissors cuts and releases the frenum, '
+              'freeing the tongue or lip from restriction. The laser simultaneously '
+              'seals blood vessels, minimising bleeding.',
+        ),
+        TreatmentStep(
+          title: 'Suturing (if needed)',
+          description:
+              'Laser frenectomies usually require no stitches. Scalpel procedures may '
+              'need one or two dissolving sutures to close the site.',
+        ),
+        TreatmentStep(
+          title: 'Recovery & Exercises',
+          description:
+              'Healing is rapid — typically 1–2 weeks. Stretching exercises are '
+              'prescribed to prevent reattachment and maximise freedom of movement.',
         ),
       ],
     ),

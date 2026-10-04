@@ -27,16 +27,12 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
   }
 
   List<TreatmentModel> get _filtered {
-    List<TreatmentModel> results = _searchQuery.isNotEmpty
-        ? TreatmentData.search(_searchQuery)
-        : TreatmentData.byCategory(_selectedCategory);
-
-    // If a category is selected AND a query is active, intersect both.
-    if (_searchQuery.isNotEmpty && _selectedCategory != null) {
-      results =
-          results.where((t) => t.category == _selectedCategory).toList();
+    // When a search query is active, search across ALL treatments regardless of category.
+    if (_searchQuery.isNotEmpty) {
+      return TreatmentData.search(_searchQuery);
     }
-    return results;
+    // No query — filter by selected category (null = all).
+    return TreatmentData.byCategory(_selectedCategory);
   }
 
   void _clearSearch() {
@@ -317,7 +313,7 @@ class _TreatmentCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Icon container
+            // Icon container — custom image or Flutter icon fallback
             Container(
               width: 60,
               height: 60,
@@ -325,11 +321,19 @@ class _TreatmentCard extends StatelessWidget {
                 color: treatment.iconBackground,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                treatment.icon,
-                size: 28,
-                color: treatment.iconColor,
-              ),
+              clipBehavior: Clip.antiAlias,
+              child: treatment.imagePath != null
+                  ? Image.asset(
+                      treatment.imagePath!,
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                    )
+                  : Icon(
+                      treatment.icon,
+                      size: 28,
+                      color: treatment.iconColor,
+                    ),
             ),
 
             const SizedBox(width: 14),
