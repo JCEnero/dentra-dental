@@ -10,6 +10,7 @@ import '../../../shared/widgets/primary_button.dart';
 import '../../../core/services/mock_data.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../ai_assistant/ai_chat_controller.dart';
+import '../../treatment/screens/treatment_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final ValueChanged<int> onNavigate;
@@ -160,7 +161,13 @@ class HomeScreen extends StatelessWidget {
                     _ServiceButton(
                       icon: Icons.healing_rounded,
                       label: 'Treatment',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const TreatmentScreen(),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(width: 12),
                     _ServiceButton(
