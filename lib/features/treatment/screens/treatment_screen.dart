@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../shared/widgets/dentra_meta_chip.dart';
 import '../data/models/treatment_model.dart';
 import '../data/treatment_data.dart';
 import 'treatment_detail_screen.dart';
@@ -422,19 +423,19 @@ class _TreatmentCard extends StatelessWidget {
                           runSpacing: 6,
                           children: [
                             // Category
-                            _MetaChip(
+                            DentraMetaChip(
                               label: treatment.category.label,
                               color: _getCategoryColor(),
                             ),
                             // Duration
-                            _MetaChip(
+                            DentraMetaChip(
                               icon: Icons.schedule_rounded,
                               label: treatment.duration,
                               color: AppColors.secondaryText,
                             ),
                             // Follow-up
                             if (treatment.requiresFollowUp)
-                              _MetaChip(
+                              DentraMetaChip(
                                 icon: Icons.event_repeat_rounded,
                                 label: 'Follow-up',
                                 color: AppColors.secondaryText,
@@ -466,50 +467,6 @@ class _TreatmentCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Small meta chip (category, duration, follow-up)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MetaChip extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  final Color color;
-
-  const _MetaChip({
-    required this.label,
-    this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 11, color: color),
-            const SizedBox(width: 3),
-          ],
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-        ],
       ),
     );
   }

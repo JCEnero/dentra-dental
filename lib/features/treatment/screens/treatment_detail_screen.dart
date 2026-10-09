@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../shared/widgets/dentra_glance_tile.dart';
+import '../../../shared/widgets/dentra_note_card.dart';
 import '../data/models/treatment_model.dart';
 
 class TreatmentDetailScreen extends StatelessWidget {
@@ -96,7 +98,7 @@ class TreatmentDetailScreen extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: _GlanceTile(
+                            child: DentraGlanceTile(
                               icon: Icons.schedule_rounded,
                               label: 'Duration',
                               value: treatment.duration,
@@ -104,7 +106,7 @@ class TreatmentDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _GlanceTile(
+                            child: DentraGlanceTile(
                               icon: Icons.event_repeat_rounded,
                               label: 'Follow-up',
                               value: treatment.requiresFollowUp ? 'Yes' : 'No',
@@ -112,7 +114,7 @@ class TreatmentDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _GlanceTile(
+                            child: DentraGlanceTile(
                               icon: Icons.category_rounded,
                               label: 'Type',
                               value: treatment.category.label,
@@ -186,35 +188,9 @@ class TreatmentDetailScreen extends StatelessWidget {
                       const SizedBox(height: 32),
 
                       // Info note card
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.lightLavender,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(
-                              Icons.info_outline_rounded,
-                              size: 20,
-                              color: AppColors.g2,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'This is general information, not medical advice. '
-                                'Your dentist will recommend what\'s right for you.',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: AppColors.navy,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      const DentraNoteCard(
+                        message: 'This is general information, not medical advice. '
+                            'Your dentist will recommend what\'s right for you.',
                       ),
                     ],
                   ),
@@ -366,61 +342,6 @@ class _CollapsedTitle extends StatelessWidget {
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: AppColors.navy,
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Glance tile for quick info (duration, follow-up, type)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _GlanceTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _GlanceTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.lightLavender,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            size: 22,
-            color: AppColors.g2,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: AppColors.secondaryText,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.navy,
-            ),
-          ),
-        ],
       ),
     );
   }
