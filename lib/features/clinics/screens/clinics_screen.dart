@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/map_style.dart';
+import '../../../shared/widgets/dentra_meta_chip.dart';
 import '../../clinic_finder/data/models/clinic_model.dart';
 import '../../clinic_finder/providers/clinic_provider.dart';
 import 'clinic_detail_screen.dart';
@@ -22,11 +23,18 @@ class ClinicsScreen extends ConsumerStatefulWidget {
 class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
   Position? _userPosition;
   final GlobalKey<_MapPlaceholderState> _mapKey = GlobalKey<_MapPlaceholderState>();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _getUserLocation();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _getUserLocation() async {
@@ -75,132 +83,267 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final clinicsAsync = ref.watch(clinicListProvider);
+    // Use filteredClinicsProvider when search is active, otherwise use clinicListProvider
+    final filterState = ref.watch(clinicFilterProvider);
+    final clinicsAsync = filterState.searchQuery.isEmpty
+        ? ref.watch(clinicListProvider)
+        : ref.watch(filteredClinicsProvider);
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: Colors.white),
       child: Column(
         children: [
-          // ── HEADER ─────────────────────────────────────────────
+          // ── GRADIENT HEADER ────────────────────────────────────
           Container(
             width: double.infinity,
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screenH, 52, AppSpacing.screenH, 16),
+            decoration: const BoxDecoration(
+              gradient: AppColors.verticalGradient,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+            ),
             child: SafeArea(
               bottom: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Find a Dentist',
-                    style: GoogleFonts.outfit(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenH,
+                  16,
+                  AppSpacing.screenH,
+                  24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Find a Dentist',
+                      style: GoogleFonts.outfit(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Nearby dental clinics',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      color: AppColors.secondaryText,
+                    const SizedBox(height: 4),
+                    Text(
+                      'Nearby dental clinics',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    // Search field
+                    Container(
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          setState(() {}); // Rebuild to show/hide clear button
+                          ref.read(clinicFilterProvider.notifier).setSearchQuery(value);
+                        },
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          color: AppColors.navy,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search clinics...',
+                          hintStyle: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: AppColors.secondaryText,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            size: 20,
+                            color: AppColors.secondaryText,
+                          ),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? GestureDetector(
+                                  onTap: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                    ref.read(clinicFilterProvider.notifier).setSearchQuery('');
+                                  },
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    size: 18,
+                                    color: AppColors.secondaryText,
+                                  ),
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 13),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
 
           // ── BODY ───────────────────────────────────────────────
           Expanded(
             child: clinicsAsync.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                ),
+              loading: () => LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              error: (error, stack) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.screenH),
+              error: (error, stack) => LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.screenH),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 48,
+                                color: AppColors.secondaryText,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Could not load clinics',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                error.toString(),
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  color: AppColors.secondaryText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              data: (clinics) {
+                if (clinics.isEmpty) {
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
+                          child: Center(
+                            child: _EmptyState(
+                              query: filterState.searchQuery,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }
+
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: AppColors.secondaryText,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Could not load clinics',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.navy,
+                      // Map in rounded card (only show when not searching)
+                      if (filterState.searchQuery.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.screenH, 20, AppSpacing.screenH, 0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.border),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.g2.withValues(alpha: 0.06),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: _MapPlaceholder(
+                                key: _mapKey,
+                                userPosition: _userPosition,
+                                clinics: clinics,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Section label
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.screenH, 20, AppSpacing.screenH, 12),
+                        child: Text(
+                          filterState.searchQuery.isEmpty
+                              ? 'Nearby Clinics'
+                              : 'Search Results',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        error.toString(),
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: AppColors.secondaryText,
-                        ),
+
+                      // Clinic cards with animation
+                      ...clinics.asMap().entries.map(
+                        (entry) {
+                          final index = entry.key;
+                          final clinic = entry.value;
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.screenH, 0, AppSpacing.screenH, 12),
+                            child: _ClinicCard(
+                              clinic: clinic,
+                              userPosition: _userPosition,
+                              index: index,
+                            ),
+                          );
+                        },
                       ),
+
+                      const SizedBox(height: 24),
                     ],
                   ),
-                ),
-              ),
-              data: (clinics) => SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Map placeholder
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.screenH, 20, AppSpacing.screenH, 0),
-                      child: _MapPlaceholder(
-                        key: _mapKey,
-                        userPosition: _userPosition,
-                        clinics: clinics,
-                      ),
-                    ),
-
-                    // Nearby Clinics label
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.screenH, 20, AppSpacing.screenH, 12),
-                      child: Text(
-                        'Nearby Clinics',
-                        style: GoogleFonts.outfit(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ),
-
-                    // Clinic cards
-                    ...clinics.map(
-                      (clinic) => Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.screenH, 0, AppSpacing.screenH, 10),
-                        child: _ClinicCard(
-                          clinic: clinic,
-                          userPosition: _userPosition,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -341,28 +484,25 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        height: 220,
-        child: GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: _calculateCenter(),
-            zoom: 14.5,
-          ),
-          markers: _markers,
-          style: mapStyle,
-          onMapCreated: (controller) {
-            _mapController = controller;
-          },
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
-          mapToolbarEnabled: false,
-          compassEnabled: false,
-          gestureRecognizers: {
-            Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
-          },
+    return SizedBox(
+      height: 220,
+      child: GoogleMap(
+        initialCameraPosition: CameraPosition(
+          target: _calculateCenter(),
+          zoom: 14.5,
         ),
+        markers: _markers,
+        style: mapStyle,
+        onMapCreated: (controller) {
+          _mapController = controller;
+        },
+        myLocationButtonEnabled: false,
+        zoomControlsEnabled: false,
+        mapToolbarEnabled: false,
+        compassEnabled: false,
+        gestureRecognizers: {
+          Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+        },
       ),
     );
   }
@@ -379,10 +519,12 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
 class _ClinicCard extends StatelessWidget {
   final ClinicModel clinic;
   final Position? userPosition;
+  final int index;
 
   const _ClinicCard({
     required this.clinic,
     this.userPosition,
+    required this.index,
   });
 
   String _formatDistance() {
@@ -399,105 +541,191 @@ class _ClinicCard extends StatelessWidget {
     return '${distanceKm.toStringAsFixed(1)} km';
   }
 
-  String _formatServices() {
-    if (clinic.services.isEmpty) {
-      return 'No services listed';
-    }
-    return clinic.services.map((s) => s.name).join(' · ');
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // Icon + name + distance
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 32, height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.lightLavender,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: const Icon(
-                    Icons.location_on_outlined,
-                    size: 14,
-                    color: AppColors.primary,
-                  ),
+    // Cap stagger delay to first 6 items
+    final animationIndex = index < 6 ? index : 5;
+    
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(clinic.id), // Key by clinic ID, not index
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 250 + (animationIndex * 40)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
+          ),
+        );
+      },
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ClinicDetailScreen(
+                  clinic: clinic,
+                  userPosition: userPosition,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        clinic.name,
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                      Text(
-                        _formatDistance(),
-                        style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          color: AppColors.secondaryText,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatServices(),
-                        style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          color: AppColors.secondaryText,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.g2.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
-          ),
-
-          // View button
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ClinicDetailScreen(
-                    clinic: clinic,
-                    userPosition: userPosition,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Icon container
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: AppColors.lightLavender,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.local_hospital_rounded,
+                      size: 28,
+                      color: AppColors.primary,
+                    ),
                   ),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: AppColors.lightLavender,
-                borderRadius: BorderRadius.circular(8),
+
+                  const SizedBox(width: 14),
+
+                  // Name + meta chips
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          clinic.name,
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Meta chips row
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            // Distance chip
+                            DentraMetaChip(
+                              icon: Icons.location_on_rounded,
+                              label: _formatDistance(),
+                              color: AppColors.secondaryText,
+                            ),
+                            // Rating chip
+                            DentraMetaChip(
+                              icon: Icons.star_rounded,
+                              label: '${clinic.rating}',
+                              color: AppColors.secondaryText,
+                            ),
+                            // Review count chip (if fits)
+                            if (clinic.reviewCount > 0)
+                              DentraMetaChip(
+                                label: '${clinic.reviewCount} reviews',
+                                color: AppColors.secondaryText,
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Circular gradient arrow button
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: AppColors.g2,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-              child: Text(
-                'View',
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
-              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  final String query;
+
+  const _EmptyState({required this.query});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: AppColors.lightLavender,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.search_off_rounded,
+              size: 28,
+              color: AppColors.secondaryText,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            query.isNotEmpty
+                ? 'No results for "$query"'
+                : 'No clinics found',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.navy,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            query.isNotEmpty
+                ? 'Try a different search term or check your spelling.'
+                : 'We couldn\'t find any clinics in your area.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              color: AppColors.secondaryText,
             ),
           ),
         ],
