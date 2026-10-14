@@ -164,7 +164,9 @@ class HomeScreen extends StatelessWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const TreatmentScreen(),
+                            builder: (_) => TreatmentScreen(
+                              onNavigateToTab: onNavigate,
+                            ),
                           ),
                         );
                       },

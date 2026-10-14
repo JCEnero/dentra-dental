@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../shared/widgets/dentra_meta_chip.dart';
 import '../data/models/treatment_model.dart';
 import '../data/treatment_data.dart';
 import 'treatment_detail_screen.dart';
 
 class TreatmentScreen extends StatefulWidget {
-  const TreatmentScreen({super.key});
+  final ValueChanged<int>? onNavigateToTab;
+
+  const TreatmentScreen({super.key, this.onNavigateToTab});
 
   @override
   State<TreatmentScreen> createState() => _TreatmentScreenState();
@@ -42,24 +45,20 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filtered = _filtered;
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── HEADER ────────────────────────────────────────────
-            _TreatmentHeader(onBack: () => Navigator.of(context).pop()),
-
-            // ── SEARCH BAR ────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 16, AppSpacing.screenH, 0),
-              child: _SearchBar(
-                controller: _searchController,
-                onChanged: (v) => setState(() => _searchQuery = v),
-                onClear: _clearSearch,
-              ),
+            // ── GRADIENT HEADER WITH SEARCH ──────────────────────
+            _GradientHeader(
+              searchController: _searchController,
+              onSearchChanged: (v) => setState(() => _searchQuery = v),
+              onClearSearch: _clearSearch,
+              onBack: () => Navigator.of(context).pop(),
             ),
 
             // ── CATEGORY FILTER CHIPS ─────────────────────────────
@@ -97,24 +96,34 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
 
             // ── TREATMENT LIST ────────────────────────────────────
             Expanded(
-              child: _filtered.isEmpty
+              child: filtered.isEmpty
                   ? _EmptyState(query: _searchQuery)
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(
                           AppSpacing.screenH, 0,
                           AppSpacing.screenH, 24),
-                      itemCount: _filtered.length,
+                      itemCount: filtered.length,
                       separatorBuilder: (_, __) =>
                           const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        final treatment = _filtered[index];
+                        final treatment = filtered[index];
                         return _TreatmentCard(
                           treatment: treatment,
+                          index: index,
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => TreatmentDetailScreen(
                                   treatment: treatment,
+                                  onFindClinic: widget.onNavigateToTab != null
+                                      ? () {
+                                          // Pop detail screen, then list screen
+                                          Navigator.of(context).pop();
+                                          Navigator.of(context).pop();
+                                          // Switch to Clinics tab (index 3)
+                                          widget.onNavigateToTab!(3);
+                                        }
+                                      : null,
                                 ),
                               ),
                             );
@@ -131,112 +140,120 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Header
+// Gradient header with integrated search
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TreatmentHeader extends StatelessWidget {
+class _GradientHeader extends StatelessWidget {
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onClearSearch;
   final VoidCallback onBack;
 
-  const _TreatmentHeader({required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.screenH, 16, AppSpacing.screenH, 0),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onBack,
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.lightLavender,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 16,
-                color: AppColors.navy,
-              ),
-            ),
-          ),
-          const Expanded(
-            child: Center(
-              child: Text(
-                'Treatments',
-                style: TextStyle(
-                  fontFamily: 'Outfit',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
-                ),
-              ),
-            ),
-          ),
-          // Placeholder to keep title centred
-          const SizedBox(width: 38),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Search bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SearchBar extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-
-  const _SearchBar({
-    required this.controller,
-    required this.onChanged,
-    required this.onClear,
+  const _GradientHeader({
+    required this.searchController,
+    required this.onSearchChanged,
+    required this.onClearSearch,
+    required this.onBack,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 46,
-      decoration: BoxDecoration(
-        color: AppColors.lightLavender,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        style: GoogleFonts.outfit(
-          fontSize: 14,
-          color: AppColors.navy,
+      decoration: const BoxDecoration(
+        gradient: AppColors.verticalGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
-        decoration: InputDecoration(
-          hintText: 'Search treatments...',
-          hintStyle: GoogleFonts.outfit(
-            fontSize: 14,
-            color: AppColors.secondaryText,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            size: 20,
-            color: AppColors.secondaryText,
-          ),
-          suffixIcon: controller.text.isNotEmpty
-              ? GestureDetector(
-                  onTap: onClear,
-                  child: const Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: AppColors.secondaryText,
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenH, 16, AppSpacing.screenH, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Back button
+              GestureDetector(
+                onTap: onBack,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
                   ),
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Title
+              Text(
+                'Treatments',
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Subtitle
+              Text(
+                'Learn what to expect before your visit',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Search field
+              Container(
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: TextField(
+                  controller: searchController,
+                  onChanged: onSearchChanged,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: AppColors.navy,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Search treatments...',
+                    hintStyle: GoogleFonts.outfit(
+                      fontSize: 14,
+                      color: AppColors.secondaryText,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      size: 20,
+                      color: AppColors.secondaryText,
+                    ),
+                    suffixIcon: searchController.text.isNotEmpty
+                        ? GestureDetector(
+                            onTap: onClearSearch,
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: AppColors.secondaryText,
+                            ),
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 13),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -264,10 +281,11 @@ class _CategoryChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.g2 : AppColors.lightLavender,
+          gradient: selected ? AppColors.primaryGradient : null,
+          color: selected ? null : Colors.white,
+          border: selected ? null : Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -290,117 +308,164 @@ class _CategoryChip extends StatelessWidget {
 class _TreatmentCard extends StatelessWidget {
   final TreatmentModel treatment;
   final VoidCallback onTap;
+  final int index;
 
-  const _TreatmentCard({required this.treatment, required this.onTap});
+  const _TreatmentCard({
+    required this.treatment,
+    required this.onTap,
+    required this.index,
+  });
+
+  Color _getCategoryColor() {
+    switch (treatment.category) {
+      case TreatmentCategory.general:
+        return AppColors.primary; // teal
+      case TreatmentCategory.cosmetic:
+        return AppColors.coral;
+      case TreatmentCategory.orthodontics:
+        return AppColors.mintGreen;
+      case TreatmentCategory.surgical:
+        return AppColors.g2; // default teal
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(treatment.id),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
+          ),
+        );
+      },
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.g2.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.g2.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Icon container — custom image or Flutter icon fallback
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: treatment.iconBackground,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: treatment.imagePath != null
-                  ? Image.asset(
-                      treatment.imagePath!,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                    )
-                  : Icon(
-                      treatment.icon,
-                      size: 28,
-                      color: treatment.iconColor,
-                    ),
-            ),
-
-            const SizedBox(width: 14),
-
-            // Name + description
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
-                  Text(
-                    treatment.name,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    treatment.shortDescription,
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      color: AppColors.secondaryText,
-                      height: 1.4,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  // Category badge
+                  // Icon container
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
-                      color: AppColors.lightLavender,
-                      borderRadius: BorderRadius.circular(6),
+                      color: treatment.iconBackground,
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Text(
-                      treatment.category.label,
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.g2,
-                      ),
+                    clipBehavior: Clip.antiAlias,
+                    child: treatment.imagePath != null
+                        ? Image.asset(
+                            treatment.imagePath!,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          )
+                        : Icon(
+                            treatment.icon,
+                            size: 28,
+                            color: treatment.iconColor,
+                          ),
+                  ),
+
+                  const SizedBox(width: 14),
+
+                  // Name + description + meta chips
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          treatment.name,
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          treatment.shortDescription,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: AppColors.secondaryText,
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        // Meta chips row
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            // Category
+                            DentraMetaChip(
+                              label: treatment.category.label,
+                              color: _getCategoryColor(),
+                            ),
+                            // Duration
+                            DentraMetaChip(
+                              icon: Icons.schedule_rounded,
+                              label: treatment.duration,
+                              color: AppColors.secondaryText,
+                            ),
+                            // Follow-up
+                            if (treatment.requiresFollowUp)
+                              DentraMetaChip(
+                                icon: Icons.event_repeat_rounded,
+                                label: 'Follow-up',
+                                color: AppColors.secondaryText,
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Arrow
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: AppColors.g2,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: Colors.white,
                     ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(width: 8),
-
-            // Arrow
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.g2,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.arrow_forward_rounded,
-                size: 16,
-                color: Colors.white,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
