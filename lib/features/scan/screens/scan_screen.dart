@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/primary_button.dart';
 import '../data/models/captured_image.dart';
@@ -55,94 +56,90 @@ class ScanScreen extends ConsumerWidget {
             : CaptureSource.photoLibrary;
     final scanning = session.finishPhase == FinishPhase.scanning;
 
-    return ColoredBox(
-      color: AppColors.white,
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: LayoutBuilder(builder: (context, constraints) {
-                // The header scrolls with the content and the visual yields
-                // space on short screens; only the action bar is pinned, so
-                // the next step is always reachable.
-                final maxVisual =
-                    (constraints.maxHeight * 0.36).clamp(150.0, 300.0);
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ScanHeader(
-                        capturedIds: session.captures.keys.toSet(),
-                        selectedId: session.selectedRegionId,
-                        showProgress: scanning,
-                        onBack: onBack,
-                        onStartOver: scanning && session.captures.isNotEmpty
-                            ? () => _confirmStartOver(context, ref)
-                            : null,
-                      ),
-                      const Divider(
-                          height: 1, thickness: 1, color: AppColors.border),
-                      const SizedBox(height: 16),
-                      ...scanning
-                          ? [
-                              _padded(DeviceStatusCard(
-                                state: device,
-                                onConnect: () => ref
-                                    .read(deviceConnectionProvider.notifier)
-                                    .connect(),
-                                onCancel: () => ref
-                                    .read(deviceConnectionProvider.notifier)
-                                    .disconnect(),
-                              )),
-                              const SizedBox(height: 22),
-                              _padded(const _SectionTitle('Choose a region')),
-                              const SizedBox(height: 10),
-                              RegionSelector(
-                                selectedId: session.selectedRegionId,
-                                capturedIds: session.captures.keys.toSet(),
-                                enabled: session.canChangeRegion,
-                                onSelect: scan.selectRegion,
-                              ),
-                              _padded(CaptureStage(
-                                session: session,
-                                maxVisualHeight: maxVisual,
-                              )),
-                              const SizedBox(height: 16),
-                              _padded(const ScanDisclaimer()),
-                            ]
-                          : [
-                              _padded(ScanResultView(
-                                session: session,
-                                analysisAvailable: analysisAvailable,
-                              )),
-                            ],
-                    ],
-                  ),
-                );
-              }),
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          Expanded(
+            child: LayoutBuilder(builder: (context, constraints) {
+              // The header scrolls with the content and the visual yields
+              // space on short screens; only the action bar is pinned, so
+              // the next step is always reachable.
+              final maxVisual =
+                  (constraints.maxHeight * 0.36).clamp(150.0, 300.0);
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ScanHeader(
+                      capturedIds: session.captures.keys.toSet(),
+                      selectedId: session.selectedRegionId,
+                      showProgress: scanning,
+                      onBack: onBack,
+                      onStartOver: scanning && session.captures.isNotEmpty
+                          ? () => _confirmStartOver(context, ref)
+                          : null,
+                    ),
+                    Divider(height: 1, thickness: 1, color: AppGlass.divider),
+                    const SizedBox(height: 16),
+                    ...scanning
+                        ? [
+                            _padded(DeviceStatusCard(
+                              state: device,
+                              onConnect: () => ref
+                                  .read(deviceConnectionProvider.notifier)
+                                  .connect(),
+                              onCancel: () => ref
+                                  .read(deviceConnectionProvider.notifier)
+                                  .disconnect(),
+                            )),
+                            const SizedBox(height: 22),
+                            _padded(const _SectionTitle('Choose a region')),
+                            const SizedBox(height: 10),
+                            RegionSelector(
+                              selectedId: session.selectedRegionId,
+                              capturedIds: session.captures.keys.toSet(),
+                              enabled: session.canChangeRegion,
+                              onSelect: scan.selectRegion,
+                            ),
+                            _padded(CaptureStage(
+                              session: session,
+                              maxVisualHeight: maxVisual,
+                            )),
+                            const SizedBox(height: 16),
+                            _padded(const ScanDisclaimer()),
+                          ]
+                        : [
+                            _padded(ScanResultView(
+                              session: session,
+                              analysisAvailable: analysisAvailable,
+                            )),
+                          ],
+                  ],
+                ),
+              );
+            }),
+          ),
+          // Like the tab bar, text grows here only so far, so the pinned
+          // bar can't crowd out the content on small screens.
+          MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1.5,
+            child: ScanActionBar(
+              session: session,
+              source: source,
+              onCapture: scan.capture,
+              onAccept: scan.acceptPending,
+              onRetake: scan.retake,
+              onSelect: scan.selectRegion,
+              onFinish: scan.finish,
+              onRetryAnalysis: scan.retryAnalysis,
+              onSkipAnalysis: scan.skipAnalysis,
+              onNewScan: scan.reset,
             ),
-            // Like the tab bar, text grows here only so far, so the pinned
-            // bar can't crowd out the content on small screens.
-            MediaQuery.withClampedTextScaling(
-              maxScaleFactor: 1.5,
-              child: ScanActionBar(
-                session: session,
-                source: source,
-                onCapture: scan.capture,
-                onAccept: scan.acceptPending,
-                onRetake: scan.retake,
-                onSelect: scan.selectRegion,
-                onFinish: scan.finish,
-                onRetryAnalysis: scan.retryAnalysis,
-                onSkipAnalysis: scan.skipAnalysis,
-                onNewScan: scan.reset,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

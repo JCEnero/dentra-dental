@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/glass_card.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -47,11 +48,7 @@ class ScanActionBar extends StatelessWidget {
       alignment: Alignment.bottomCenter,
       child: content == null
           ? const SizedBox(width: double.infinity)
-          : DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppColors.white,
-                border: Border(top: BorderSide(color: AppColors.border)),
-              ),
+          : GlassBar(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
                     AppSpacing.screenH, 12, AppSpacing.screenH, 12),

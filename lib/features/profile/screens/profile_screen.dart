@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/avatar_widget.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../core/models/screening_model.dart';
 import '../../../core/services/mock_data.dart';
 import '../../onboarding/screens/onboarding_screen.dart';
@@ -1752,149 +1754,135 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     ];
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Colors.white),
-      child: Column(
-        children: [
-          // ── Profile header ──────────────────────────────────────
-          Container(
-            width: double.infinity,
-            color: Colors.white,
-            padding: EdgeInsets.fromLTRB(
-                AppSpacing.screenH,
-                MediaQuery.paddingOf(context).top + 28,
-                AppSpacing.screenH,
-                24),
+    return Column(
+      children: [
+        // ── Profile header ──────────────────────────────────────
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(
+              AppSpacing.screenH,
+              MediaQuery.paddingOf(context).top + 28,
+              AppSpacing.screenH,
+              24),
+          child: Column(
+            children: [
+              // Tappable avatar
+              GestureDetector(
+                onTap: () => _showAvatarSheet(context),
+                child: Stack(
+                  children: [
+                    AvatarWidget(
+                      size: 64,
+                      imageBytes: _avatarBytes,
+                      initials: _name
+                          .trim()
+                          .split(' ')
+                          .where((w) => w.isNotEmpty)
+                          .take(2)
+                          .map((w) => w[0].toUpperCase())
+                          .join(),
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryGradient,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          size: 11,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Tappable name
+              GestureDetector(
+                onTap: () => _showEditNameSheet(context),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _name,
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.edit_outlined,
+                      size: 16,
+                      color: AppColors.secondaryText,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _email,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  color: AppColors.secondaryText,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 1, thickness: 1, color: AppGlass.divider),
+
+        // ── Sections ────────────────────────────────────────────
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.screenH),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tappable avatar
-                GestureDetector(
-                  onTap: () => _showAvatarSheet(context),
-                  child: Stack(
-                    children: [
-                      AvatarWidget(
-                        size: 64,
-                        imageBytes: _avatarBytes,
-                        initials: _name
-                            .trim()
-                            .split(' ')
-                            .where((w) => w.isNotEmpty)
-                            .take(2)
-                            .map((w) => w[0].toUpperCase())
-                            .join(),
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            size: 11,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Tappable name
-                GestureDetector(
-                  onTap: () => _showEditNameSheet(context),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _name,
+                ...sections.map((sec) => _SettingsSection(
+                      title: sec['title'] as String,
+                      items: sec['items'] as List<String>,
+                      onTap: (label) => _handleTap(context, label),
+                    )),
+
+                const SizedBox(height: 4),
+
+                // Log out button
+                GlassCard(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _showLogOut(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    child: Center(
+                      child: Text(
+                        'Log Out',
                         style: GoogleFonts.outfit(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFE05252),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons.edit_outlined,
-                        size: 16,
-                        color: AppColors.secondaryText,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _email,
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    color: AppColors.secondaryText,
-                  ),
-                ),
+
+                const SizedBox(height: 24),
               ],
             ),
           ),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-
-          // ── Sections ────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(AppSpacing.screenH),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ...sections.map((sec) => _SettingsSection(
-                        title: sec['title'] as String,
-                        items: sec['items'] as List<String>,
-                        onTap: (label) => _handleTap(context, label),
-                      )),
-
-                  const SizedBox(height: 4),
-
-                  // Log out button
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => _showLogOut(context),
-                        borderRadius: BorderRadius.circular(14),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          child: Center(
-                            child: Text(
-                              'Log Out',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFFE05252),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1931,24 +1919,19 @@ class _SettingsSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
-            clipBehavior: Clip.hardEdge,
+          GlassCard(
+            borderRadius: BorderRadius.circular(14),
             child: Column(
               children: List.generate(items.length, (i) {
                 return Column(
                   children: [
                     if (i > 0)
-                      const Divider(
+                      Divider(
                         height: 1,
                         thickness: 1,
                         indent: 16,
                         endIndent: 0,
-                        color: AppColors.border,
+                        color: AppGlass.divider,
                       ),
                     Material(
                       color: Colors.transparent,

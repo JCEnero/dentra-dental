@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
+import '../core/constants/app_colors.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/scan/screens/scan_screen.dart';
 import '../features/history/screens/history_screen.dart';
 import '../features/clinics/screens/clinics_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../shared/widgets/app_backdrop.dart';
 import '../shared/widgets/app_bottom_nav.dart';
 import '../features/ai_assistant/ai_chat_controller.dart';
 import '../features/ai_assistant/ai_assistant.dart';
@@ -68,33 +70,31 @@ class _AppShellState extends State<AppShell> {
     return AiChatScope(
       controller: _aiChat,
       child: Scaffold(
-        backgroundColor: const Color(0xFFFAFAFF),
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            return Stack(
-              children: [
-                // ── Main app UI ─────────────────────────────────
-                Column(
-                  children: [
-                    Expanded(
-                      child: IndexedStack(
-                        index: _tab,
-                        sizing: StackFit.expand,
-                        children: screens,
-                      ),
+        backgroundColor: AppColors.lightLavender,
+        body: AppBackdrop(
+          child: Stack(
+            children: [
+              // ── Main app UI ─────────────────────────────────
+              Column(
+                children: [
+                  Expanded(
+                    child: IndexedStack(
+                      index: _tab,
+                      sizing: StackFit.expand,
+                      children: screens,
                     ),
-                    AppBottomNav(
-                      activeIndex: _tab,
-                      onTap: _navigate,
-                    ),
-                  ],
-                ),
+                  ),
+                  AppBottomNav(
+                    activeIndex: _tab,
+                    onTap: _navigate,
+                  ),
+                ],
+              ),
 
-                // ── AI chat overlay (floats above everything) ───
-                const AiChatOverlay(),
-              ],
-            );
-          },
+              // ── AI chat overlay (floats above everything) ───
+              const AiChatOverlay(),
+            ],
+          ),
         ),
       ),
     );

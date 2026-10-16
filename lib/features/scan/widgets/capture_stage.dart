@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../data/models/captured_image.dart';
 import '../data/scan_regions.dart';
 import '../providers/scan_session_provider.dart';
@@ -30,19 +31,8 @@ class CaptureStage extends StatelessWidget {
     final index = scanRegions.indexOf(region);
     final captured = session.captures[region.id];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.g2.withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+    return GlassCard(
+      borderRadius: BorderRadius.circular(24),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

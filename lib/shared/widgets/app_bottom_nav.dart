@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import 'glass_card.dart';
 
 // ── Nav item model ─────────────────────────────────────────────
 
@@ -61,13 +62,7 @@ class AppBottomNav extends StatelessWidget {
     final duration =
         reduceMotion ? Duration.zero : const Duration(milliseconds: 200);
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(
-          top: BorderSide(color: AppColors.border, width: 1),
-        ),
-      ),
+    return GlassBar(
       child: SafeArea(
         top: false,
         // Labels may grow with system font size, but only so far: a tab bar

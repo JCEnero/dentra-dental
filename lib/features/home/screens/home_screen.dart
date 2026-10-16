@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/avatar_widget.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/gradient_divider.dart';
 import '../../../shared/widgets/primary_button.dart';
 import '../../../core/services/mock_data.dart';
@@ -22,393 +24,391 @@ class HomeScreen extends StatelessWidget {
     final last = MockData.screenings.first;
     final tip = MockData.dailyTips.first;
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Colors.white),
-      child: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── HEADER ──────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, 36, AppSpacing.screenH, 0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // One quiet line, so it doesn't compete with
-                          // the device card's headline below.
-                          Text.rich(
-                            TextSpan(
-                              text: 'Good morning, ',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w400,
-                                color: AppColors.secondaryText,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: 'Rommel',
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.navy,
-                                  ),
-                                ),
-                              ],
+    return SafeArea(
+      bottom: false,
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── HEADER ──────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenH, 36, AppSpacing.screenH, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // One quiet line, so it doesn't compete with
+                        // the device card's headline below.
+                        Text.rich(
+                          TextSpan(
+                            text: 'Good morning, ',
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.secondaryText,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Bell icon
-                    GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: AppColors.lightLavender,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.notifications_none_rounded,
-                          size: 20,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const AvatarWidget(size: 40),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // ── DEVICE HERO CARD ──────────────────────────────
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                child: _DeviceHeroCard(onScan: () => onNavigate(1)),
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── SERVICES ─────────────────────────────────────
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Services',
-                      style: GoogleFonts.outfit(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {},
-                      child: Text(
-                        'See All',
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                child: Row(
-                  children: [
-                    _ServiceButton(
-                      glyph: _ServiceGlyph.tooth,
-                      label: 'My Teeth',
-                      onTap: () => onNavigate(2),
-                    ),
-                    const SizedBox(width: 12),
-                    _ServiceButton(
-                      glyph: _ServiceGlyph.capsule,
-                      label: 'Treatment',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => TreatmentScreen(
-                              onNavigateToTab: onNavigate,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 12),
-                    _ServiceButton(
-                      glyph: _ServiceGlyph.scan,
-                      label: 'AI Analysis',
-                      onTap: () {},
-                    ),
-                    const SizedBox(width: 12),
-                    _ServiceButton(
-                      glyph: _ServiceGlyph.trend,
-                      label: 'Reports',
-                      onTap: () => onNavigate(2),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── DENTAL HEALTH SCORE ───────────────────────────
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                child: _DentalHealthScoreCard(),
-              ),
-
-              const SizedBox(height: 28),
-              const GradientDivider(),
-
-              // ── YOUR SCREENING ────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SectionLabel('Your screening',
-                        color: AppColors.secondaryText),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Last screening',
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: AppColors.secondaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'September 7',
-                      style: GoogleFonts.outfit(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${last.teeth} teeth detected · ${last.images} images captured',
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        color: AppColors.secondaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    _LinkButton(
-                      label: 'View results',
-                      onTap: () => onNavigate(2),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: AppSpacing.sectionGap),
-              const GradientDivider(),
-
-              // ── SCREENING OVERVIEW ────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SectionLabel('Screening overview',
-                        color: AppColors.secondaryText),
-                    const SizedBox(height: 20),
-                    IntrinsicHeight(
-                      child: Row(
-                        children: [
-                          const _StatColumn(value: '18', label: 'Teeth'),
-                          _VerticalDivider(),
-                          const _StatColumn(value: '4', label: 'Images'),
-                          _VerticalDivider(),
-                          const _StatColumn(value: '5', label: 'Regions'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: AppSpacing.sectionGap),
-              const GradientDivider(),
-
-              // ── YOUR MONITORING ───────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SectionLabel('Your monitoring',
-                        color: AppColors.secondaryText),
-                    const SizedBox(height: 16),
-                    Text(
-                      '3 screenings this month',
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Your screening history is available to help you\nreview visual observations over time.',
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        color: AppColors.secondaryText,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _MonitoringTimeline(),
-                    const SizedBox(height: 4),
-                    _LinkButton(
-                      label: 'View history',
-                      onTap: () => onNavigate(2),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: AppSpacing.sectionGap),
-              const GradientDivider(),
-
-              // ── DAILY TIP ─────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
-                child: _DailyTipCard(
-                  headline: tip['headline']!,
-                  body: tip['body']!,
-                ),
-              ),
-
-              const SizedBox(height: AppSpacing.sectionGap),
-              const GradientDivider(),
-
-              // ── DENTRA AI ─────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
                             children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.g1,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'DENTRA AI',
+                              TextSpan(
+                                text: 'Rommel',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.1,
-                                  color: AppColors.secondaryText,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.navy,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 5),
-                          Text(
-                            'Need help understanding your\nscreening results?',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.navy,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Bell icon
+                  GestureDetector(
+                    onTap: () {},
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.white.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppGlass.border),
+                      ),
+                      child: Icon(
+                        Icons.notifications_none_rounded,
+                        size: 20,
+                        color: AppColors.navy,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    _AskAiButton(),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 10),
+                  const AvatarWidget(size: 40),
+                ],
               ),
+            ),
 
-              const SizedBox(height: AppSpacing.sectionGap),
+            const SizedBox(height: 20),
 
-              // ── PROFESSIONAL CARE ─────────────────────────────
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                child: GradientDivider(),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, 24, AppSpacing.screenH, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'PROFESSIONAL CARE',
+            // ── DEVICE HERO CARD ──────────────────────────────
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+              child: _DeviceHeroCard(onScan: () => onNavigate(1)),
+            ),
+
+            const SizedBox(height: 28),
+
+            // ── SERVICES ─────────────────────────────────────
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Services',
+                    style: GoogleFonts.outfit(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {},
+                    child: Text(
+                      'See All',
                       style: GoogleFonts.outfit(
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
-                        color: AppColors.secondaryText,
+                        color: AppColors.primary,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Screening information is not a diagnosis. If you have concerns about your oral health, consider speaking with a licensed dentist.',
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: AppColors.secondaryText,
-                        height: 1.6,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _LinkButton(
-                      label: 'Find a nearby clinic',
-                      onTap: () => onNavigate(3),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
 
-              const SizedBox(height: 32),
-            ],
-          ),
+            const SizedBox(height: 14),
+
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+              child: Row(
+                children: [
+                  _ServiceButton(
+                    glyph: _ServiceGlyph.tooth,
+                    label: 'My Teeth',
+                    onTap: () => onNavigate(2),
+                  ),
+                  const SizedBox(width: 12),
+                  _ServiceButton(
+                    glyph: _ServiceGlyph.capsule,
+                    label: 'Treatment',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TreatmentScreen(
+                            onNavigateToTab: onNavigate,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  _ServiceButton(
+                    glyph: _ServiceGlyph.scan,
+                    label: 'AI Analysis',
+                    onTap: () {},
+                  ),
+                  const SizedBox(width: 12),
+                  _ServiceButton(
+                    glyph: _ServiceGlyph.trend,
+                    label: 'Reports',
+                    onTap: () => onNavigate(2),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 28),
+
+            // ── DENTAL HEALTH SCORE ───────────────────────────
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+              child: _DentalHealthScoreCard(),
+            ),
+
+            const SizedBox(height: 28),
+            const GradientDivider(),
+
+            // ── YOUR SCREENING ────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('Your screening',
+                      color: AppColors.secondaryText),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Last screening',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'September 7',
+                    style: GoogleFonts.outfit(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${last.teeth} teeth detected · ${last.images} images captured',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  _LinkButton(
+                    label: 'View results',
+                    onTap: () => onNavigate(2),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.sectionGap),
+            const GradientDivider(),
+
+            // ── SCREENING OVERVIEW ────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('Screening overview',
+                      color: AppColors.secondaryText),
+                  const SizedBox(height: 20),
+                  IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        const _StatColumn(value: '18', label: 'Teeth'),
+                        _VerticalDivider(),
+                        const _StatColumn(value: '4', label: 'Images'),
+                        _VerticalDivider(),
+                        const _StatColumn(value: '5', label: 'Regions'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.sectionGap),
+            const GradientDivider(),
+
+            // ── YOUR MONITORING ───────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('Your monitoring',
+                      color: AppColors.secondaryText),
+                  const SizedBox(height: 16),
+                  Text(
+                    '3 screenings this month',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Your screening history is available to help you\nreview visual observations over time.',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: AppColors.secondaryText,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _MonitoringTimeline(),
+                  const SizedBox(height: 4),
+                  _LinkButton(
+                    label: 'View history',
+                    onTap: () => onNavigate(2),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.sectionGap),
+            const GradientDivider(),
+
+            // ── DAILY TIP ─────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
+              child: _DailyTipCard(
+                headline: tip['headline']!,
+                body: tip['body']!,
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.sectionGap),
+            const GradientDivider(),
+
+            // ── DENTRA AI ─────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.g1,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'DENTRA AI',
+                              style: GoogleFonts.outfit(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.1,
+                                color: AppColors.secondaryText,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'Need help understanding your\nscreening results?',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.navy,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _AskAiButton(),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.sectionGap),
+
+            // ── PROFESSIONAL CARE ─────────────────────────────
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+              child: GradientDivider(),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenH, 24, AppSpacing.screenH, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'PROFESSIONAL CARE',
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Screening information is not a diagnosis. If you have concerns about your oral health, consider speaking with a licensed dentist.',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: AppColors.secondaryText,
+                      height: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _LinkButton(
+                    label: 'Find a nearby clinic',
+                    onTap: () => onNavigate(3),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+          ],
         ),
       ),
     );
@@ -452,181 +452,136 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Light, outlined surface: the teal is saved for the one action that
-    // matters, so the card reads calm and the CTA stands out.
-    return DecoratedBox(
-      // Embossed: light from the top-left, shade to the bottom-right,
-      // and a bright rim so the card reads as raised off the page.
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6FAFA),
-        borderRadius: _radius,
-        border: Border.all(color: Colors.white, width: 1.5),
-        boxShadow: [
-          const BoxShadow(
-            color: Colors.white,
-            blurRadius: 16,
-            offset: Offset(-6, -6),
-          ),
-          BoxShadow(
-            color: AppColors.navy.withValues(alpha: 0.10),
-            blurRadius: 20,
-            offset: const Offset(6, 8),
-          ),
-          BoxShadow(
-            color: AppColors.g2.withValues(alpha: 0.06),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: _radius,
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // Inner sheen: brighter top, slightly deeper bottom.
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0.0, 0.45, 1.0],
-                      colors: [
-                        Colors.white.withValues(alpha: 0.85),
-                        Colors.white.withValues(alpha: 0.0),
-                        AppColors.navy.withValues(alpha: 0.025),
-                      ],
-                    ),
-                  ),
+    // Frosted pane: the teal is saved for the one action that matters,
+    // so the card reads calm and the CTA stands out.
+    return GlassCard(
+      borderRadius: _radius,
+      borderWidth: 1.5,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          // Soft mint stage the mascot stands on, just above the CTA.
+          Positioned(
+            right: -56,
+            bottom: 40,
+            width: 190,
+            height: 190,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.lightLavender.withValues(alpha: 0.75),
                 ),
               ),
             ),
+          ),
 
-            // Soft mint stage the mascot stands on, just above the CTA.
-            const Positioned(
-              right: -56,
-              bottom: 40,
-              width: 190,
-              height: 190,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.lightLavender,
-                  ),
-                ),
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Text keeps clear of the mascot on the right.
-                  Padding(
-                    padding: const EdgeInsets.only(right: 80),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'DENTRA DEVICE',
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.4,
-                            color: AppColors.secondaryText,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Scan your smile',
-                          style: GoogleFonts.outfit(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.navy,
-                            letterSpacing: -0.4,
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Connected · Battery 86% · Signal Strong',
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            height: 1.35,
-                            color: AppColors.secondaryText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Status pills
-                  const Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Text keeps clear of the mascot on the right.
+                Padding(
+                  padding: const EdgeInsets.only(right: 80),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _StatusPill(
-                        icon: Icons.battery_5_bar_rounded,
-                        label: '86%',
-                        semanticLabel: 'Battery 86%',
+                      Text(
+                        'DENTRA DEVICE',
+                        style: GoogleFonts.outfit(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.4,
+                          color: AppColors.secondaryText,
+                        ),
                       ),
-                      _StatusPill(
-                        icon: Icons.wifi_rounded,
-                        label: 'Strong',
-                        semanticLabel: 'Signal strong',
+                      const SizedBox(height: 10),
+                      Text(
+                        'Scan your smile',
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                          letterSpacing: -0.4,
+                          height: 1.15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Connected · Battery 86% · Signal Strong',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          height: 1.35,
+                          color: AppColors.secondaryText,
+                        ),
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // CTA
-                  PrimaryButton(
-                    label: 'Start Dental Scan',
-                    onTap: widget.onScan,
-                  ),
-                ],
-              ),
-            ),
-
-            // Connected indicator, top-right corner.
-            const Positioned(
-              top: 20,
-              right: 20,
-              child: _LiveDot(),
-            ),
-
-            // Tooth Bunny video — overlaid right side
-            Positioned(
-              right: 12,
-              // Feet rest just on the top edge of the CTA.
-              bottom: 58,
-              width: 100,
-              height: 100,
-              child: IgnorePointer(
-                child: ExcludeSemantics(
-                  child: _controller.value.isInitialized
-                      ? FittedBox(
-                          fit: BoxFit.contain,
-                          alignment: Alignment.bottomRight,
-                          child: SizedBox(
-                            width: _controller.value.size.width,
-                            height: _controller.value.size.height,
-                            child: VideoPlayer(_controller),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
                 ),
+
+                const SizedBox(height: 14),
+
+                // Status pills
+                const Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _StatusPill(
+                      icon: Icons.battery_5_bar_rounded,
+                      label: '86%',
+                      semanticLabel: 'Battery 86%',
+                    ),
+                    _StatusPill(
+                      icon: Icons.wifi_rounded,
+                      label: 'Strong',
+                      semanticLabel: 'Signal strong',
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // CTA
+                PrimaryButton(
+                  label: 'Start Dental Scan',
+                  onTap: widget.onScan,
+                ),
+              ],
+            ),
+          ),
+
+          // Connected indicator, top-right corner.
+          const Positioned(
+            top: 20,
+            right: 20,
+            child: _LiveDot(),
+          ),
+
+          // Tooth Bunny video — overlaid right side
+          Positioned(
+            right: 12,
+            // Feet float just above the top edge of the CTA.
+            bottom: 66,
+            width: 100,
+            height: 100,
+            child: IgnorePointer(
+              child: ExcludeSemantics(
+                child: _controller.value.isInitialized
+                    ? FittedBox(
+                        fit: BoxFit.contain,
+                        alignment: Alignment.bottomRight,
+                        child: SizedBox(
+                          width: _controller.value.size.width,
+                          height: _controller.value.size.height,
+                          child: VideoPlayer(_controller),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -715,48 +670,36 @@ class _ServiceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
-      side: const BorderSide(color: AppColors.border, width: 1),
-    );
-
     return Expanded(
       child: Semantics(
         button: true,
         label: label,
         excludeSemantics: true,
-        child: Material(
-          color: AppColors.white,
-          shape: shape,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            splashColor: AppColors.lightLavender,
-            highlightColor: AppColors.lightLavender.withValues(alpha: 0.6),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(6, 16, 6, 14),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CustomPaint(
-                    size: const Size.square(26),
-                    painter: _ServiceGlyphPainter(glyph),
+        child: GlassCard(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(6, 16, 6, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CustomPaint(
+                  size: const Size.square(26),
+                  painter: _ServiceGlyphPainter(glyph),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.navy,
+                    height: 1.2,
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
-                      height: 1.2,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -883,19 +826,8 @@ class _DentalHealthScoreCard extends StatelessWidget {
     const double score = 0.85;
     const int percent = 85;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.g2.withValues(alpha: 0.07),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return GlassCard(
+      borderRadius: BorderRadius.circular(20),
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1149,12 +1081,9 @@ class _DailyTipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.lightLavender,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
+    return GlassCard(
+      tint: AppColors.lightLavender,
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
 import '../providers/device_connection_provider.dart';
 import '../services/dentra_device_service.dart';
 import 'scan_motion.dart';
@@ -38,114 +39,114 @@ class DeviceStatusCard extends StatelessWidget {
       container: true,
       liveRegion: true,
       label: 'DENTRA device. ${copy.title}. ${copy.body}',
-      child: AnimatedContainer(
-        duration: duration,
-        curve: ScanMotion.curve,
-        decoration: BoxDecoration(
-          color: AppColors.lightLavender,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: _active ? Colors.transparent : AppColors.lavender,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.g2.withValues(alpha: _active ? 0.28 : 0.0),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter.grouped(
+          filter: AppGlass.blur,
+          child: AnimatedContainer(
+            duration: duration,
+            curve: ScanMotion.curve,
+            decoration: AppGlass.surface(
+              borderRadius: BorderRadius.circular(20),
+              tint: AppColors.lightLavender,
+              borderColor: _active ? Colors.transparent : null,
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(19),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: AnimatedOpacity(
-                  opacity: _active ? 1 : 0,
-                  duration: duration,
-                  curve: ScanMotion.curve,
-                  child: const DecoratedBox(
-                    decoration: BoxDecoration(gradient: AppColors.cardGradient),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                child: Row(
-                  children: [
-                    ExcludeSemantics(
-                      child: _DeviceEmblem(
-                          status: state.status, onActive: _active),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(19),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: AnimatedOpacity(
+                      opacity: _active ? 1 : 0,
+                      duration: duration,
+                      curve: ScanMotion.curve,
+                      child: const DecoratedBox(
+                        decoration:
+                            BoxDecoration(gradient: AppColors.cardGradient),
+                      ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: ExcludeSemantics(
-                        child: AnimatedSwitcher(
-                          duration: ScanMotion.of(context, ScanMotion.medium),
-                          transitionBuilder: ScanMotion.fadeRise,
-                          layoutBuilder: (current, previous) => Stack(
-                            alignment: Alignment.centerLeft,
-                            children: [
-                              ...previous,
-                              if (current != null) current
-                            ],
-                          ),
-                          child: Column(
-                            key: ValueKey(
-                                '${state.status}-${state.failure}-${state.isSlow}'),
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'DENTRA DEVICE',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.2,
-                                  color: _active
-                                      ? AppColors.white.withValues(alpha: 0.75)
-                                      : AppColors.secondaryText,
-                                ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                    child: Row(
+                      children: [
+                        ExcludeSemantics(
+                          child: _DeviceEmblem(
+                              status: state.status, onActive: _active),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: ExcludeSemantics(
+                            child: AnimatedSwitcher(
+                              duration:
+                                  ScanMotion.of(context, ScanMotion.medium),
+                              transitionBuilder: ScanMotion.fadeRise,
+                              layoutBuilder: (current, previous) => Stack(
+                                alignment: Alignment.centerLeft,
+                                children: [
+                                  ...previous,
+                                  if (current != null) current
+                                ],
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                copy.title,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: onColor,
-                                  height: 1.25,
-                                ),
+                              child: Column(
+                                key: ValueKey(
+                                    '${state.status}-${state.failure}-${state.isSlow}'),
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'DENTRA DEVICE',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1.2,
+                                      color: _active
+                                          ? AppColors.white
+                                              .withValues(alpha: 0.75)
+                                          : AppColors.secondaryText,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    copy.title,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: onColor,
+                                      height: 1.25,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    copy.body,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12.5,
+                                      color: subColor,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                copy.body,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12.5,
-                                  color: subColor,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
+                        if (copy.action != null) ...[
+                          const SizedBox(width: 10),
+                          _CardAction(
+                            label: copy.action!,
+                            onActive: _active,
+                            onTap: state.status == DeviceStatus.connecting ||
+                                    state.status == DeviceStatus.reconnecting
+                                ? onCancel
+                                : onConnect,
+                          ),
+                        ],
+                      ],
                     ),
-                    if (copy.action != null) ...[
-                      const SizedBox(width: 10),
-                      _CardAction(
-                        label: copy.action!,
-                        onActive: _active,
-                        onTap: state.status == DeviceStatus.connecting ||
-                                state.status == DeviceStatus.reconnecting
-                            ? onCancel
-                            : onConnect,
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

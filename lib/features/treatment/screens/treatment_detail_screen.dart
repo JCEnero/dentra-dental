@@ -3,9 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glance_tile.dart';
 import '../../../shared/widgets/dentra_note_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../data/models/treatment_model.dart';
 
 class TreatmentDetailScreen extends StatelessWidget {
@@ -21,237 +24,232 @@ class TreatmentDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Main scrollable content
-          CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ── HERO SLIVER APP BAR ──────────────────────────────
-              SliverAppBar(
-                expandedHeight: 200,
-                pinned: true,
-                automaticallyImplyLeading: false,
-                backgroundColor: Colors.white,
-                surfaceTintColor: Colors.transparent,
-                flexibleSpace: FlexibleSpaceBar(
-                  collapseMode: CollapseMode.pin,
-                  background: _HeroBanner(treatment: treatment),
-                ),
-                title: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Calculate collapse progress based on flexible space shrink
-                    final settings = context
-                        .dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
-                    final t = settings != null
-                        ? (1 - (settings.currentExtent - settings.minExtent) /
-                                (settings.maxExtent - settings.minExtent))
-                            .clamp(0.0, 1.0)
-                        : 1.0;
-                    return Opacity(
-                      opacity: t,
-                      child: _CollapsedTitle(name: treatment.name),
-                    );
-                  },
-                ),
-                leading: Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        size: 15,
-                        color: AppColors.navy,
+      backgroundColor: AppColors.lightLavender,
+      body: AppBackdrop(
+        child: Stack(
+          children: [
+            // Main scrollable content
+            CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // ── HERO SLIVER APP BAR ──────────────────────────────
+                SliverAppBar(
+                  expandedHeight: 200,
+                  pinned: true,
+                  automaticallyImplyLeading: false,
+                  backgroundColor: AppGlass.barFill,
+                  surfaceTintColor: Colors.transparent,
+                  flexibleSpace: FlexibleSpaceBar(
+                    collapseMode: CollapseMode.pin,
+                    background: _HeroBanner(treatment: treatment),
+                  ),
+                  title: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Calculate collapse progress based on flexible space shrink
+                      final settings = context
+                          .dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
+                      final t = settings != null
+                          ? (1 - (settings.currentExtent - settings.minExtent) /
+                                  (settings.maxExtent - settings.minExtent))
+                              .clamp(0.0, 1.0)
+                          : 1.0;
+                      return Opacity(
+                        opacity: t,
+                        child: _CollapsedTitle(name: treatment.name),
+                      );
+                    },
+                  ),
+                  leading: Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 15,
+                          color: AppColors.navy,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-              // ── BODY ─────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      AppSpacing.screenH,
-                      24,
-                      AppSpacing.screenH,
-                      onFindClinic != null ? 110 : 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // At a glance tiles
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DentraGlanceTile(
-                              icon: Icons.schedule_rounded,
-                              label: 'Duration',
-                              value: treatment.duration,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DentraGlanceTile(
-                              icon: Icons.event_repeat_rounded,
-                              label: 'Follow-up',
-                              value: treatment.requiresFollowUp ? 'Yes' : 'No',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DentraGlanceTile(
-                              icon: Icons.category_rounded,
-                              label: 'Type',
-                              value: treatment.category.label,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Description
-                      Text(
-                        'About this treatment',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        treatment.longDescription,
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          color: AppColors.secondaryText,
-                          height: 1.65,
-                        ),
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Divider
-                      Container(
-                        height: 1,
-                        color: AppColors.border,
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Procedure steps
-                      Text(
-                        'What to expect',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Step-by-step breakdown of the procedure',
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: AppColors.secondaryText,
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Steps timeline
-                      ...treatment.steps.asMap().entries.map((entry) {
-                        final isLast =
-                            entry.key == treatment.steps.length - 1;
-                        return _StepTile(
-                          step: entry.value,
-                          stepNumber: entry.key + 1,
-                          isLast: isLast,
-                        );
-                      }),
-
-                      const SizedBox(height: 32),
-
-                      // Info note card
-                      const DentraNoteCard(
-                        message: 'This is general information, not medical advice. '
-                            'Your dentist will recommend what\'s right for you.',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Sticky bottom button (only shown when onFindClinic is provided)
-          if (onFindClinic != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: SafeArea(
-                  top: false,
+                // ── BODY ─────────────────────────────────────────────
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.screenH, 16, AppSpacing.screenH, 16),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: onFindClinic,
-                        borderRadius: BorderRadius.circular(14),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            borderRadius: BorderRadius.circular(14),
+                    padding: EdgeInsets.fromLTRB(
+                        AppSpacing.screenH,
+                        24,
+                        AppSpacing.screenH,
+                        onFindClinic != null ? 110 : 40),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // At a glance tiles, sharing one height
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: DentraGlanceTile(
+                                  icon: Icons.schedule_rounded,
+                                  label: 'Duration',
+                                  value: treatment.duration,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DentraGlanceTile(
+                                  icon: Icons.event_repeat_rounded,
+                                  label: 'Follow-up',
+                                  value: treatment.requiresFollowUp ? 'Yes' : 'No',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DentraGlanceTile(
+                                  icon: Icons.category_rounded,
+                                  label: 'Type',
+                                  value: treatment.category.label,
+                                ),
+                              ),
+                            ],
                           ),
-                          child: Container(
-                            height: 54,
-                            alignment: Alignment.center,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Find a clinic near me',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Description
+                        Text(
+                          'About this treatment',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          treatment.longDescription,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: AppColors.secondaryText,
+                            height: 1.65,
+                          ),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Divider
+                        Container(
+                          height: 1,
+                          color: AppGlass.divider,
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Procedure steps
+                        Text(
+                          'What to expect',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Step-by-step breakdown of the procedure',
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: AppColors.secondaryText,
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Steps timeline
+                        ...treatment.steps.asMap().entries.map((entry) {
+                          final isLast =
+                              entry.key == treatment.steps.length - 1;
+                          return _StepTile(
+                            step: entry.value,
+                            stepNumber: entry.key + 1,
+                            isLast: isLast,
+                          );
+                        }),
+
+                        const SizedBox(height: 32),
+
+                        // Info note card
+                        const DentraNoteCard(
+                          message: 'This is general information, not medical advice. '
+                              'Your dentist will recommend what\'s right for you.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Sticky bottom button (only shown when onFindClinic is provided)
+            if (onFindClinic != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: GlassBar(
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.screenH, 16, AppSpacing.screenH, 16),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: onFindClinic,
+                          borderRadius: BorderRadius.circular(14),
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              gradient: AppColors.primaryGradient,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Container(
+                              height: 54,
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Find a clinic near me',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 20,
                                     color: Colors.white,
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 20,
-                                  color: Colors.white,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -260,8 +258,8 @@ class TreatmentDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

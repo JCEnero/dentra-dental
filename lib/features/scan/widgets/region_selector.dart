@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../data/scan_regions.dart';
 import 'scan_motion.dart';
@@ -137,99 +138,95 @@ class _RegionCard extends StatelessWidget {
       label: '${region.label}, region ${index + 1} of ${scanRegions.length}, '
           '$status',
       excludeSemantics: true,
-      child: AnimatedContainer(
-        duration: duration,
-        curve: ScanMotion.curve,
-        width: width,
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: selected ? AppColors.g2 : AppColors.border,
-            width: selected ? 1.6 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.g2.withValues(alpha: selected ? 0.18 : 0.0),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter.grouped(
+          filter: AppGlass.blur,
+          child: AnimatedContainer(
+            duration: duration,
+            curve: ScanMotion.curve,
+            width: width,
+            decoration: AppGlass.surface(
+              borderRadius: BorderRadius.circular(18),
+              borderColor: selected ? AppColors.g2 : null,
+              borderWidth: selected ? 1.6 : 1,
             ),
-          ],
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: enabled && !selected ? onTap : null,
-            borderRadius: BorderRadius.circular(17),
-            splashColor: AppColors.lightLavender,
-            highlightColor: AppColors.lightLavender.withValues(alpha: 0.5),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Takes whatever height the text leaves, so larger text
-                  // shrinks the thumbnail instead of overflowing the card.
-                  Expanded(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: const RadialGradient(
-                              radius: 0.9,
-                              colors: [
-                                AppColors.white,
-                                AppColors.lightLavender,
-                              ],
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: enabled && !selected ? onTap : null,
+                borderRadius: BorderRadius.circular(17),
+                splashColor: AppColors.lightLavender,
+                highlightColor: AppColors.lightLavender.withValues(alpha: 0.5),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Takes whatever height the text leaves, so larger text
+                      // shrinks the thumbnail instead of overflowing the card.
+                      Expanded(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: const RadialGradient(
+                                  radius: 0.9,
+                                  colors: [
+                                    AppColors.white,
+                                    AppColors.lightLavender,
+                                  ],
+                                ),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Center(
+                                  child: RegionVisual(
+                                      region: region, compact: true),
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(2),
-                            child: Center(
-                              child:
-                                  RegionVisual(region: region, compact: true),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: _CheckBadge(visible: captured),
                             ),
-                          ),
+                          ],
                         ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: _CheckBadge(visible: captured),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        region.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        captured
+                            ? 'Captured'
+                            : selected
+                                ? 'Selected'
+                                : 'To capture',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: captured || selected
+                              ? AppColors.primary
+                              : AppColors.secondaryText,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    region.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    captured
-                        ? 'Captured'
-                        : selected
-                            ? 'Selected'
-                            : 'To capture',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: captured || selected
-                          ? AppColors.primary
-                          : AppColors.secondaryText,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

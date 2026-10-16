@@ -5,6 +5,8 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/models/screening_model.dart';
 import '../../../core/services/mock_data.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../../../core/constants/app_glass.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key, this.onBack});
@@ -29,183 +31,168 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Colors.white),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── HEADER ──────────────────────────────────────────
-            DentraPageHeader(
-              title: 'Screening History',
-              onBack: widget.onBack,
-            ),
-            const Divider(height: 1, thickness: 1, color: AppColors.border),
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── HEADER ──────────────────────────────────────────
+          DentraPageHeader(
+            title: 'Screening History',
+            onBack: widget.onBack,
+          ),
+          Divider(height: 1, thickness: 1, color: AppGlass.divider),
 
-            // ── CALENDAR WIDGET ──────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 16, AppSpacing.screenH, 0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.g1.withValues(alpha: 0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                child: Column(
-                  children: [
-                    // Month nav
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.chevron_left_rounded,
-                              size: 18),
-                          color: AppColors.secondaryText,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        const SizedBox(width: 16),
-                        Row(
-                          children: [
-                            Text(
-                              'Aug',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'September',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.navy,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Oct',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.chevron_right_rounded,
-                              size: 18),
-                          color: AppColors.secondaryText,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Date row
-                    Row(
-                      children: _weekDates.map((wd) {
-                        final date    = wd['date'] as int;
-                        final day     = wd['day'] as String;
-                        final isActive = _activeDate == date;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _activeDate = date),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 4),
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? AppColors.primary
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    day,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                      color: isActive
-                                          ? Colors.white.withValues(alpha: 0.7)
-                                          : AppColors.secondaryText,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '$date',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: isActive
-                                          ? AppColors.white
-                                          : AppColors.navy,
-                                    ),
-                                  ),
-                                ],
-                              ),
+          // ── CALENDAR WIDGET ──────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenH, 16, AppSpacing.screenH, 0),
+            child: GlassCard(
+              borderRadius: BorderRadius.circular(20),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              child: Column(
+                children: [
+                  // Month nav
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                        color: AppColors.secondaryText,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      const SizedBox(width: 16),
+                      Row(
+                        children: [
+                          Text(
+                            'Aug',
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.secondaryText,
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'September',
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.navy,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Oct',
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                        color: AppColors.secondaryText,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Date row
+                  Row(
+                    children: _weekDates.map((wd) {
+                      final date = wd['date'] as int;
+                      final day = wd['day'] as String;
+                      final isActive = _activeDate == date;
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _activeDate = date),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? AppColors.primary
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  day,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    color: isActive
+                                        ? Colors.white.withValues(alpha: 0.7)
+                                        : AppColors.secondaryText,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$date',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: isActive
+                                        ? AppColors.white
+                                        : AppColors.navy,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
             ),
+          ),
 
-            // ── ONGOING LABEL ─────────────────────────────────────
-            Padding(
+          // ── ONGOING LABEL ─────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenH, 20, AppSpacing.screenH, 12),
+            child: Text(
+              'Ongoing',
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+              ),
+            ),
+          ),
+
+          // ── SCREENING CARDS ───────────────────────────────────
+          Expanded(
+            child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 20, AppSpacing.screenH, 12),
-              child: Text(
-                'Ongoing',
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
-                ),
-              ),
+                  AppSpacing.screenH, 0, AppSpacing.screenH, 24),
+              itemCount: MockData.screenings.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) {
+                final s = MockData.screenings[i];
+                final isEven = i % 2 == 0;
+                return _ScreeningCard(
+                  screening: s,
+                  isFirst: i == 0,
+                  isEven: isEven,
+                );
+              },
             ),
-
-            // ── SCREENING CARDS ───────────────────────────────────
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, 0, AppSpacing.screenH, 24),
-                itemCount: MockData.screenings.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, i) {
-                  final s = MockData.screenings[i];
-                  final isEven = i % 2 == 0;
-                  return _ScreeningCard(
-                    screening: s,
-                    isFirst: i == 0,
-                    isEven: isEven,
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -224,29 +211,12 @@ class _ScreeningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // White card with teal accent border — alternates teal shade per card
-    final tealBorder = isEven
-        ? const Color(0xFF2CA6A4)
-        : const Color(0xFF3BBFB8);
+    // Glass card with a teal accent rim — alternates teal shade per card
+    final tealBorder = isEven ? AppColors.g2 : AppColors.cardSolid;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: tealBorder, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: tealBorder.withValues(alpha: 0.18),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return GlassCard(
+      borderColor: tealBorder.withValues(alpha: 0.55),
+      borderWidth: 1.5,
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,13 +252,15 @@ class _ScreeningCard extends StatelessWidget {
                       (j) => Transform.translate(
                         offset: Offset(j > 0 ? -6.0 * j : 0, 0),
                         child: Container(
-                          width: 22, height: 22,
+                          width: 22,
+                          height: 22,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(0xFF2CA6A4)
                                 .withValues(alpha: 0.18 - j * 0.04),
                             border: Border.all(
-                              color: const Color(0xFF2CA6A4).withValues(alpha: 0.35),
+                              color: const Color(0xFF2CA6A4)
+                                  .withValues(alpha: 0.35),
                               width: 1.5,
                             ),
                           ),
@@ -322,8 +294,7 @@ class _ScreeningCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: const Color(0xFF2CA6A4).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
@@ -339,7 +310,8 @@ class _ScreeningCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Icon(Icons.arrow_forward_rounded,
-                  size: 14, color: const Color(0xFF2CA6A4).withValues(alpha: 0.7)),
+                  size: 14,
+                  color: const Color(0xFF2CA6A4).withValues(alpha: 0.7)),
             ],
           ),
         ],

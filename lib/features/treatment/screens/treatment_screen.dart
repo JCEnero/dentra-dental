@@ -3,9 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_meta_chip.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../data/models/treatment_model.dart';
 import '../data/treatment_data.dart';
 import 'treatment_detail_screen.dart';
@@ -49,88 +52,90 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
     final filtered = _filtered;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── HEADER WITH SEARCH ───────────────────────────────
-            _TreatmentHeader(
-              searchController: _searchController,
-              onSearchChanged: (v) => setState(() => _searchQuery = v),
-              onClearSearch: _clearSearch,
-              onBack: () => Navigator.of(context).pop(),
-            ),
-            const Divider(height: 1, thickness: 1, color: AppColors.border),
-
-            // ── CATEGORY FILTER CHIPS ─────────────────────────────
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                children: [
-                  _CategoryChip(
-                    label: 'All',
-                    selected: _selectedCategory == null,
-                    onTap: () => setState(() => _selectedCategory = null),
-                  ),
-                  const SizedBox(width: 8),
-                  ...TreatmentCategory.values.map((cat) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _CategoryChip(
-                        label: cat.label,
-                        selected: _selectedCategory == cat,
-                        onTap: () => setState(() => _selectedCategory = cat),
-                      ),
-                    );
-                  }),
-                ],
+      backgroundColor: AppColors.lightLavender,
+      body: AppBackdrop(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── HEADER WITH SEARCH ───────────────────────────────
+              _TreatmentHeader(
+                searchController: _searchController,
+                onSearchChanged: (v) => setState(() => _searchQuery = v),
+                onClearSearch: _clearSearch,
+                onBack: () => Navigator.of(context).pop(),
               ),
-            ),
+              Divider(height: 1, thickness: 1, color: AppGlass.divider),
 
-            const SizedBox(height: 16),
-
-            // ── TREATMENT LIST ────────────────────────────────────
-            Expanded(
-              child: filtered.isEmpty
-                  ? _EmptyState(query: _searchQuery)
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.screenH, 0, AppSpacing.screenH, 24),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final treatment = filtered[index];
-                        return _TreatmentCard(
-                          treatment: treatment,
-                          index: index,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => TreatmentDetailScreen(
-                                  treatment: treatment,
-                                  onFindClinic: widget.onNavigateToTab != null
-                                      ? () {
-                                          // Pop detail screen, then list screen
-                                          Navigator.of(context).pop();
-                                          Navigator.of(context).pop();
-                                          // Switch to Clinics tab (index 3)
-                                          widget.onNavigateToTab!(3);
-                                        }
-                                      : null,
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
+              // ── CATEGORY FILTER CHIPS ─────────────────────────────
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 36,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                  children: [
+                    _CategoryChip(
+                      label: 'All',
+                      selected: _selectedCategory == null,
+                      onTap: () => setState(() => _selectedCategory = null),
                     ),
-            ),
-          ],
+                    const SizedBox(width: 8),
+                    ...TreatmentCategory.values.map((cat) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _CategoryChip(
+                          label: cat.label,
+                          selected: _selectedCategory == cat,
+                          onTap: () => setState(() => _selectedCategory = cat),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── TREATMENT LIST ────────────────────────────────────
+              Expanded(
+                child: filtered.isEmpty
+                    ? _EmptyState(query: _searchQuery)
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.screenH, 0, AppSpacing.screenH, 24),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final treatment = filtered[index];
+                          return _TreatmentCard(
+                            treatment: treatment,
+                            index: index,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => TreatmentDetailScreen(
+                                    treatment: treatment,
+                                    onFindClinic: widget.onNavigateToTab != null
+                                        ? () {
+                                            // Pop detail screen, then list screen
+                                            Navigator.of(context).pop();
+                                            Navigator.of(context).pop();
+                                            // Switch to Clinics tab (index 3)
+                                            widget.onNavigateToTab!(3);
+                                          }
+                                        : null,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -159,44 +164,42 @@ class _TreatmentHeader extends StatelessWidget {
     return DentraPageHeader(
       title: 'Treatments',
       onBack: onBack,
-      bottom: Container(
+      bottom: SizedBox(
         height: 46,
-        decoration: BoxDecoration(
-          color: Colors.white,
+        child: GlassCard(
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: TextField(
-          controller: searchController,
-          onChanged: onSearchChanged,
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            color: AppColors.navy,
-          ),
-          decoration: InputDecoration(
-            hintText: 'Search treatments...',
-            hintStyle: GoogleFonts.outfit(
+          child: TextField(
+            controller: searchController,
+            onChanged: onSearchChanged,
+            style: GoogleFonts.outfit(
               fontSize: 14,
-              color: AppColors.secondaryText,
+              color: AppColors.navy,
             ),
-            prefixIcon: const Icon(
-              Icons.search_rounded,
-              size: 20,
-              color: AppColors.secondaryText,
+            decoration: InputDecoration(
+              hintText: 'Search treatments...',
+              hintStyle: GoogleFonts.outfit(
+                fontSize: 14,
+                color: AppColors.secondaryText,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                size: 20,
+                color: AppColors.secondaryText,
+              ),
+              suffixIcon: searchController.text.isNotEmpty
+                  ? GestureDetector(
+                      onTap: onClearSearch,
+                      child: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: AppColors.secondaryText,
+                      ),
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
             ),
-            suffixIcon: searchController.text.isNotEmpty
-                ? GestureDetector(
-                    onTap: onClearSearch,
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: AppColors.secondaryText,
-                    ),
-                  )
-                : null,
-            border: InputBorder.none,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
           ),
         ),
       ),
@@ -228,8 +231,8 @@ class _CategoryChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           gradient: selected ? AppColors.primaryGradient : null,
-          color: selected ? null : Colors.white,
-          border: selected ? null : Border.all(color: AppColors.border),
+          color: selected ? null : AppGlass.fillHigh,
+          border: selected ? null : Border.all(color: AppGlass.border),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -289,126 +292,108 @@ class _TreatmentCard extends StatelessWidget {
           ),
         );
       },
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.g2.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
+      child: GlassCard(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Icon container
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: treatment.iconBackground,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  // Icon container
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: treatment.iconBackground,
-                      borderRadius: BorderRadius.circular(14),
+                clipBehavior: Clip.antiAlias,
+                child: treatment.imagePath != null
+                    ? Image.asset(
+                        treatment.imagePath!,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      )
+                    : Icon(
+                        treatment.icon,
+                        size: 28,
+                        color: treatment.iconColor,
+                      ),
+              ),
+
+              const SizedBox(width: 14),
+
+              // Name + description + meta chips
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      treatment.name,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: treatment.imagePath != null
-                        ? Image.asset(
-                            treatment.imagePath!,
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                          )
-                        : Icon(
-                            treatment.icon,
-                            size: 28,
-                            color: treatment.iconColor,
-                          ),
-                  ),
-
-                  const SizedBox(width: 14),
-
-                  // Name + description + meta chips
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 4),
+                    Text(
+                      treatment.shortDescription,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        color: AppColors.secondaryText,
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    // Meta chips row
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
                       children: [
-                        Text(
-                          treatment.name,
-                          style: GoogleFonts.outfit(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.navy,
-                          ),
+                        // Category
+                        DentraMetaChip(
+                          label: treatment.category.label,
+                          color: _getCategoryColor(),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          treatment.shortDescription,
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
+                        // Duration
+                        DentraMetaChip(
+                          icon: Icons.schedule_rounded,
+                          label: treatment.duration,
+                          color: AppColors.secondaryText,
+                        ),
+                        // Follow-up
+                        if (treatment.requiresFollowUp)
+                          DentraMetaChip(
+                            icon: Icons.event_repeat_rounded,
+                            label: 'Follow-up',
                             color: AppColors.secondaryText,
-                            height: 1.4,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        // Meta chips row
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            // Category
-                            DentraMetaChip(
-                              label: treatment.category.label,
-                              color: _getCategoryColor(),
-                            ),
-                            // Duration
-                            DentraMetaChip(
-                              icon: Icons.schedule_rounded,
-                              label: treatment.duration,
-                              color: AppColors.secondaryText,
-                            ),
-                            // Follow-up
-                            if (treatment.requiresFollowUp)
-                              DentraMetaChip(
-                                icon: Icons.event_repeat_rounded,
-                                label: 'Follow-up',
-                                color: AppColors.secondaryText,
-                              ),
-                          ],
-                        ),
                       ],
                     ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  // Arrow
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(
-                      color: AppColors.g2,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+
+              const SizedBox(width: 8),
+
+              // Arrow
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: AppColors.g2,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
+import 'glass_card.dart';
 
 /// "At a glance" information tile used in detail screens.
 ///
 /// Displays an icon, label, and value in a vertical layout with
-/// a light lavender background.
+/// a mint-tinted glass background.
 class DentraGlanceTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -20,12 +21,11 @@ class DentraGlanceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GlassCard(
+      width: double.infinity,
+      tint: AppColors.lightLavender,
+      borderRadius: BorderRadius.circular(12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.lightLavender,
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Column(
         children: [
           Icon(

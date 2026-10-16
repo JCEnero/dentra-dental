@@ -3,9 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glance_tile.dart';
 import '../../../shared/widgets/dentra_note_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../clinic_finder/data/models/clinic_model.dart';
 
 class ClinicDetailScreen extends StatelessWidget {
@@ -35,281 +38,176 @@ class ClinicDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Main scrollable content
-          CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ── HERO SLIVER APP BAR ──────────────────────────────
-              SliverAppBar(
-                expandedHeight: 200,
-                pinned: true,
-                automaticallyImplyLeading: false,
-                backgroundColor: Colors.white,
-                surfaceTintColor: Colors.transparent,
-                flexibleSpace: FlexibleSpaceBar(
-                  collapseMode: CollapseMode.pin,
-                  background: _HeroBanner(clinic: clinic),
-                ),
-                title: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Calculate collapse progress based on flexible space shrink
-                    final settings = context
-                        .dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
-                    final t = settings != null
-                        ? (1 - (settings.currentExtent - settings.minExtent) /
-                                (settings.maxExtent - settings.minExtent))
-                            .clamp(0.0, 1.0)
-                        : 1.0;
-                    return Opacity(
-                      opacity: t,
-                      child: _CollapsedTitle(name: clinic.name),
-                    );
-                  },
-                ),
-                leading: Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        size: 15,
-                        color: AppColors.navy,
+      backgroundColor: AppColors.lightLavender,
+      body: AppBackdrop(
+        child: Stack(
+          children: [
+            // Main scrollable content
+            CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // ── HERO SLIVER APP BAR ──────────────────────────────
+                SliverAppBar(
+                  expandedHeight: 200,
+                  pinned: true,
+                  automaticallyImplyLeading: false,
+                  backgroundColor: AppGlass.barFill,
+                  surfaceTintColor: Colors.transparent,
+                  flexibleSpace: FlexibleSpaceBar(
+                    collapseMode: CollapseMode.pin,
+                    background: _HeroBanner(clinic: clinic),
+                  ),
+                  title: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Calculate collapse progress based on flexible space shrink
+                      final settings = context
+                          .dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
+                      final t = settings != null
+                          ? (1 - (settings.currentExtent - settings.minExtent) /
+                                  (settings.maxExtent - settings.minExtent))
+                              .clamp(0.0, 1.0)
+                          : 1.0;
+                      return Opacity(
+                        opacity: t,
+                        child: _CollapsedTitle(name: clinic.name),
+                      );
+                    },
+                  ),
+                  leading: Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 15,
+                          color: AppColors.navy,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-              // ── BODY ─────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH,
-                    24,
-                    AppSpacing.screenH,
-                    110, // Space for sticky bottom bar
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // At a glance tiles
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DentraGlanceTile(
-                              icon: Icons.location_on_rounded,
-                              label: 'Distance',
-                              value: _formatDistance(),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DentraGlanceTile(
-                              icon: Icons.star_rounded,
-                              label: 'Rating',
-                              value: '${clinic.rating}\n(${clinic.reviewCount})',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DentraGlanceTile(
-                              icon: Icons.medical_services_rounded,
-                              label: 'Services',
-                              value: '${clinic.services.length}',
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Divider
-                      Container(
-                        height: 1,
-                        color: AppColors.border,
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Services section
-                      Text(
-                        'Services',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Services cards
-                      if (clinic.services.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Text(
-                            'No services listed',
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.secondaryText,
-                            ),
-                          ),
-                        )
-                      else
-                        ...clinic.services.map((service) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: AppColors.border),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.g2.withValues(alpha: 0.06),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      service.name,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.navy,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    '₱${service.price.toStringAsFixed(0)}',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.g2,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-
-                      const SizedBox(height: 16),
-
-                      // Info note card
-                      const DentraNoteCard(
-                        message: 'Estimated pricing - actual services and rates may vary by clinic. '
-                            'Please contact the clinic to confirm.',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Sticky bottom bar with Call and Directions buttons
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH,
-                    16,
-                    AppSpacing.screenH,
-                    16,
-                  ),
-                  child: Row(
-                    children: [
-                      // Call button (outlined)
-                      Expanded(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              final uri = Uri(scheme: 'tel', path: clinic.phoneNumber);
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri);
-                              } else if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Could not open the phone dialer.'),
-                                  ),
-                                );
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(14),
-                            child: Ink(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: AppColors.g2,
-                                  width: 2,
+                // ── BODY ─────────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenH,
+                      24,
+                      AppSpacing.screenH,
+                      110, // Space for sticky bottom bar
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // At a glance tiles, sharing one height
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: DentraGlanceTile(
+                                  icon: Icons.location_on_rounded,
+                                  label: 'Distance',
+                                  value: _formatDistance(),
                                 ),
                               ),
-                              child: Container(
-                                height: 54,
-                                alignment: Alignment.center,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DentraGlanceTile(
+                                  icon: Icons.star_rounded,
+                                  label: 'Rating',
+                                  value: '${clinic.rating}\n(${clinic.reviewCount})',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DentraGlanceTile(
+                                  icon: Icons.medical_services_rounded,
+                                  label: 'Services',
+                                  value: '${clinic.services.length}',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Divider
+                        Container(
+                          height: 1,
+                          color: AppColors.border,
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Services section
+                        Text(
+                          'Services',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Services cards
+                        if (clinic.services.isEmpty)
+                          GlassCard(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            borderRadius: BorderRadius.circular(14),
+                            child: Text(
+                              'No services listed',
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.secondaryText,
+                              ),
+                            ),
+                          )
+                        else
+                          ...clinic.services.map((service) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: GlassCard(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                borderRadius: BorderRadius.circular(14),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Icon(
-                                      Icons.phone_rounded,
-                                      size: 20,
-                                      color: AppColors.g2,
+                                    Expanded(
+                                      child: Text(
+                                        service.name,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.navy,
+                                        ),
+                                      ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 12),
                                     Text(
-                                      'Call',
+                                      '₱${service.price.toStringAsFixed(0)}',
                                       style: GoogleFonts.outfit(
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.g2,
                                       ),
@@ -317,72 +215,157 @@ class ClinicDetailScreen extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                            ),
-                          ),
+                            );
+                          }),
+
+                        const SizedBox(height: 16),
+
+                        // Info note card
+                        const DentraNoteCard(
+                          message: 'Estimated pricing - actual services and rates may vary by clinic. '
+                              'Please contact the clinic to confirm.',
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
 
-                      const SizedBox(width: 12),
-
-                      // Directions button (gradient)
-                      Expanded(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              final uri = Uri.parse(
-                                'https://www.google.com/maps/dir/?api=1&destination=${clinic.latitude},${clinic.longitude}',
-                              );
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
-                              } else if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Could not open maps.'),
+            // Sticky bottom bar with Call and Directions buttons
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: GlassBar(
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenH,
+                      16,
+                      AppSpacing.screenH,
+                      16,
+                    ),
+                    child: Row(
+                      children: [
+                        // Call button (outlined)
+                        Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
+                                final uri = Uri(scheme: 'tel', path: clinic.phoneNumber);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                } else if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Could not open the phone dialer.'),
+                                    ),
+                                  );
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: AppColors.g2,
+                                    width: 2,
                                   ),
-                                );
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(14),
-                            child: Ink(
-                              decoration: BoxDecoration(
-                                gradient: AppColors.primaryGradient,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Container(
-                                height: 54,
-                                alignment: Alignment.center,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.directions_rounded,
-                                      size: 20,
-                                      color: Colors.white,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Directions',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
+                                ),
+                                child: Container(
+                                  height: 54,
+                                  alignment: Alignment.center,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.phone_rounded,
+                                        size: 20,
+                                        color: AppColors.g2,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Call',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.g2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+
+                        const SizedBox(width: 12),
+
+                        // Directions button (gradient)
+                        Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
+                                final uri = Uri.parse(
+                                  'https://www.google.com/maps/dir/?api=1&destination=${clinic.latitude},${clinic.longitude}',
+                                );
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                } else if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Could not open maps.'),
+                                    ),
+                                  );
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.primaryGradient,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Container(
+                                  height: 54,
+                                  alignment: Alignment.center,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.directions_rounded,
+                                        size: 20,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Directions',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
