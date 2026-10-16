@@ -42,41 +42,28 @@ class HomeScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Good Morning,',
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.secondaryText,
+                          // One quiet line, so it doesn't compete with
+                          // the device card's headline below.
+                          Text.rich(
+                            TextSpan(
+                              text: 'Good morning, ',
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.secondaryText,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: 'Rommel',
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.navy,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Text(
-                                'Rommel',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.navy,
-                                  letterSpacing: -0.5,
-                                  height: 1.15,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.lightLavender,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.waving_hand_rounded,
-                                  size: 16,
-                                  color: AppColors.g2,
-                                ),
-                              ),
-                            ],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -461,55 +448,55 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
     super.dispose();
   }
 
-  static const _radius = 24.0;
+  static const _radius = BorderRadius.all(Radius.circular(24));
 
   @override
   Widget build(BuildContext context) {
+    // Light, outlined surface: the teal is saved for the one action that
+    // matters, so the card reads calm and the CTA stands out.
     return DecoratedBox(
+      // Embossed: light from the top-left, shade to the bottom-right,
+      // and a bright rim so the card reads as raised off the page.
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(_radius),
-        // Calm two-stop teal; the depth comes from light, not colour.
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF3FC9BE), Color(0xFF2A9E9C)],
-        ),
+        color: const Color(0xFFF6FAFA),
+        borderRadius: _radius,
+        border: Border.all(color: Colors.white, width: 1.5),
         boxShadow: [
-          // Tight contact shadow grounds the card.
-          BoxShadow(
-            color: AppColors.g2.withValues(alpha: 0.18),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+          const BoxShadow(
+            color: Colors.white,
+            blurRadius: 16,
+            offset: Offset(-6, -6),
           ),
-          // Wide, soft lift.
           BoxShadow(
-            color: AppColors.g2.withValues(alpha: 0.28),
-            blurRadius: 28,
-            spreadRadius: -6,
-            offset: const Offset(0, 14),
+            color: AppColors.navy.withValues(alpha: 0.10),
+            blurRadius: 20,
+            offset: const Offset(6, 8),
+          ),
+          BoxShadow(
+            color: AppColors.g2.withValues(alpha: 0.06),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(_radius),
+        borderRadius: _radius,
         child: Stack(
           clipBehavior: Clip.hardEdge,
           children: [
-            // Emboss: soft top-left light plus a hairline rim.
+            // Inner sheen: brighter top, slightly deeper bottom.
             Positioned.fill(
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(_radius),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.22),
-                    ),
-                    gradient: RadialGradient(
-                      center: const Alignment(-0.9, -1.1),
-                      radius: 1.3,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.45, 1.0],
                       colors: [
-                        Colors.white.withValues(alpha: 0.16),
+                        Colors.white.withValues(alpha: 0.85),
                         Colors.white.withValues(alpha: 0.0),
+                        AppColors.navy.withValues(alpha: 0.025),
                       ],
                     ),
                   ),
@@ -517,86 +504,78 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
               ),
             ),
 
-            // Quiet concentric rings behind the mascot.
+            // Soft mint stage the mascot stands on, just above the CTA.
             const Positioned(
-              right: -70,
-              top: -40,
-              width: 220,
-              height: 220,
+              right: -56,
+              bottom: 40,
+              width: 190,
+              height: 190,
               child: IgnorePointer(
-                child: CustomPaint(painter: _HeroRingsPainter()),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.lightLavender,
+                  ),
+                ),
               ),
             ),
 
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Label row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Text(
-                        'DENTRA DEVICE',
-                        style: GoogleFonts.outfit(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.4,
-                          color: Colors.white.withValues(alpha: 0.65),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Status
-                  Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.95),
-                        ),
-                      ),
-                      const SizedBox(width: 7),
-                      Text(
-                        'Scan your smile',
-                        style: GoogleFonts.outfit(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.white,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
+                  // Text keeps clear of the mascot on the right.
                   Padding(
-                    padding: const EdgeInsets.only(left: 14),
-                    child: Text(
-                      'Connected · Battery 86% · Signal Strong',
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.65),
-                      ),
+                    padding: const EdgeInsets.only(right: 80),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'DENTRA DEVICE',
+                          style: GoogleFonts.outfit(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.4,
+                            color: AppColors.secondaryText,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Scan your smile',
+                          style: GoogleFonts.outfit(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.navy,
+                            letterSpacing: -0.4,
+                            height: 1.15,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Connected · Battery 86% · Signal Strong',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            height: 1.35,
+                            color: AppColors.secondaryText,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
                   const SizedBox(height: 14),
 
                   // Status pills
-                  Row(
-                    children: const [
+                  const Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
                       _StatusPill(
                         icon: Icons.battery_5_bar_rounded,
                         label: '86%',
                         semanticLabel: 'Battery 86%',
                       ),
-                      SizedBox(width: 8),
                       _StatusPill(
                         icon: Icons.wifi_rounded,
                         label: 'Strong',
@@ -605,39 +584,46 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                     ],
                   ),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
                   // CTA
                   PrimaryButton(
                     label: 'Start Dental Scan',
-                    variant: ButtonVariant.white,
                     onTap: widget.onScan,
                   ),
                 ],
               ),
             ),
 
+            // Connected indicator, top-right corner.
+            const Positioned(
+              top: 20,
+              right: 20,
+              child: _LiveDot(),
+            ),
+
             // Tooth Bunny video — overlaid right side
             Positioned(
-              right: -4,
-              bottom: 60,
+              right: 12,
+              // Feet rest just on the top edge of the CTA.
+              bottom: 58,
               width: 100,
               height: 100,
-              child: _controller.value.isInitialized
-                  ? SizedBox(
-                      width: 100,
-                      height: 100,
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        alignment: Alignment.bottomRight,
-                        child: SizedBox(
-                          width: _controller.value.size.width,
-                          height: _controller.value.size.height,
-                          child: VideoPlayer(_controller),
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+              child: IgnorePointer(
+                child: ExcludeSemantics(
+                  child: _controller.value.isInitialized
+                      ? FittedBox(
+                          fit: BoxFit.contain,
+                          alignment: Alignment.bottomRight,
+                          child: SizedBox(
+                            width: _controller.value.size.width,
+                            height: _controller.value.size.height,
+                            child: VideoPlayer(_controller),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
             ),
           ],
         ),
@@ -646,23 +632,26 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
   }
 }
 
-/// Two faint rings that give the hero card depth without adding noise.
-class _HeroRingsPainter extends CustomPainter {
-  const _HeroRingsPainter();
+/// Green "connected" indicator with a soft halo.
+class _LiveDot extends StatelessWidget {
+  const _LiveDot();
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = Colors.white.withValues(alpha: 0.10);
-    canvas.drawCircle(center, size.shortestSide * 0.32, paint);
-    canvas.drawCircle(center, size.shortestSide * 0.48, paint);
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.successGreen,
+        border: Border.all(
+          color: AppColors.successGreen.withValues(alpha: 0.25),
+          width: 3,
+          strokeAlign: BorderSide.strokeAlignOutside,
+        ),
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant _HeroRingsPainter oldDelegate) => false;
 }
 
 class _StatusPill extends StatelessWidget {
@@ -686,20 +675,20 @@ class _StatusPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.18),
+          color: AppColors.lightLavender,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 12, color: Colors.white.withValues(alpha: 0.75)),
+            Icon(icon, size: 12, color: AppColors.g2),
             const SizedBox(width: 4),
             Text(
               label,
               style: GoogleFonts.outfit(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.90),
+                color: AppColors.navy,
               ),
             ),
           ],
