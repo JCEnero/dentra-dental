@@ -7,6 +7,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/avatar_widget.dart';
 import '../../../core/models/screening_model.dart';
 import '../../../core/services/mock_data.dart';
+import '../../onboarding/screens/onboarding_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ProfileScreen
@@ -1721,6 +1722,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 'About DENTRA':
         _showAbout(context);
         break;
+      case 'View Introduction':
+        Navigator.of(context, rootNavigator: true)
+            .push(OnboardingScreen.replayRoute());
+        break;
     }
   }
 
@@ -1743,7 +1748,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
       {
         'title': 'Support',
-        'items': ['Help & Support', 'About DENTRA'],
+        'items': ['Help & Support', 'About DENTRA', 'View Introduction'],
       },
     ];
 

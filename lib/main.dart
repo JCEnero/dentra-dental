@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fvp/fvp.dart' as fvp;
 import 'app/app.dart';
+import 'features/onboarding/services/onboarding_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,9 +20,12 @@ Future<void> main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
+  // Read before the first frame so returning users never see a flash of
+  // onboarding.
+  final onboardingCompleted = await OnboardingStorage.isCompleted();
   runApp(
-    const ProviderScope(
-      child: DentraApp(),
+    ProviderScope(
+      child: DentraApp(onboardingCompleted: onboardingCompleted),
     ),
   );
 }

@@ -8,9 +8,14 @@ import '../features/profile/screens/profile_screen.dart';
 import '../shared/widgets/app_bottom_nav.dart';
 import '../features/ai_assistant/ai_chat_controller.dart';
 import '../features/ai_assistant/ai_assistant.dart';
+import '../features/auth/screens/login_screen.dart';
+import '../features/onboarding/screens/onboarding_screen.dart';
 
 class DentraApp extends StatelessWidget {
-  const DentraApp({super.key});
+  const DentraApp({super.key, this.onboardingCompleted = false});
+
+  /// Loaded from `OnboardingStorage` in `main()` before the first frame.
+  final bool onboardingCompleted;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +23,13 @@ class DentraApp extends StatelessWidget {
       title: 'DENTRA',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const AppShell(),
+      // ── Auth gate: onboarding on first launch, then sign-in.
+      //    '/home' lands on AppShell ──
+      home:
+          onboardingCompleted ? const LoginScreen() : const OnboardingScreen(),
+      routes: {
+        '/home': (_) => const AppShell(),
+      },
     );
   }
 }
