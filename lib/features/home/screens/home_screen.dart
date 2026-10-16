@@ -560,9 +560,9 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
 
           // Tooth Bunny video — overlaid right side
           Positioned(
-            right: 12,
+            right: 7,
             // Feet float just above the top edge of the CTA.
-            bottom: 66,
+            bottom: 61,
             width: 100,
             height: 100,
             child: IgnorePointer(
