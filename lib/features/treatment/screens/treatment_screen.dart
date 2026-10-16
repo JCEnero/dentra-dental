@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/dentra_meta_chip.dart';
+import '../../../shared/widgets/dentra_page_header.dart';
 import '../data/models/treatment_model.dart';
 import '../data/treatment_data.dart';
 import 'treatment_detail_screen.dart';
@@ -46,20 +47,21 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
-    
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── GRADIENT HEADER WITH SEARCH ──────────────────────
-            _GradientHeader(
+            // ── HEADER WITH SEARCH ───────────────────────────────
+            _TreatmentHeader(
               searchController: _searchController,
               onSearchChanged: (v) => setState(() => _searchQuery = v),
               onClearSearch: _clearSearch,
               onBack: () => Navigator.of(context).pop(),
             ),
+            const Divider(height: 1, thickness: 1, color: AppColors.border),
 
             // ── CATEGORY FILTER CHIPS ─────────────────────────────
             const SizedBox(height: 14),
@@ -67,14 +69,13 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
               height: 36,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenH),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                 children: [
                   _CategoryChip(
                     label: 'All',
                     selected: _selectedCategory == null,
-                    onTap: () =>
-                        setState(() => _selectedCategory = null),
+                    onTap: () => setState(() => _selectedCategory = null),
                   ),
                   const SizedBox(width: 8),
                   ...TreatmentCategory.values.map((cat) {
@@ -83,8 +84,7 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
                       child: _CategoryChip(
                         label: cat.label,
                         selected: _selectedCategory == cat,
-                        onTap: () =>
-                            setState(() => _selectedCategory = cat),
+                        onTap: () => setState(() => _selectedCategory = cat),
                       ),
                     );
                   }),
@@ -100,11 +100,9 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
                   ? _EmptyState(query: _searchQuery)
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.screenH, 0,
-                          AppSpacing.screenH, 24),
+                          AppSpacing.screenH, 0, AppSpacing.screenH, 24),
                       itemCount: filtered.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: 12),
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final treatment = filtered[index];
                         return _TreatmentCard(
@@ -140,16 +138,16 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Gradient header with integrated search
+// Page header with integrated search
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _GradientHeader extends StatelessWidget {
+class _TreatmentHeader extends StatelessWidget {
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onClearSearch;
   final VoidCallback onBack;
 
-  const _GradientHeader({
+  const _TreatmentHeader({
     required this.searchController,
     required this.onSearchChanged,
     required this.onClearSearch,
@@ -158,101 +156,47 @@ class _GradientHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.verticalGradient,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+    return DentraPageHeader(
+      title: 'Treatments',
+      onBack: onBack,
+      bottom: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
         ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screenH, 16, AppSpacing.screenH, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Back button
-              GestureDetector(
-                onTap: onBack,
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Title
-              Text(
-                'Treatments',
-                style: GoogleFonts.outfit(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 4),
-              // Subtitle
-              Text(
-                'Learn what to expect before your visit',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Search field
-              Container(
-                height: 46,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: TextField(
-                  controller: searchController,
-                  onChanged: onSearchChanged,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: AppColors.navy,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Search treatments...',
-                    hintStyle: GoogleFonts.outfit(
-                      fontSize: 14,
+        child: TextField(
+          controller: searchController,
+          onChanged: onSearchChanged,
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            color: AppColors.navy,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Search treatments...',
+            hintStyle: GoogleFonts.outfit(
+              fontSize: 14,
+              color: AppColors.secondaryText,
+            ),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              size: 20,
+              color: AppColors.secondaryText,
+            ),
+            suffixIcon: searchController.text.isNotEmpty
+                ? GestureDetector(
+                    onTap: onClearSearch,
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
                       color: AppColors.secondaryText,
                     ),
-                    prefixIcon: const Icon(
-                      Icons.search_rounded,
-                      size: 20,
-                      color: AppColors.secondaryText,
-                    ),
-                    suffixIcon: searchController.text.isNotEmpty
-                        ? GestureDetector(
-                            onTap: onClearSearch,
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 18,
-                              color: AppColors.secondaryText,
-                            ),
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 13),
-                  ),
-                ),
-              ),
-            ],
+                  )
+                : null,
+            border: InputBorder.none,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
           ),
         ),
       ),

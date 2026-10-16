@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dentra_mobile/app/app.dart';
 import 'package:dentra_mobile/features/auth/screens/login_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
@@ -41,7 +42,9 @@ void main() {
 
   Future<void> pumpApp(WidgetTester tester, {bool completed = false}) async {
     useIPhoneView(tester);
-    await tester.pumpWidget(DentraApp(onboardingCompleted: completed));
+    await tester.pumpWidget(
+      ProviderScope(child: DentraApp(onboardingCompleted: completed)),
+    );
     await tester.pump();
   }
 

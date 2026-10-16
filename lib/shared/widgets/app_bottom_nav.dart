@@ -57,69 +57,74 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final duration =
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 200);
+
+    return DecoratedBox(
       decoration: const BoxDecoration(
         color: AppColors.white,
         border: Border(
           top: BorderSide(color: AppColors.border, width: 1),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 16,
-            offset: Offset(0, -4),
-          ),
-        ],
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Row(
-            children: List.generate(_items.length, (i) {
-              final isActive = i == activeIndex;
-              final item = _items[i];
+        // Labels may grow with system font size, but only so far: a tab bar
+        // that overflows is worse than one that scales slightly less.
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+            child: Row(
+              children: List.generate(_items.length, (i) {
+                final isActive = i == activeIndex;
+                final item = _items[i];
+                final color =
+                    isActive ? AppColors.navy : AppColors.secondaryText;
 
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => onTap(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 6, horizontal: 4),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Icon container
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeInOut,
-                          width: isActive ? 52 : 40,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? AppColors.lightLavender
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              isActive ? item.activeIcon : item.inactiveIcon,
-                              size: 22,
-                              color: isActive
-                                  ? AppColors.g2
-                                  : AppColors.secondaryText,
+                return Expanded(
+                  child: Semantics(
+                    button: true,
+                    selected: isActive,
+                    label: item.label,
+                    excludeSemantics: true,
+                    child: InkResponse(
+                      onTap: () => onTap(i),
+                      highlightShape: BoxShape.rectangle,
+                      containedInkWell: true,
+                      borderRadius: BorderRadius.circular(16),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 56),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedContainer(
+                              duration: duration,
+                              curve: Curves.easeOut,
+                              width: 56,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? AppColors.lightLavender
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Icon(
+                                isActive ? item.activeIcon : item.inactiveIcon,
+                                size: 22,
+                                color: isActive ? AppColors.g2 : color,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
         ),
       ),

@@ -1760,84 +1760,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             width: double.infinity,
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screenH, 52, AppSpacing.screenH, 24),
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  // Tappable avatar
-                  GestureDetector(
-                    onTap: () => _showAvatarSheet(context),
-                    child: Stack(
-                      children: [
-                        AvatarWidget(
-                          size: 64,
-                          imageBytes: _avatarBytes,
-                          initials: _name
-                              .trim()
-                              .split(' ')
-                              .where((w) => w.isNotEmpty)
-                              .take(2)
-                              .map((w) => w[0].toUpperCase())
-                              .join(),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              gradient: AppColors.primaryGradient,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: Colors.white, width: 2),
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt_rounded,
-                              size: 11,
-                              color: Colors.white,
-                            ),
+            padding: EdgeInsets.fromLTRB(
+                AppSpacing.screenH,
+                MediaQuery.paddingOf(context).top + 28,
+                AppSpacing.screenH,
+                24),
+            child: Column(
+              children: [
+                // Tappable avatar
+                GestureDetector(
+                  onTap: () => _showAvatarSheet(context),
+                  child: Stack(
+                    children: [
+                      AvatarWidget(
+                        size: 64,
+                        imageBytes: _avatarBytes,
+                        initials: _name
+                            .trim()
+                            .split(' ')
+                            .where((w) => w.isNotEmpty)
+                            .take(2)
+                            .map((w) => w[0].toUpperCase())
+                            .join(),
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            size: 11,
+                            color: Colors.white,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  // Tappable name
-                  GestureDetector(
-                    onTap: () => _showEditNameSheet(context),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _name,
-                          style: GoogleFonts.outfit(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.navy,
-                          ),
+                ),
+                const SizedBox(height: 12),
+                // Tappable name
+                GestureDetector(
+                  onTap: () => _showEditNameSheet(context),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _name,
+                        style: GoogleFonts.outfit(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
                         ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.edit_outlined,
-                          size: 16,
-                          color: AppColors.secondaryText,
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.edit_outlined,
+                        size: 16,
+                        color: AppColors.secondaryText,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _email,
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      color: AppColors.secondaryText,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _email,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: AppColors.secondaryText,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.border),

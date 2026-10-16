@@ -4,9 +4,13 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/models/screening_model.dart';
 import '../../../core/services/mock_data.dart';
+import '../../../shared/widgets/dentra_page_header.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  const HistoryScreen({super.key, this.onBack});
+
+  /// Called by the header's back button; hidden when null.
+  final VoidCallback? onBack;
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -33,36 +37,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── HEADER ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 20, AppSpacing.screenH, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Screening History',
-                    style: GoogleFonts.outfit(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Track your dental health over time',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                ],
-              ),
+            DentraPageHeader(
+              title: 'Screening History',
+              onBack: widget.onBack,
             ),
+            const Divider(height: 1, thickness: 1, color: AppColors.border),
 
             // ── CALENDAR WIDGET ──────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 20, AppSpacing.screenH, 0),
+                  AppSpacing.screenH, 16, AppSpacing.screenH, 0),
               child: Container(
                 decoration: BoxDecoration(
                   color: AppColors.white,

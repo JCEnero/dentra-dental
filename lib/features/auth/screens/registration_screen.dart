@@ -1,9 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
 import '../widgets/auth_widgets.dart';
@@ -12,14 +14,14 @@ import 'login_screen.dart';
 enum _Field { name, email, password, confirm }
 
 /// Sign-up screen, built on the shared [AuthScaffold] so it matches login.
-class RegistrationScreen extends StatefulWidget {
+class RegistrationScreen extends ConsumerStatefulWidget {
   const RegistrationScreen({super.key});
 
   @override
-  State<RegistrationScreen> createState() => _RegistrationScreenState();
+  ConsumerState<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
-class _RegistrationScreenState extends State<RegistrationScreen> {
+class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   static const _genericError = 'Something went wrong. Please try again.';
   static const _connectionError =
       "We couldn't reach DENTRA. Check your connection and try again.";
@@ -29,7 +31,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     for (final f in _Field.values) f: TextEditingController(),
   };
   final _focusNodes = {for (final f in _Field.values) f: FocusNode()};
-  final _authService = AuthService();
+  // App-wide session, so the signed-in user is visible after navigation.
+  AuthService get _authService => ref.read(authServiceProvider);
 
   // ── State ────────────────────────────────────────────────────
   bool _isRegistering = false;
@@ -54,7 +57,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     for (final n in _focusNodes.values) {
       n.dispose();
     }
-    _authService.dispose();
     super.dispose();
   }
 

@@ -93,11 +93,5 @@ abstract class MockData {
     },
   ];
 
-  static const List<Map<String, String>> scanRegions = [
-    {'id': 'ul', 'label': 'Upper Left',  'desc': 'Left side of the upper dental arch'},
-    {'id': 'ur', 'label': 'Upper Right', 'desc': 'Right side of the upper dental arch'},
-    {'id': 'll', 'label': 'Lower Left',  'desc': 'Left side of the lower dental arch'},
-    {'id': 'lr', 'label': 'Lower Right', 'desc': 'Right side of the lower dental arch'},
-    {'id': 'po', 'label': 'Posterior',   'desc': 'Back teeth — keep the device steady'},
-  ];
+  // Scan regions now live in `features/scan/data/scan_regions.dart`.
 }

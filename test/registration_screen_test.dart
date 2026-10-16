@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dentra_mobile/features/auth/screens/login_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
 import 'package:flutter/material.dart';
@@ -25,9 +26,11 @@ void main() {
     tester.view.physicalSize = size * 3;
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      home: const RegistrationScreen(),
-      routes: {'/home': (_) => const Scaffold(body: Text('HOME'))},
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
+        home: const RegistrationScreen(),
+        routes: {'/home': (_) => const Scaffold(body: Text('HOME'))},
+      ),
     ));
     await settle(tester, steps: 6);
   }

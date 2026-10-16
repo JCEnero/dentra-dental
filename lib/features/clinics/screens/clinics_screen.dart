@@ -9,12 +9,16 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/map_style.dart';
 import '../../../shared/widgets/dentra_meta_chip.dart';
+import '../../../shared/widgets/dentra_page_header.dart';
 import '../../clinic_finder/data/models/clinic_model.dart';
 import '../../clinic_finder/providers/clinic_provider.dart';
 import 'clinic_detail_screen.dart';
 
 class ClinicsScreen extends ConsumerStatefulWidget {
-  const ClinicsScreen({super.key});
+  const ClinicsScreen({super.key, this.onBack});
+
+  /// Called by the header's back button; hidden when null.
+  final VoidCallback? onBack;
 
   @override
   ConsumerState<ClinicsScreen> createState() => _ClinicsScreenState();
@@ -93,98 +97,63 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
       decoration: const BoxDecoration(color: Colors.white),
       child: Column(
         children: [
-          // ── GRADIENT HEADER ────────────────────────────────────
-          Container(
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: AppColors.verticalGradient,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH,
-                  16,
-                  AppSpacing.screenH,
-                  24,
+          // ── HEADER ─────────────────────────────────────────────
+          SafeArea(
+            bottom: false,
+            child: DentraPageHeader(
+              title: 'Clinics Nearby',
+              onBack: widget.onBack,
+              bottom: Container(
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Find a Dentist',
-                      style: GoogleFonts.outfit(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {}); // Rebuild to show/hide clear button
+                    ref.read(clinicFilterProvider.notifier).setSearchQuery(value);
+                  },
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: AppColors.navy,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Search clinics...',
+                    hintStyle: GoogleFonts.outfit(
+                      fontSize: 14,
+                      color: AppColors.secondaryText,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Nearby dental clinics',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      size: 20,
+                      color: AppColors.secondaryText,
                     ),
-                    const SizedBox(height: 20),
-                    // Search field
-                    Container(
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: (value) {
-                          setState(() {}); // Rebuild to show/hide clear button
-                          ref.read(clinicFilterProvider.notifier).setSearchQuery(value);
-                        },
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          color: AppColors.navy,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Search clinics...',
-                          hintStyle: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: AppColors.secondaryText,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search_rounded,
-                            size: 20,
-                            color: AppColors.secondaryText,
-                          ),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? GestureDetector(
-                                  onTap: () {
-                                    _searchController.clear();
-                                    setState(() {});
-                                    ref.read(clinicFilterProvider.notifier).setSearchQuery('');
-                                  },
-                                  child: const Icon(
-                                    Icons.close_rounded,
-                                    size: 18,
-                                    color: AppColors.secondaryText,
-                                  ),
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 13),
-                        ),
-                      ),
-                    ),
-                  ],
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () {
+                              _searchController.clear();
+                              setState(() {});
+                              ref.read(clinicFilterProvider.notifier).setSearchQuery('');
+                            },
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: AppColors.secondaryText,
+                            ),
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 13),
+                  ),
                 ),
               ),
             ),
           ),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
 
           // ── BODY ───────────────────────────────────────────────
           Expanded(

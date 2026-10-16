@@ -20,7 +20,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final last = MockData.screenings.first;
-    final tip  = MockData.dailyTips.first;
+    final tip = MockData.dailyTips.first;
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: Colors.white),
@@ -108,8 +108,8 @@ class HomeScreen extends StatelessWidget {
 
               // ── DEVICE HERO CARD ──────────────────────────────
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenH),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                 child: _DeviceHeroCard(onScan: () => onNavigate(1)),
               ),
 
@@ -117,8 +117,8 @@ class HomeScreen extends StatelessWidget {
 
               // ── SERVICES ─────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenH),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -148,18 +148,18 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 14),
 
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenH),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                 child: Row(
                   children: [
                     _ServiceButton(
-                      icon: Icons.sentiment_satisfied_alt_rounded,
+                      glyph: _ServiceGlyph.tooth,
                       label: 'My Teeth',
                       onTap: () => onNavigate(2),
                     ),
                     const SizedBox(width: 12),
                     _ServiceButton(
-                      icon: Icons.healing_rounded,
+                      glyph: _ServiceGlyph.capsule,
                       label: 'Treatment',
                       onTap: () {
                         Navigator.of(context).push(
@@ -173,13 +173,13 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     _ServiceButton(
-                      icon: Icons.auto_awesome_rounded,
+                      glyph: _ServiceGlyph.scan,
                       label: 'AI Analysis',
                       onTap: () {},
                     ),
                     const SizedBox(width: 12),
                     _ServiceButton(
-                      icon: Icons.assignment_outlined,
+                      glyph: _ServiceGlyph.trend,
                       label: 'Reports',
                       onTap: () => onNavigate(2),
                     ),
@@ -191,8 +191,8 @@ class HomeScreen extends StatelessWidget {
 
               // ── DENTAL HEALTH SCORE ───────────────────────────
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenH),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                 child: _DentalHealthScoreCard(),
               ),
 
@@ -201,9 +201,8 @@ class HomeScreen extends StatelessWidget {
 
               // ── YOUR SCREENING ────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, AppSpacing.sectionGap,
-                    AppSpacing.screenH, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -248,9 +247,8 @@ class HomeScreen extends StatelessWidget {
 
               // ── SCREENING OVERVIEW ────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, AppSpacing.sectionGap,
-                    AppSpacing.screenH, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -277,9 +275,8 @@ class HomeScreen extends StatelessWidget {
 
               // ── YOUR MONITORING ───────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, AppSpacing.sectionGap,
-                    AppSpacing.screenH, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -319,9 +316,8 @@ class HomeScreen extends StatelessWidget {
 
               // ── DAILY TIP ─────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, AppSpacing.sectionGap,
-                    AppSpacing.screenH, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
                 child: _DailyTipCard(
                   headline: tip['headline']!,
                   body: tip['body']!,
@@ -333,9 +329,8 @@ class HomeScreen extends StatelessWidget {
 
               // ── DENTRA AI ─────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, AppSpacing.sectionGap,
-                    AppSpacing.screenH, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -388,8 +383,7 @@ class HomeScreen extends StatelessWidget {
 
               // ── PROFESSIONAL CARE ─────────────────────────────
               const Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenH),
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                 child: GradientDivider(),
               ),
               Padding(
@@ -467,31 +461,73 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
     super.dispose();
   }
 
+  static const _radius = 24.0;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: AppColors.cardGradient,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_radius),
+        // Calm two-stop teal; the depth comes from light, not colour.
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF3FC9BE), Color(0xFF2A9E9C)],
+        ),
         boxShadow: [
+          // Tight contact shadow grounds the card.
           BoxShadow(
-            color: AppColors.g2.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            color: AppColors.g2.withValues(alpha: 0.18),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
+          // Wide, soft lift.
           BoxShadow(
-            color: Colors.white.withValues(alpha: 0.30),
-            blurRadius: 0,
-            spreadRadius: -1,
-            offset: const Offset(0, 1.5),
+            color: AppColors.g2.withValues(alpha: 0.28),
+            blurRadius: 28,
+            spreadRadius: -6,
+            offset: const Offset(0, 14),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_radius),
         child: Stack(
           clipBehavior: Clip.hardEdge,
           children: [
+            // Emboss: soft top-left light plus a hairline rim.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(_radius),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.22),
+                    ),
+                    gradient: RadialGradient(
+                      center: const Alignment(-0.9, -1.1),
+                      radius: 1.3,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.16),
+                        Colors.white.withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Quiet concentric rings behind the mascot.
+            const Positioned(
+              right: -70,
+              top: -40,
+              width: 220,
+              height: 220,
+              child: IgnorePointer(
+                child: CustomPaint(painter: _HeroRingsPainter()),
+              ),
+            ),
+
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
               child: Column(
@@ -556,12 +592,16 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                   Row(
                     children: const [
                       _StatusPill(
-                          icon: Icons.battery_5_bar_rounded, label: '86%'),
-                      SizedBox(width: 8),
-                      _StatusPill(icon: Icons.wifi_rounded, label: 'Strong'),
+                        icon: Icons.battery_5_bar_rounded,
+                        label: '86%',
+                        semanticLabel: 'Battery 86%',
+                      ),
                       SizedBox(width: 8),
                       _StatusPill(
-                          icon: Icons.bluetooth_rounded, label: 'BLE'),
+                        icon: Icons.wifi_rounded,
+                        label: 'Strong',
+                        semanticLabel: 'Signal strong',
+                      ),
                     ],
                   ),
 
@@ -606,32 +646,64 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
   }
 }
 
+/// Two faint rings that give the hero card depth without adding noise.
+class _HeroRingsPainter extends CustomPainter {
+  const _HeroRingsPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = Colors.white.withValues(alpha: 0.10);
+    canvas.drawCircle(center, size.shortestSide * 0.32, paint);
+    canvas.drawCircle(center, size.shortestSide * 0.48, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HeroRingsPainter oldDelegate) => false;
+}
+
 class _StatusPill extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _StatusPill({required this.icon, required this.label});
+
+  /// Full phrase for screen readers, since the visible label is terse.
+  final String semanticLabel;
+
+  const _StatusPill({
+    required this.icon,
+    required this.label,
+    required this.semanticLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.75)),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.90),
+    return Semantics(
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: Colors.white.withValues(alpha: 0.75)),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withValues(alpha: 0.90),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -639,66 +711,179 @@ class _StatusPill extends StatelessWidget {
 
 // ── Service button ────────────────────────────────────────────────
 
+enum _ServiceGlyph { tooth, capsule, scan, trend }
+
 class _ServiceButton extends StatelessWidget {
-  final IconData icon;
+  final _ServiceGlyph glyph;
   final String label;
   final VoidCallback onTap;
 
   const _ServiceButton({
-    required this.icon,
+    required this.glyph,
     required this.label,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: const BorderSide(color: AppColors.border, width: 1),
+    );
+
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.g2.withValues(alpha: 0.08),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+      child: Semantics(
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: Material(
+          color: AppColors.white,
+          shape: shape,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            splashColor: AppColors.lightLavender,
+            highlightColor: AppColors.lightLavender.withValues(alpha: 0.6),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 16, 6, 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CustomPaint(
+                    size: const Size.square(26),
+                    painter: _ServiceGlyphPainter(glyph),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.lightLavender,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 20, color: AppColors.g2),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.navy,
-                  height: 1.2,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+/// Thin-line dental glyphs drawn on a 24×24 grid so all four share
+/// the same stroke weight and visual size.
+class _ServiceGlyphPainter extends CustomPainter {
+  final _ServiceGlyph glyph;
+  const _ServiceGlyphPainter(this.glyph);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 24, size.height / 24);
+
+    final stroke = Paint()
+      ..color = AppColors.g2
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.7
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final fill = Paint()..color = AppColors.g2;
+    final tint = Paint()..color = AppColors.g1.withValues(alpha: 0.28);
+
+    switch (glyph) {
+      case _ServiceGlyph.tooth:
+        final tooth = Path()
+          ..moveTo(12, 6.5)
+          ..cubicTo(10.5, 5, 8.5, 4.5, 6.8, 5)
+          ..cubicTo(4.6, 5.7, 3.8, 8, 4.3, 10.5)
+          ..cubicTo(4.8, 13, 5.8, 14.5, 6.3, 17)
+          ..cubicTo(6.7, 19, 7.2, 20.5, 8.3, 20.5)
+          ..cubicTo(9.6, 20.5, 9.8, 18.6, 10.2, 17)
+          ..cubicTo(10.5, 15.6, 11, 14.8, 12, 14.8)
+          ..cubicTo(13, 14.8, 13.5, 15.6, 13.8, 17)
+          ..cubicTo(14.2, 18.6, 14.4, 20.5, 15.7, 20.5)
+          ..cubicTo(16.8, 20.5, 17.3, 19, 17.7, 17)
+          ..cubicTo(18.2, 14.5, 19.2, 13, 19.7, 10.5)
+          ..cubicTo(20.2, 8, 19.4, 5.7, 17.2, 5)
+          ..cubicTo(15.5, 4.5, 13.5, 5, 12, 6.5)
+          ..close();
+        canvas.drawPath(tooth, tint);
+        canvas.drawPath(tooth, stroke);
+
+      case _ServiceGlyph.capsule:
+        canvas.save();
+        canvas.translate(12, 12);
+        canvas.rotate(math.pi / 4);
+        final body =
+            RRect.fromLTRBR(-3.8, -8.5, 3.8, 8.5, const Radius.circular(3.8));
+        // Tint the lower half so it reads as a two-tone capsule.
+        canvas.save();
+        canvas.clipRect(const Rect.fromLTRB(-4, 0, 4, 9));
+        canvas.drawRRect(body, tint);
+        canvas.restore();
+        canvas.drawRRect(body, stroke);
+        canvas.drawLine(const Offset(-3.8, 0), const Offset(3.8, 0), stroke);
+        canvas.restore();
+
+      case _ServiceGlyph.scan:
+        // Viewfinder corners
+        const a = 4.0, b = 20.0, l = 4.5;
+        final corners = Path()
+          ..moveTo(a, a + l)
+          ..lineTo(a, a + 1.5)
+          ..quadraticBezierTo(a, a, a + 1.5, a)
+          ..lineTo(a + l, a)
+          ..moveTo(b - l, a)
+          ..lineTo(b - 1.5, a)
+          ..quadraticBezierTo(b, a, b, a + 1.5)
+          ..lineTo(b, a + l)
+          ..moveTo(b, b - l)
+          ..lineTo(b, b - 1.5)
+          ..quadraticBezierTo(b, b, b - 1.5, b)
+          ..lineTo(b - l, b)
+          ..moveTo(a + l, b)
+          ..lineTo(a + 1.5, b)
+          ..quadraticBezierTo(a, b, a, b - 1.5)
+          ..lineTo(a, b - l);
+        canvas.drawPath(corners, stroke);
+        // AI spark in the middle
+        final spark = Path()
+          ..moveTo(12, 7.8)
+          ..quadraticBezierTo(12.7, 11.3, 16.2, 12)
+          ..quadraticBezierTo(12.7, 12.7, 12, 16.2)
+          ..quadraticBezierTo(11.3, 12.7, 7.8, 12)
+          ..quadraticBezierTo(11.3, 11.3, 12, 7.8)
+          ..close();
+        canvas.drawPath(spark, fill);
+
+      case _ServiceGlyph.trend:
+        final area = Path()
+          ..moveTo(4.5, 16)
+          ..lineTo(9.5, 11)
+          ..lineTo(13, 14)
+          ..lineTo(19.5, 7.5)
+          ..lineTo(19.5, 20)
+          ..lineTo(4.5, 20)
+          ..close();
+        canvas.drawPath(area, tint);
+        final line = Path()
+          ..moveTo(4.5, 16)
+          ..lineTo(9.5, 11)
+          ..lineTo(13, 14)
+          ..lineTo(19.5, 7.5);
+        canvas.drawPath(line, stroke);
+        canvas.drawLine(const Offset(4, 20), const Offset(20, 20), stroke);
+        canvas.drawCircle(const Offset(19.5, 7.5), 1.9, fill);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ServiceGlyphPainter old) => old.glyph != glyph;
 }
 
 // ── Dental Health Score card ──────────────────────────────────────
@@ -942,11 +1127,9 @@ class _MonitoringTimeline extends StatelessWidget {
                     label,
                     style: GoogleFonts.outfit(
                       fontSize: 10,
-                      fontWeight:
-                          isActive ? FontWeight.w700 : FontWeight.w400,
-                      color: isActive
-                          ? AppColors.navy
-                          : AppColors.secondaryText,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                      color:
+                          isActive ? AppColors.navy : AppColors.secondaryText,
                     ),
                   ),
                 ],
@@ -955,8 +1138,8 @@ class _MonitoringTimeline extends StatelessWidget {
                 Expanded(
                   child: Container(
                     height: 1,
-                    margin: const EdgeInsets.only(
-                        bottom: 16, left: 4, right: 4),
+                    margin:
+                        const EdgeInsets.only(bottom: 16, left: 4, right: 4),
                     color: AppColors.border,
                   ),
                 ),

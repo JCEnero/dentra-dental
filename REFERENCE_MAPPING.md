@@ -29,22 +29,20 @@ This document maps every element of the existing React/TypeScript frontend
 
 ---
 
-## Scan State Machine
+## Scan Workflow
 
-| Frontend `ScanState` (TypeScript union) | Flutter `ScanState` (enum) |
-|----------------------------------------|---------------------------|
-| `"idle"` | `ScanState.idle` |
-| `"preparing"` | `ScanState.preparing` |
-| `"deviceCheck"` | `ScanState.deviceCheck` |
-| `"regionSelection"` | `ScanState.regionSelection` |
-| `"positioning"` | `ScanState.positioning` |
-| `"countdown"` | `ScanState.countdown` |
-| `"qualityCheck"` | `ScanState.qualityCheck` |
-| `"qualityFailed"` | `ScanState.qualityFailed` |
-| `"regionComplete"` | `ScanState.regionComplete` |
-| `"scanSummary"` | `ScanState.scanSummary` |
-| `"analyzing"` | `ScanState.analyzing` |
-| `"complete"` | `ScanState.complete` |
+The original timer-driven `ScanState` FSM was replaced by state that only
+advances on real results. See `lib/features/scan/`.
+
+| Concern | Flutter | File |
+|---------|---------|------|
+| Session (region, captures, review, finish, analysis) | `scanSessionProvider` | `providers/scan_session_provider.dart` |
+| Device connection state | `deviceConnectionProvider` | `providers/device_connection_provider.dart` |
+| DENTRA device driver (placeholder: reports unsupported) | `DentraDeviceService` | `services/dentra_device_service.dart` |
+| Phone camera / photo library capture | `PhoneCameraService` (`image_picker`) | `services/phone_camera_service.dart` |
+| AI image analysis (none configured yet) | `ScreeningAnalysisService?` | `services/screening_analysis_service.dart` |
+| Regions and their highlighted teeth | `scanRegions` | `data/scan_regions.dart` |
+| Recorded sessions (history) | `screeningSessionsProvider` | `lib/features/screening/` |
 
 ---
 
@@ -57,9 +55,7 @@ This document maps every element of the existing React/TypeScript frontend
 | `Divider` component (on gradient) | `GradientDivider` | `lib/shared/widgets/gradient_divider.dart` |
 | Section label `<p style="...uppercase...">` | `SectionLabel` | `lib/shared/widgets/section_label.dart` |
 | `BottomNav` component | `AppBottomNav` | `lib/shared/widgets/app_bottom_nav.dart` |
-| `DentalGuide` SVG component | `_DentalGuidePainter` (CustomPainter) | inside `scan_screen.dart` |
-| `CheckItem` animated component | `_AnimatedCheckItem` | inside `scan_screen.dart` |
-| `_GradientScaffold` (implicit pattern) | `_GradientScaffold` | inside `scan_screen.dart` |
+| `DentalGuide` SVG component | `RegionVisual` / `DentalArchPainter` (per-region arch) | `lib/features/scan/widgets/visuals/` |
 
 ---
 
@@ -104,7 +100,7 @@ This document maps every element of the existing React/TypeScript frontend
 | `const screenings = [...]` in `App.tsx` | `MockData.screenings` | `lib/core/services/mock_data.dart` |
 | `const clinics = [...]` in `App.tsx` | `MockData.clinics` | `lib/core/services/mock_data.dart` |
 | `const DAILY_TIPS = [...]` in `App.tsx` | `MockData.dailyTips` | `lib/core/services/mock_data.dart` |
-| `const REGIONS = [...]` in `App.tsx` | `MockData.scanRegions` | `lib/core/services/mock_data.dart` |
+| `const REGIONS = [...]` in `App.tsx` | `scanRegions` (same ids and labels) | `lib/features/scan/data/scan_regions.dart` |
 
 ---
 
@@ -139,7 +135,7 @@ via the `onNavigate` callback passed from `AppShell` down to `HomeScreen`.
 | `REFERENCEUI.png` (reference image, not rendered in UI) | Not included — reference only |
 | Google Fonts: Outfit | `google_fonts` package — `GoogleFonts.outfit(...)` |
 | SVG icons (inline in JSX) | `CustomPainter` subclasses in `app_bottom_nav.dart`; `Icons.*` (Material) for in-screen icons |
-| Dental arch SVG guide | `_DentalGuidePainter` (CustomPainter) in `scan_screen.dart` |
+| Dental arch SVG guide | `DentalArchPainter` in `features/scan/widgets/visuals/`; replaceable per region via `ScanRegion.renderAsset` |
 
 ---
 
@@ -161,7 +157,7 @@ src/App.tsx (monolithic)                lib/
                                         │   └── widgets/          ← AvatarWidget, PrimaryButton, etc.
                                         └── features/
                                             ├── home/screens/     ← HomeScreen
-                                            ├── scan/screens/     ← ScanScreen (full FSM)
+                                            ├── scan/            ← ScanScreen, providers, services, widgets
                                             ├── history/screens/  ← HistoryScreen
                                             ├── clinics/screens/  ← ClinicsScreen
                                             └── profile/screens/  ← ProfileScreen
@@ -180,8 +176,10 @@ src/App.tsx (monolithic)                lib/
 3. **Embossed hero card** — Reproduced using layered `BoxShadow` entries (dark drop shadow + white
    inner highlight offset) on `_DeviceHeroCard`, matching the frontend's `inset` + `drop-shadow` CSS.
 
-4. **Scan FSM** — The entire scan workflow is a single `StatefulWidget` with a `ScanState` enum,
-   matching the frontend's `useState<ScanState>` pattern. Timer-driven transitions replace `setTimeout`/`setInterval`.
+4. **Scan workflow** — Riverpod notifiers hold the session and device state; the screen only
+   lays them out. Nothing advances on a timer: regions complete when a real image is accepted,
+   "connected" appears only after the device service connects, and "Analyzing" shows only while
+   an analysis request runs.
 
 5. **No WebView** — Every screen is implemented with native Flutter widgets (Container, Column, Row,
    CustomPaint, ListView, etc.). No HTML is embedded.

@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
 import '../widgets/auth_widgets.dart';
 import 'registration_screen.dart';
 
 /// Sign-in screen, built on the shared [AuthScaffold].
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   static const _genericError = 'Something went wrong. Please try again.';
   static const _connectionError =
       "We couldn't reach DENTRA. Check your connection and try again.";
@@ -26,7 +28,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
-  final _authService = AuthService();
+  // App-wide session, so the signed-in user is visible after navigation.
+  AuthService get _authService => ref.read(authServiceProvider);
 
   // ── State ────────────────────────────────────────────────────
   bool _isSigningIn = false;
@@ -49,7 +52,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordCtrl.dispose();
     _emailFocus.dispose();
     _passwordFocus.dispose();
-    _authService.dispose();
     super.dispose();
   }
 
