@@ -13,6 +13,7 @@ import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
 import '../widgets/auth_widgets.dart';
 import 'registration_screen.dart';
+import 'reset_password_screen.dart';
 import 'verify_email_screen.dart';
 
 /// Sign-in screen, built on the shared [AuthScaffold].
@@ -212,7 +213,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      _snackBar('Sending reset link to $resetEmail…', AppColors.primary),
+      _snackBar('Sending a reset code to $resetEmail…', AppColors.primary),
     );
 
     AuthResult result;
@@ -223,16 +224,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
     if (!mounted) return;
 
-    messenger
-      ..clearSnackBars()
-      ..showSnackBar(
-        result.success
-            ? _snackBar(
-                'Password reset link sent. Check your inbox.',
-                AppColors.successGreen,
-              )
-            : _snackBar(result.error ?? _genericError, AppColors.coral),
+    messenger.clearSnackBars();
+    if (!result.success) {
+      messenger.showSnackBar(
+        _snackBar(result.error ?? _genericError, AppColors.coral),
       );
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ResetPasswordScreen(
+        email: resetEmail,
+        resendAvailableIn: result.resendAvailableIn ?? 60,
+      ),
+    ));
   }
 
   SnackBar _snackBar(String message, Color color) => SnackBar(
@@ -413,7 +417,7 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
               ),
               const SizedBox(height: AppSpacing.xs + 2),
               Text(
-                "Enter your email and we'll send you a reset link.",
+                "Enter your email and we'll send you a 6-digit code.",
                 style: GoogleFonts.outfit(
                   fontSize: 14,
                   color: AppColors.secondaryText,
@@ -436,7 +440,7 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
                 onEditingComplete: _submit,
               ),
               const SizedBox(height: AppSpacing.lg),
-              AuthPillButton(label: 'Send link', onPressed: _submit),
+              AuthPillButton(label: 'Send code', onPressed: _submit),
               const SizedBox(height: AppSpacing.xs),
               TextButton(
                 onPressed: () => Navigator.pop(context),

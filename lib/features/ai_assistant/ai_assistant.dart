@@ -17,6 +17,7 @@ import '../scan/data/scan_regions.dart';
 import '../screening/data/models/screening_session.dart';
 import '../screening/providers/screening_sessions_provider.dart';
 import 'ai_chat_controller.dart';
+import 'rabi_service.dart';
 
 /// Rabi, the in-app dental assistant.
 ///
@@ -50,7 +51,15 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
         authServiceProvider.select((a) => a.currentUserId),
         // Deferred: the first call happens during build, where the
         // controller must not notify listeners.
-        (_, userId) => Future.microtask(() => ctrl.bindUser(userId ?? 'guest')),
+        (_, userId) => Future.microtask(() {
+          // Signed in with the backend: Rabi answers through the DENTRA
+          // API, so the Gemini key never ships in the app.
+          final api = ref.read(apiClientProvider);
+          return ctrl.bindUser(
+            userId ?? 'guest',
+            rabi: api == null ? null : ApiRabiService(api),
+          );
+        }),
         fireImmediately: true,
       );
     }

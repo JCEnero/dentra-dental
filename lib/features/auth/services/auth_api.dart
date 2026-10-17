@@ -99,6 +99,26 @@ class AuthApi {
   Future<void> logout(String refreshToken) =>
       _post('/api/auth/logout', {'refresh_token': refreshToken});
 
+  /// Emails a password reset code. Returns seconds until another may be
+  /// requested. Succeeds for unknown emails too.
+  Future<int> forgotPassword(String email) async {
+    final body = await _post('/api/auth/forgot-password', {'email': email});
+    return body['resend_available_in'] as int? ?? 60;
+  }
+
+  /// Sets a new password from the emailed code. Signs out every device and
+  /// returns a session for this one.
+  Future<AuthSession> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async =>
+      AuthSession.fromJson(await _post('/api/auth/reset-password', {
+        'email': email,
+        'code': code,
+        'new_password': newPassword,
+      }));
+
   /// Signs out every other device and returns a new session for this one.
   Future<AuthSession> changePassword({
     required String accessToken,

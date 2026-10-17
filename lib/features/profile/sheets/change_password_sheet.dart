@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/screens/reset_password_screen.dart';
 import '../../auth/services/auth_service.dart';
 import '../../auth/widgets/auth_password_field.dart';
 import '../../auth/widgets/password_strength_indicator.dart';
@@ -155,15 +156,20 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
     if (!mounted) return;
     setState(() {
       _sendingReset = false;
-      _resetNotice = result.success
-          ? 'Reset link sent to ${widget.email}.'
-          : (result.error ?? _connectionError);
+      _resetNotice = result.success ? null : (result.error ?? _connectionError);
     });
+    if (!result.success) return;
+    // The reset screen signs in afresh and returns to home on success.
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ResetPasswordScreen(
+        email: widget.email,
+        resendAvailableIn: result.resendAvailableIn ?? 60,
+      ),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final resetOk = _resetNotice != null && _resetNotice!.startsWith('Reset');
 
     return AutofillGroup(
       child: Column(
@@ -190,7 +196,7 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
                 minimumSize: const Size(44, 44),
               ),
               child: Text(
-                _sendingReset ? 'Sending link…' : 'Forgot password?',
+                _sendingReset ? 'Sending code…' : 'Forgot password?',
                 style: GoogleFonts.outfit(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -200,9 +206,7 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
           ),
           DentraInlineNotice(
             message: _resetNotice,
-            tone: resetOk
-                ? DentraFeedbackTone.success
-                : DentraFeedbackTone.error,
+            tone: DentraFeedbackTone.error,
           ),
           const SizedBox(height: 8),
           AuthPasswordField(

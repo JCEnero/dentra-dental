@@ -291,18 +291,47 @@ class AuthService extends ChangeNotifier {
 
   // ── Password Reset ────────────────────────────────────────────
 
-  /// Send a password reset email.
+  /// Emails a 6-digit reset code. The server answers the same for unknown
+  /// emails, so success doesn't mean an account exists.
   Future<AuthResult> sendPasswordResetEmail({required String email}) async {
-    if (_api != null) {
-      // TODO: POST /api/auth/forgot-password once the backend can send
-      // email. Until then, say so rather than pretend a link was sent.
-      return const AuthResult(
-        success: false,
-        error: "Password reset isn't available yet. Please contact support.",
-      );
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 900));
+      return const AuthResult(success: true, resendAvailableIn: 60);
     }
-    await Future.delayed(const Duration(milliseconds: 900));
-    return const AuthResult(success: true);
+    try {
+      final resendIn = await api.forgotPassword(email);
+      return AuthResult(success: true, email: email, resendAvailableIn: resendIn);
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    }
+  }
+
+  /// Sets a new password with the emailed code and signs the user in.
+  /// Every other device is signed out.
+  Future<AuthResult> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 900));
+      // Demo: '000000' plays the part of a wrong code.
+      if (code == '000000') {
+        return const AuthResult(
+          success: false,
+          error: 'That code is incorrect. 4 tries left.',
+        );
+      }
+      _setUser('stub-uid-001', email, null);
+      return AuthResult(success: true, userId: _currentUserId, email: email);
+    }
+    return _runSignIn(() => api.resetPassword(
+          email: email,
+          code: code,
+          newPassword: newPassword,
+        ));
   }
 
   // ── Change Password ───────────────────────────────────────────

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -5,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/services/gemini_service.dart';
+import 'rabi_service.dart';
 
 class ChatMessage {
   final String text;
@@ -111,14 +113,14 @@ enum ChatView { chat, history, session }
 /// Holds all AI chat state and is shared across the entire app shell.
 /// Attach one instance to AppShell and pass it down via [AiChatScope].
 ///
-/// Chats are saved per user on this device as they happen, so nothing is
-/// lost if the app is closed mid-conversation.
+/// Chats are saved per user as they happen: on the DENTRA server when the
+/// backend is used ([ApiRabiService]), otherwise on this device.
 class AiChatController extends ChangeNotifier {
-  AiChatController({GeminiService? gemini}) : _gemini = gemini ?? GeminiService() {
+  AiChatController({RabiService? rabi}) : _rabi = rabi ?? DirectRabiService() {
     _suggestions = _pickQuestions();
   }
 
-  final GeminiService _gemini;
+  RabiService _rabi;
   final _rng = Random();
 
   static const maxInputLength = 1000;
@@ -189,9 +191,14 @@ class AiChatController extends ChangeNotifier {
   // ── Account ─────────────────────────────────────────────────────────────
 
   /// Loads the chats of [userId]. A different user never sees the
-  /// previous user's conversation.
-  Future<void> bindUser(String userId) async {
+  /// previous user's conversation. Pass [rabi] to switch where answers
+  /// and history come from (e.g. the backend once signed in).
+  Future<void> bindUser(String userId, {RabiService? rabi}) async {
     if (userId == _userId) return;
+    if (rabi != null && !identical(rabi, _rabi)) {
+      _rabi.close();
+      _rabi = rabi;
+    }
     _userId = userId;
     _resetActive();
     _sessions.clear();
@@ -199,21 +206,36 @@ class AiChatController extends ChangeNotifier {
     selectedSession = null;
     notifyListeners();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_key(userId));
-      if (raw == null || userId != _userId) return;
-      for (final e in jsonDecode(raw) as List<dynamic>) {
-        try {
-          _sessions.add(ChatSession.fromJson(e as Map<String, dynamic>));
-        } catch (_) {
-          // Skip a damaged record rather than losing all history.
-        }
-      }
-      _sessions.sort((a, b) => b.savedAt.compareTo(a.savedAt));
+      final loaded = _rabi.savesHistory
+          ? await _rabi.loadSessions()
+          : await _loadLocal(userId);
+      if (userId != _userId) return;
+      _sessions
+        ..addAll(loaded)
+        ..sort((a, b) => b.savedAt.compareTo(a.savedAt));
     } catch (_) {
       // History is a convenience; chatting still works without it.
     }
     notifyListeners();
+  }
+
+  static Future<List<ChatSession>> _loadLocal(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key(userId));
+    if (raw == null) return const [];
+    return [
+      for (final e in jsonDecode(raw) as List<dynamic>)
+        // Skip a damaged record rather than losing all history.
+        if (_tryParse(e) case final session?) session,
+    ];
+  }
+
+  static ChatSession? _tryParse(Object? e) {
+    try {
+      return ChatSession.fromJson(e as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Removes [userId]'s saved chats from this device, e.g. when the
@@ -302,9 +324,17 @@ class AiChatController extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
+    // Earlier answered turns, for services that don't keep the chat.
+    final earlier = messages.sublist(0, messages.lastIndexOf(question));
+
     ChatMessage reply;
     try {
-      final text = await _gemini.chat(question.modelText);
+      final text = await _rabi.reply(
+        sessionId: sessionId,
+        message: question.text,
+        prompt: question.prompt,
+        context: _contextTurns(earlier).toList(),
+      );
       reply = ChatMessage(text: text, isUser: false, sentAt: DateTime.now());
     } on GeminiException catch (e) {
       reply = ChatMessage(
@@ -348,7 +378,6 @@ class AiChatController extends ChangeNotifier {
     messages
       ..clear()
       ..addAll(session.messages);
-    _gemini.restoreSession(_contextTurns(session.messages));
     view = ChatView.chat;
     selectedSession = null;
     notifyListeners();
@@ -356,6 +385,7 @@ class AiChatController extends ChangeNotifier {
 
   void deleteSession(String id) {
     _sessions.removeWhere((s) => s.id == id);
+    if (_rabi.savesHistory) unawaited(_rabi.deleteSession(id).catchError((_) {}));
     if (selectedSession?.id == id) {
       selectedSession = null;
       view = ChatView.history;
@@ -367,6 +397,7 @@ class AiChatController extends ChangeNotifier {
   /// Deletes all saved chats, including the active one.
   void clearHistory() {
     _sessions.clear();
+    if (_rabi.savesHistory) unawaited(_rabi.deleteAll().catchError((_) {}));
     if (!isLoading) _resetActive();
     view = ChatView.chat;
     selectedSession = null;
@@ -376,7 +407,7 @@ class AiChatController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _gemini.close();
+    _rabi.close();
     super.dispose();
   }
 
@@ -386,7 +417,6 @@ class AiChatController extends ChangeNotifier {
     messages.clear();
     _sessionId = _newId();
     isLoading = false;
-    _gemini.resetSession();
   }
 
   /// Answered turns only: failed questions and error notices are left
@@ -420,9 +450,11 @@ class AiChatController extends ChangeNotifier {
     _persist();
   }
 
+  /// Saves to this device. With the backend, the server already saved the
+  /// exchange when it answered.
   Future<void> _persist() async {
     final userId = _userId;
-    if (userId == null) return;
+    if (userId == null || _rabi.savesHistory) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(

@@ -29,7 +29,7 @@ abstract class ProfileContent {
     (
       'How do I change my password?',
       'Go to Profile, then Change password. If you have forgotten your current '
-          'password, use "Forgot password?" there to get a reset link by email.',
+          'password, use "Forgot password?" there to get a reset code by email.',
     ),
     (
       'How do I turn on two-factor authentication?',

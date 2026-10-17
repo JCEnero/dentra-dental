@@ -11,7 +11,6 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/map_style.dart';
 import '../../../core/services/maps_loader.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
-import '../../../shared/widgets/dentra_note_card.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../clinic_finder/data/models/clinic_model.dart';
@@ -28,8 +27,7 @@ const double _kDefaultRadiusKm = 5.0;
 
 enum _ClinicSort {
   nearest('Nearest', Icons.near_me_rounded),
-  topRated('Top rated', Icons.star_rounded),
-  lowestPrice('Lowest price', Icons.payments_rounded);
+  topRated('Top rated', Icons.star_rounded);
 
   const _ClinicSort(this.label, this.icon);
   final String label;
@@ -173,10 +171,6 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
               ? byRating
               : b.reviewCount.compareTo(a.reviewCount);
         });
-      case _ClinicSort.lowestPrice:
-        // Clinics without listed prices go last.
-        list.sort((a, b) => (a.lowestServicePrice ?? double.infinity)
-            .compareTo(b.lowestServicePrice ?? double.infinity));
     }
     return list;
   }
@@ -296,7 +290,7 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
                           horizontal: AppSpacing.screenH),
                       sliver: SliverList.separated(
                         itemCount: sorted.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final clinic = sorted[index];
                           return _ClinicCard(
@@ -307,23 +301,13 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
                                 ? switch (_sort) {
                                     _ClinicSort.nearest => 'Closest to you',
                                     _ClinicSort.topRated => 'Highest rated',
-                                    _ClinicSort.lowestPrice => 'Best value',
                                   }
                                 : null,
                           );
                         },
                       ),
                     ),
-                    const SliverPadding(
-                      padding: EdgeInsets.fromLTRB(
-                          AppSpacing.screenH, 20, AppSpacing.screenH, 28),
-                      sliver: SliverToBoxAdapter(
-                        child: DentraNoteCard(
-                          message: 'Prices are estimates and may differ at '
-                              'the clinic. Call ahead to confirm.',
-                        ),
-                      ),
-                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
                   ];
                 },
               ),
@@ -559,8 +543,6 @@ class _ClinicCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Cap stagger delay to the first 6 items.
     final animationIndex = index < 6 ? index : 5;
-    final lowest = clinic.lowestServicePrice;
-
     return TweenAnimationBuilder<double>(
       key: ValueKey(clinic.id),
       tween: Tween(begin: 0.0, end: 1.0),
@@ -586,120 +568,71 @@ class _ClinicCard extends StatelessWidget {
           );
         },
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 10, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+          child: Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClinicAvatar(name: clinic.name, size: 52),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (badge != null) ...[
-                          _Badge(label: badge!),
-                          const SizedBox(height: 5),
-                        ],
-                        Text(
-                          clinic.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.navy,
-                            height: 1.25,
-                          ),
-                        ),
-                        if (clinic.address.isNotEmpty) ...[
-                          const SizedBox(height: 3),
-                          Text(
-                            clinic.address,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.outfit(
-                              fontSize: 12.5,
-                              color: AppColors.secondaryText,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 14, left: 4),
-                    child: Icon(
-                      Icons.chevron_right_rounded,
-                      size: 22,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child:
-                    Divider(height: 1, thickness: 1, color: AppGlass.divider),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: Row(
+              ClinicAvatar(name: clinic.name, size: 46),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Wraps onto two lines on narrow screens or large text.
-                    Expanded(
-                      child: Wrap(
-                        spacing: 14,
-                        runSpacing: 4,
-                        children: [
-                          _InlineStat(
-                            icon: Icons.near_me_rounded,
-                            iconColor: AppColors.g2,
-                            label: formatClinicDistance(distanceKm),
-                          ),
-                          _InlineStat(
+                    if (badge != null) ...[
+                      _Badge(label: badge!),
+                      const SizedBox(height: 6),
+                    ],
+                    Text(
+                      clinic.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Distance and rating on one quiet line.
+                    Row(
+                      children: [
+                        _InlineStat(
+                          icon: Icons.near_me_rounded,
+                          iconColor: AppColors.g2,
+                          label: formatClinicDistance(distanceKm),
+                        ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: _InlineStat(
                             icon: Icons.star_rounded,
                             iconColor: AppColors.warmOrange,
                             label: clinic.reviewCount > 0
                                 ? '${clinic.rating.toStringAsFixed(1)} '
                                     '(${clinic.reviewCount})'
-                                : 'No reviews',
+                                : 'New',
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    if (lowest != null)
-                      Flexible(
-                        child: Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'From ',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: AppColors.secondaryText,
-                                ),
-                              ),
-                              TextSpan(
-                                text: formatPeso(lowest),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.g2,
-                                ),
-                              ),
-                            ],
-                          ),
-                          textAlign: TextAlign.end,
+                    if (clinic.address.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        clinic.address,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: AppColors.secondaryText,
                         ),
                       ),
+                    ],
                   ],
                 ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 22,
+                color: AppColors.secondaryText,
               ),
             ],
           ),

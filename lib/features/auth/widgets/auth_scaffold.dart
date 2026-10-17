@@ -125,6 +125,11 @@ class _AuthScaffoldState extends State<AuthScaffold>
                           slivers: [
                             SliverToBoxAdapter(
                               child: _AuthHero(
+                                // Any auth screen pushed on top of another
+                                // gets a way back; the root login doesn't.
+                                onBack: Navigator.canPop(context)
+                                    ? () => Navigator.maybePop(context)
+                                    : null,
                                 title: widget.title,
                                 subtitle: widget.subtitle,
                                 compact: compact,
@@ -247,14 +252,40 @@ class _ContentWidth extends StatelessWidget {
 
 /// Logo, heading and subtitle on the teal backdrop, ending in a white crest
 /// that becomes the form surface below.
+/// Frosted round back button that sits on the teal hero.
+class _HeroBackButton extends StatelessWidget {
+  const _HeroBackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: 'Back',
+      style: IconButton.styleFrom(
+        backgroundColor: AppColors.white.withValues(alpha: 0.18),
+        foregroundColor: AppColors.white,
+        fixedSize: const Size(44, 44),
+        minimumSize: const Size(44, 44),
+        side: BorderSide(color: AppColors.white.withValues(alpha: 0.35)),
+      ),
+      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+    );
+  }
+}
+
 class _AuthHero extends StatelessWidget {
   const _AuthHero({
     required this.title,
     required this.subtitle,
     required this.compact,
     required this.headingGap,
+    this.onBack,
   });
 
+  /// Shows a back button beside the logo when set.
+  final VoidCallback? onBack;
   final String title;
   final String subtitle;
   final bool compact;
@@ -284,13 +315,18 @@ class _AuthHero extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.lg,
                   ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Semantics(
-                      label: 'DENTRA',
-                      excludeSemantics: true,
-                      child: const DentraLogo(onDark: true, size: 0.72),
-                    ),
+                  child: Row(
+                    children: [
+                      if (onBack != null) ...[
+                        _HeroBackButton(onPressed: onBack!),
+                        const SizedBox(width: AppSpacing.sm),
+                      ],
+                      Semantics(
+                        label: 'DENTRA',
+                        excludeSemantics: true,
+                        child: const DentraLogo(onDark: true, size: 0.72),
+                      ),
+                    ],
                   ),
                 ),
               ),

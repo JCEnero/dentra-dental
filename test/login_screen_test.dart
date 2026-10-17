@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dentra_mobile/features/auth/screens/login_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
+import 'package:dentra_mobile/features/auth/screens/reset_password_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -138,20 +139,17 @@ void main() {
     await settle(tester, steps: 4);
     expect(find.text('Reset password'), findsOneWidget);
 
-    await tester.tap(find.bySemanticsLabel('Send link'));
+    await tester.tap(find.bySemanticsLabel('Send code'));
     await tester.pump();
     expect(find.text('Enter your email address.'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).last, 'jane@example.com');
-    await tester.tap(find.bySemanticsLabel('Send link'));
+    await tester.tap(find.bySemanticsLabel('Send code'));
     await settle(tester, steps: 4);
     expect(find.text('Reset password'), findsNothing);
 
     await settle(tester, steps: 10);
-    expect(
-      find.text('Password reset link sent. Check your inbox.'),
-      findsOneWidget,
-    );
+    expect(find.byType(ResetPasswordScreen), findsOneWidget);
   });
 
   testWidgets('keyboard open keeps Log In visible and hides the sign-up link',

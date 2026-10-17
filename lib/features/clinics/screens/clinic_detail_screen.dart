@@ -7,7 +7,6 @@ import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
-import '../../../shared/widgets/dentra_note_card.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../clinic_finder/data/models/clinic_model.dart';
@@ -138,12 +137,11 @@ class _ClinicDetailScreenState extends State<ClinicDetailScreen> {
                         distanceKm: widget.distanceKm,
                       ),
                       const SizedBox(height: 32),
-                      _SectionTitle(
-                        'Services & pricing',
-                        trailing: services.isEmpty
-                            ? null
-                            : '${services.length} '
-                                '${services.length == 1 ? 'service' : 'services'}',
+                      // Prices come from public listings, so label them
+                      // quietly as estimates rather than with a banner.
+                      const _SectionTitle(
+                        'Services',
+                        trailing: 'Est. public rates',
                       ),
                       const SizedBox(height: 12),
                       _ServicesCard(services: services),
@@ -177,12 +175,6 @@ class _ClinicDetailScreenState extends State<ClinicDetailScreen> {
                             ],
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      const DentraNoteCard(
-                        message: 'Estimated pricing. Actual services and '
-                            'rates may vary by clinic. Please contact the '
-                            'clinic to confirm.',
                       ),
                     ],
                   ),
@@ -468,18 +460,12 @@ class _FactsStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lowest = clinic.lowestServicePrice;
     final facts = [
       (Icons.near_me_rounded, 'Distance', formatClinicDistance(distanceKm)),
       (
         Icons.star_rounded,
         'Rating',
         clinic.reviewCount > 0 ? clinic.rating.toStringAsFixed(1) : '--',
-      ),
-      (
-        Icons.payments_rounded,
-        'Starts at',
-        lowest != null ? formatPeso(lowest) : '--',
       ),
     ];
 
@@ -644,21 +630,31 @@ class _IconTile extends StatelessWidget {
   }
 }
 
-/// Every service in one glass card, cheapest first.
-class _ServicesCard extends StatelessWidget {
+/// Services in one glass card, cheapest first. Shows the first few and
+/// lets the user expand, since the listing may not be complete.
+class _ServicesCard extends StatefulWidget {
   const _ServicesCard({required this.services});
 
   final List<ClinicService> services;
 
   @override
+  State<_ServicesCard> createState() => _ServicesCardState();
+}
+
+class _ServicesCardState extends State<_ServicesCard> {
+  static const _previewCount = 5;
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final services = widget.services;
     if (services.isEmpty) {
       return GlassCard(
         width: double.infinity,
         borderRadius: BorderRadius.circular(20),
         padding: const EdgeInsets.all(16),
         child: Text(
-          'No services listed yet. Call the clinic to ask what they offer.',
+          'No listed rates yet. Call the clinic to ask what they offer.',
           style: GoogleFonts.outfit(
             fontSize: 14,
             color: AppColors.secondaryText,
@@ -668,22 +664,26 @@ class _ServicesCard extends StatelessWidget {
       );
     }
 
+    final canExpand = services.length > _previewCount;
+    final shown =
+        _expanded || !canExpand ? services : services.take(_previewCount);
+
     return GlassCard(
       borderRadius: BorderRadius.circular(20),
       child: Column(
         children: [
-          for (var i = 0; i < services.length; i++) ...[
+          for (final (i, service) in shown.indexed) ...[
             if (i > 0) const _Hairline(indent: 66),
             MergeSemantics(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
                 child: Row(
                   children: [
-                    _IconTile(icon: serviceIcon(services[i].name)),
+                    _IconTile(icon: serviceIcon(service.name)),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        services[i].name,
+                        service.name,
                         style: GoogleFonts.outfit(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -692,13 +692,50 @@ class _ServicesCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
+                    // "~" keeps the estimate hint subtle.
+                    Semantics(
+                      label: 'about ${formatPeso(service.price)}',
+                      excludeSemantics: true,
+                      child: Text(
+                        '~${formatPeso(service.price)}',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (canExpand) ...[
+            const _Hairline(indent: 16),
+            InkWell(
+              onTap: () => setState(() => _expanded = !_expanded),
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                     Text(
-                      formatPeso(services[i].price),
+                      _expanded ? 'Show less' : 'Show more',
                       style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.g2,
                       ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      _expanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      size: 18,
+                      color: AppColors.g2,
                     ),
                   ],
                 ),
