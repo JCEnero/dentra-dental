@@ -14,10 +14,17 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/onboarding/screens/onboarding_screen.dart';
 
 class DentraApp extends StatelessWidget {
-  const DentraApp({super.key, this.onboardingCompleted = false});
+  const DentraApp({
+    super.key,
+    this.onboardingCompleted = false,
+    this.signedIn = false,
+  });
 
   /// Loaded from `OnboardingStorage` in `main()` before the first frame.
   final bool onboardingCompleted;
+
+  /// Whether `main()` restored a saved session; skips the login screen.
+  final bool signedIn;
 
   @override
   Widget build(BuildContext context) {
@@ -25,10 +32,13 @@ class DentraApp extends StatelessWidget {
       title: 'DENTRA',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      // ── Auth gate: onboarding on first launch, then sign-in.
-      //    '/home' lands on AppShell ──
-      home:
-          onboardingCompleted ? const LoginScreen() : const OnboardingScreen(),
+      // ── Auth gate: onboarding on first launch, then sign-in (skipped
+      //    when a session was restored). '/home' lands on AppShell ──
+      home: signedIn
+          ? const AppShell()
+          : onboardingCompleted
+              ? const LoginScreen()
+              : const OnboardingScreen(),
       routes: {
         '/home': (_) => const AppShell(),
       },

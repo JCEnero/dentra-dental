@@ -14,6 +14,7 @@ import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
 import '../widgets/auth_widgets.dart';
 import 'login_screen.dart';
+import 'verify_email_screen.dart';
 
 enum _Field { name, email, password, confirm }
 
@@ -40,6 +41,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
 
   // ── State ────────────────────────────────────────────────────
   bool _isRegistering = false;
+  bool _isGoogleSigningIn = false;
   bool _submitted = false; // true once the first submit attempt is made
 
   final Map<_Field, String?> _errors = {};
@@ -123,8 +125,11 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
 
   // ── Actions ──────────────────────────────────────────────────
 
+  /// Either sign-up path is running; the other stays locked meanwhile.
+  bool get _busy => _isRegistering || _isGoogleSigningIn;
+
   Future<void> _register() async {
-    if (_isRegistering) return;
+    if (_busy) return;
 
     setState(() {
       _submitted = true;
@@ -168,9 +173,56 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       return;
     }
 
+    // Account created; it signs in once the emailed code is confirmed.
+    // Pushed on top, so going back keeps the filled-in form.
+    if (result.needsVerification) {
+      setState(() => _isRegistering = false);
+      Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => VerifyEmailScreen(
+          email: result.email ?? _text(_Field.email),
+          resendAvailableIn: result.resendAvailableIn ?? 60,
+        ),
+      ));
+      return;
+    }
+
     setState(() {
       _isRegistering = false;
       _globalError = result.error ?? _genericError;
+    });
+  }
+
+  /// Google creates the account on first use, or signs in to an existing
+  /// one with the same email.
+  Future<void> _signUpWithGoogle() async {
+    if (_busy) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isGoogleSigningIn = true;
+      _globalError = null;
+    });
+
+    AuthResult result;
+    try {
+      result = await _authService.signInWithGoogle();
+    } catch (_) {
+      result = const AuthResult(success: false, error: _connectionError);
+    }
+
+    if (!mounted) return;
+
+    if (result.success) {
+      unawaited(ref
+          .read(notificationsProvider.notifier)
+          .record(NotificationEvents.welcome()));
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
+      return;
+    }
+
+    // No error means the user closed the Google sheet: nothing to report.
+    setState(() {
+      _isGoogleSigningIn = false;
+      _globalError = result.error;
     });
   }
 
@@ -278,16 +330,27 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         semanticLabel: 'Create account',
         loadingLabel: 'Creating account…',
         loading: _isRegistering,
-        onPressed: _register,
+        onPressed: _isGoogleSigningIn ? null : _register,
       ),
       footer: AuthFooterLink(
         prompt: 'Already have an account?',
         action: 'Log in',
-        onTap: _isRegistering ? null : _goToLogin,
+        onTap: _busy ? null : _goToLogin,
       ),
       form: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Offered only once Google sign-in is configured.
+          if (_authService.googleSignInAvailable) ...[
+            GoogleAuthButton(
+              label: 'Sign up with Google',
+              isLoading: _isGoogleSigningIn,
+              onTap: _isRegistering ? null : _signUpWithGoogle,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const AuthDivider(),
+            const SizedBox(height: AppSpacing.md),
+          ],
           AuthTextField(
             label: 'Full name',
             placeholder: 'Your name',

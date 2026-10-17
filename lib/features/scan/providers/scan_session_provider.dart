@@ -303,11 +303,9 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
       ],
     );
     _recorded = session;
-    // Images aren't persisted yet; keep them for this app run so the
-    // history detail page can show them.
-    ref.read(screeningImageCacheProvider.notifier).put(session.id, {
-      for (final id in captured) id: state.captures[id]!.bytes,
-    });
+    final images = {for (final id in captured) id: state.captures[id]!.bytes};
+    // Shown from memory right away; the upload below makes them last.
+    ref.read(screeningImageCacheProvider.notifier).put(session.id, images);
 
     var saveFailed = false;
     try {
@@ -316,6 +314,12 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
       saveFailed = true;
     }
     if (!saveFailed) {
+      // Best-effort, in the background: the record is already saved, and
+      // the photos stay visible for this app run if an upload fails.
+      unawaited(ref
+          .read(screeningSessionsProvider.notifier)
+          .uploadImages(session.id, images)
+          .catchError((_) {}));
       unawaited(ref.read(notificationsProvider.notifier).record(
             NotificationEvents.screeningSaved(
               sessionId: session.id,

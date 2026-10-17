@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
@@ -22,6 +23,9 @@ class AuthTextField extends StatelessWidget {
   final Iterable<String>? autofillHints;
   final TextCapitalization textCapitalization;
 
+  /// Restricts what can be typed, e.g. digits only for a code.
+  final List<TextInputFormatter>? inputFormatters;
+
   const AuthTextField({
     super.key,
     required this.label,
@@ -37,6 +41,7 @@ class AuthTextField extends StatelessWidget {
     this.onEditingComplete,
     this.autofillHints,
     this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
   });
 
   @override
@@ -68,6 +73,7 @@ class AuthTextField extends StatelessWidget {
           autofocus: autofocus,
           autofillHints: autofillHints,
           textCapitalization: textCapitalization,
+          inputFormatters: inputFormatters,
           autocorrect: !isEmail,
           enableSuggestions: !isEmail,
           onChanged: onChanged,

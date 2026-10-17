@@ -32,7 +32,7 @@ void main() {
     await settle(tester, steps: 6);
   }
 
-  testWidgets('shows the redesigned content and no unsupported options',
+  testWidgets('shows the redesigned content; Google hidden until configured',
       (tester) async {
     await pumpLogin(tester);
     expect(find.text('Welcome Back'), findsOneWidget);

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,16 +7,9 @@ import 'models/screening_session.dart';
 
 /// Data access for screening history.
 ///
-/// Screens and providers only use this interface. [LocalScreeningRepository]
-/// backs it today; when the PostgreSQL backend is ready, add an API-backed
-/// implementation (the app calls your REST/Supabase API, never the
-/// database directly) and swap it in `screeningRepositoryProvider`.
-///
-/// Suggested endpoints (tables in `database/schema.sql`):
-///   GET    /users/{userId}/screenings?order=completed_at.desc
-///   PUT    /screenings/{id}        (upsert, idempotent on id)
-///   DELETE /screenings/{id}
-///   DELETE /users/{userId}/screenings
+/// Screens and providers only use this interface. `ApiScreeningRepository`
+/// backs it when the DENTRA backend is configured, [LocalScreeningRepository]
+/// otherwise (demo mode and tests); see `screeningRepositoryProvider`.
 abstract class ScreeningRepository {
   /// All sessions for [userId], newest first.
   Future<List<ScreeningSession>> fetchSessions(String userId);
@@ -26,6 +20,15 @@ abstract class ScreeningRepository {
   Future<void> deleteSession(String userId, String sessionId);
 
   Future<void> deleteAll(String userId);
+
+  /// Stores the photo for one captured region and returns the updated
+  /// session, or null where images aren't persisted (on-device store).
+  Future<ScreeningSession?> uploadCaptureImage(
+    String userId,
+    String sessionId,
+    String regionId,
+    Uint8List bytes,
+  );
 }
 
 /// Device-local [ScreeningRepository] backed by SharedPreferences.
@@ -91,6 +94,17 @@ class LocalScreeningRepository implements ScreeningRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key(userId));
   }
+
+  /// Not persisted on the device: images stay in memory for this app run
+  /// (see `screeningImageCacheProvider`).
+  @override
+  Future<ScreeningSession?> uploadCaptureImage(
+    String userId,
+    String sessionId,
+    String regionId,
+    Uint8List bytes,
+  ) async =>
+      null;
 
   Future<void> _write(String userId, List<ScreeningSession> sessions) async {
     final prefs = await SharedPreferences.getInstance();

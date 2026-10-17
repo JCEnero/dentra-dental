@@ -19,56 +19,72 @@ class GoogleAuthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isLoading ? null : onTap,
-          borderRadius: AppRadius.mdAll,
-          child: Ink(
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: AppRadius.mdAll,
-              border: Border.all(
-                color: AppColors.border,
-                width: 1.5,
+    final enabled = onTap != null && !isLoading;
+    // One labelled button for screen readers; the spinner replaces the
+    // visible text while loading, so the label says what is happening.
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: isLoading ? 'Signing in with Google…' : label,
+      onTap: enabled ? onTap : null,
+      excludeSemantics: true,
+      child: SizedBox(
+        width: double.infinity,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: isLoading ? null : onTap,
+            borderRadius: AppRadius.mdAll,
+            child: Ink(
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: AppRadius.mdAll,
+                border: Border.all(
+                  color: AppColors.border,
+                  width: 1.5,
+                ),
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (isLoading)
-                    const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.secondaryText,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 13, horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isLoading)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.secondaryText,
+                          ),
+                        ),
+                      )
+                    else ...[
+                      // Google "G" logo — hand-drawn with Canvas for zero dependency
+                      CustomPaint(
+                        size: const Size(18, 18),
+                        painter: _GoogleGPainter(),
+                      ),
+                      const SizedBox(width: 10),
+                      // Wraps instead of overflowing on narrow screens or
+                      // with large accessibility text.
+                      Flexible(
+                        child: Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.navy,
+                            letterSpacing: 0.1,
+                          ),
                         ),
                       ),
-                    )
-                  else ...[
-                    // Google "G" logo — hand-drawn with Canvas for zero dependency
-                    CustomPaint(
-                      size: const Size(18, 18),
-                      painter: _GoogleGPainter(),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      label,
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.navy,
-                        letterSpacing: 0.1,
-                      ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

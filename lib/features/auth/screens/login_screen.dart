@@ -13,6 +13,7 @@ import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
 import '../widgets/auth_widgets.dart';
 import 'registration_screen.dart';
+import 'verify_email_screen.dart';
 
 /// Sign-in screen, built on the shared [AuthScaffold].
 class LoginScreen extends ConsumerStatefulWidget {
@@ -37,6 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // ── State ────────────────────────────────────────────────────
   bool _isSigningIn = false;
+  bool _isGoogleSigningIn = false;
   bool _submitted = false; // true once the first submit attempt is made
 
   String? _emailError;
@@ -95,8 +97,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // ── Actions ──────────────────────────────────────────────────
 
+  /// Either sign-in path is running; the other stays locked meanwhile.
+  bool get _busy => _isSigningIn || _isGoogleSigningIn;
+
   Future<void> _signIn() async {
-    if (_isSigningIn) return;
+    if (_busy) return;
 
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
@@ -143,9 +148,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
+    // Right password, unfinished sign-up: a code was just emailed.
+    if (result.needsVerification) {
+      setState(() => _isSigningIn = false);
+      _openVerification(email);
+      return;
+    }
+
     setState(() {
       _isSigningIn = false;
       _globalError = result.error ?? _genericError;
+    });
+  }
+
+  void _openVerification(String email) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => VerifyEmailScreen(email: email),
+    ));
+  }
+
+  Future<void> _signInWithGoogle() async {
+    if (_busy) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isGoogleSigningIn = true;
+      _globalError = null;
+    });
+
+    AuthResult result;
+    try {
+      result = await _authService.signInWithGoogle();
+    } catch (_) {
+      result = const AuthResult(success: false, error: _connectionError);
+    }
+
+    if (!mounted) return;
+
+    if (result.success) {
+      unawaited(ref
+          .read(notificationsProvider.notifier)
+          .record(NotificationEvents.signedIn()));
+      _navigateToApp();
+      return;
+    }
+
+    // No error means the user closed the Google sheet: nothing to report.
+    setState(() {
+      _isGoogleSigningIn = false;
+      _globalError = result.error;
     });
   }
 
@@ -226,16 +276,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         semanticLabel: 'Log in',
         loadingLabel: 'Logging in…',
         loading: _isSigningIn,
-        onPressed: _signIn,
+        onPressed: _isGoogleSigningIn ? null : _signIn,
       ),
       footer: AuthFooterLink(
         prompt: "Don't have an account?",
         action: 'Sign up',
-        onTap: _isSigningIn ? null : _goToRegister,
+        onTap: _busy ? null : _goToRegister,
       ),
       form: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Offered only once Google sign-in is configured.
+          if (_authService.googleSignInAvailable) ...[
+            GoogleAuthButton(
+              label: 'Continue with Google',
+              isLoading: _isGoogleSigningIn,
+              onTap: _isSigningIn ? null : _signInWithGoogle,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const AuthDivider(),
+            const SizedBox(height: AppSpacing.md),
+          ],
           AuthTextField(
             label: 'Email',
             placeholder: 'name@example.com',
@@ -264,7 +325,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: _isSigningIn ? null : _forgotPassword,
+              onPressed: _busy ? null : _forgotPassword,
               style: TextButton.styleFrom(
                 minimumSize: const Size(48, 44),
                 padding: const EdgeInsets.symmetric(horizontal: 4),

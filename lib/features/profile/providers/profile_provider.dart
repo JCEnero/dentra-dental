@@ -8,13 +8,15 @@ import '../../auth/services/auth_service.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
 import '../data/models/user_profile.dart';
+import '../services/api_profile_service.dart';
 import '../services/profile_service.dart';
 
 /// Backend for profile reads and writes. Override in tests.
-final profileServiceProvider = Provider<ProfileService>(
-  // Swap for the API-backed implementation once the backend is live.
-  (ref) => LocalProfileService(),
-);
+final profileServiceProvider = Provider<ProfileService>((ref) {
+  // The DENTRA API when configured, the on-device store otherwise.
+  final api = ref.watch(apiClientProvider);
+  return api == null ? LocalProfileService() : ApiProfileService(api);
+});
 
 /// The signed-in user's profile. Reloads when the signed-in user changes,
 /// so signing out and back in as someone else never shows stale data.

@@ -48,7 +48,7 @@ void main() {
     await tester.enterText(_field(_confirm), confirm ?? password);
   }
 
-  testWidgets('matches the login design and drops unsupported options',
+  testWidgets('matches the login design; Google hidden until configured',
       (tester) async {
     await pumpRegistration(tester);
     expect(find.text('Create Account'), findsWidgets);

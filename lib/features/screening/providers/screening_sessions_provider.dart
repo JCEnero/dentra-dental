@@ -3,13 +3,16 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers/auth_provider.dart';
+import '../data/api_screening_repository.dart';
 import '../data/models/screening_session.dart';
 import '../data/screening_repository.dart';
 
-/// Backend for screening history. Swap for the API-backed implementation
-/// once the backend is live; override in tests.
-final screeningRepositoryProvider =
-    Provider<ScreeningRepository>((ref) => LocalScreeningRepository());
+/// Backend for screening history: the DENTRA API when configured, the
+/// on-device store otherwise. Override in tests.
+final screeningRepositoryProvider = Provider<ScreeningRepository>((ref) {
+  final api = ref.watch(apiClientProvider);
+  return api == null ? LocalScreeningRepository() : ApiScreeningRepository(api);
+});
 
 /// The signed-in user's screening sessions, newest first. Reloads when
 /// the signed-in user changes.
@@ -45,6 +48,31 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
   /// Saves changes to an existing session, e.g. analysis that arrived
   /// after the scan finished.
   Future<void> save(ScreeningSession session) => record(session);
+
+  /// Uploads the session's photos one region at a time, keeping the
+  /// history entry in step with the stored image URLs. Throws on the
+  /// first failure; earlier uploads are kept.
+  Future<void> uploadImages(
+    String sessionId,
+    Map<String, Uint8List> imagesByRegion,
+  ) async {
+    for (final entry in imagesByRegion.entries) {
+      final updated = await _repo.uploadCaptureImage(
+        _userId,
+        sessionId,
+        entry.key,
+        entry.value,
+      );
+      if (updated == null) continue;
+      // The analysis may have been saved while this upload was in flight;
+      // don't let the older server copy hide it.
+      final local = state.valueOrNull?.where((s) => s.id == sessionId).firstOrNull;
+      final analysis = updated.analysis ?? local?.analysis;
+      _replaceLocal(
+        analysis == null ? updated : updated.copyWith(analysis: analysis),
+      );
+    }
+  }
 
   /// Deletes one session. Restores it and rethrows if the delete fails.
   Future<void> delete(String sessionId) async {
