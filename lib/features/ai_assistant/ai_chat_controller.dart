@@ -1,49 +1,132 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../core/services/gemini_service.dart';
 
 class ChatMessage {
   final String text;
   final bool isUser;
-  const ChatMessage({required this.text, required this.isUser});
+  final DateTime sentAt;
+
+  /// An assistant-side error notice (shown with a retry), not a reply.
+  final bool isError;
+
+  /// What was actually sent to the model, when it differs from [text]
+  /// (e.g. a question with the user's screening data attached).
+  final String? prompt;
+
+  const ChatMessage({
+    required this.text,
+    required this.isUser,
+    required this.sentAt,
+    this.isError = false,
+    this.prompt,
+  });
+
+  String get modelText => prompt ?? text;
+
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'is_user': isUser,
+        'sent_at': sentAt.toUtc().toIso8601String(),
+        if (isError) 'is_error': true,
+        if (prompt != null) 'prompt': prompt,
+      };
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
+        text: json['text'] as String,
+        isUser: json['is_user'] as bool,
+        sentAt: DateTime.parse(json['sent_at'] as String).toLocal(),
+        isError: json['is_error'] as bool? ?? false,
+        prompt: json['prompt'] as String?,
+      );
 }
 
-/// A saved snapshot of one complete chat session.
+/// A saved chat.
 class ChatSession {
-  /// The first user question, used as the session title in the history list.
-  final String title;
+  final String id;
 
-  /// Full message list for this session (excluding the greeting).
+  /// The first user question, used as the title in the history list.
+  final String title;
   final List<ChatMessage> messages;
 
-  /// When this session was saved.
+  /// Last activity.
   final DateTime savedAt;
 
   const ChatSession({
+    required this.id,
     required this.title,
     required this.messages,
     required this.savedAt,
   });
+
+  int get questionCount => messages.where((m) => m.isUser).length;
+
+  /// Last assistant reply, for the history preview.
+  String? get preview => messages
+      .lastWhere((m) => !m.isUser && !m.isError,
+          orElse: () => ChatMessage(
+                text: '',
+                isUser: false,
+                sentAt: savedAt,
+              ))
+      .text
+      .replaceAll(RegExp(r'[*_#`]'), '')
+      .trim();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'saved_at': savedAt.toUtc().toIso8601String(),
+        'messages': messages.map((m) => m.toJson()).toList(),
+      };
+
+  factory ChatSession.fromJson(Map<String, dynamic> json) => ChatSession(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        savedAt: DateTime.parse(json['saved_at'] as String).toLocal(),
+        messages: (json['messages'] as List<dynamic>)
+            .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 }
 
+/// A ready-made question. [prompt] is sent instead of [label] when the
+/// question needs extra context (e.g. screening data).
+class ChatSuggestion {
+  const ChatSuggestion(this.label, {this.prompt, this.personal = false});
+
+  final String label;
+  final String? prompt;
+
+  /// Uses the user's own data; shown first and marked in the UI.
+  final bool personal;
+}
+
+enum ChatView { chat, history, session }
+
 /// Holds all AI chat state and is shared across the entire app shell.
-/// Attach one instance to AppShell and pass it down via InheritedWidget.
+/// Attach one instance to AppShell and pass it down via [AiChatScope].
+///
+/// Chats are saved per user on this device as they happen, so nothing is
+/// lost if the app is closed mid-conversation.
 class AiChatController extends ChangeNotifier {
-  final _gemini = GeminiService();
+  AiChatController({GeminiService? gemini}) : _gemini = gemini ?? GeminiService() {
+    _suggestions = _pickQuestions();
+  }
+
+  final GeminiService _gemini;
   final _rng = Random();
 
-  static const _greeting = ChatMessage(
-    text:
-        "Hi! I'm your DENTRA AI assistant. Ask me anything about your oral health, screening results, or dental care tips.",
-    isUser: false,
-  );
+  static const maxInputLength = 1000;
+  static const _maxSessions = 30;
 
-  /// Full pool of predefined questions to draw from.
   static const _questionPool = [
     'What are the early signs of tooth decay?',
     'How often should I visit the dentist?',
-    'What does my screening score mean?',
     'How can I improve my gum health?',
     'What causes tooth sensitivity?',
     'Are my wisdom teeth a concern?',
@@ -53,48 +136,94 @@ class AiChatController extends ChangeNotifier {
     'What should I do after a tooth extraction?',
     'How do I know if I have gum disease?',
     'What is the best way to brush my teeth?',
+    'Why do my gums bleed when I floss?',
   ];
 
-  /// The 4 questions shown in the current session.
-  late List<String> suggestedQuestions;
+  List<String> _suggestions = const [];
+  List<String> _lastSuggestions = const [];
 
-  /// Questions shown in the previous session — used to avoid repeats.
-  List<String> _lastSuggestedQuestions = [];
+  /// Personal suggestion built from the latest screening, set by the UI.
+  ChatSuggestion? personalSuggestion;
 
-  /// Picks 4 questions that don't overlap with [_lastSuggestedQuestions].
+  List<ChatSuggestion> get suggestions => [
+        if (personalSuggestion != null) personalSuggestion!,
+        for (final q in _suggestions) ChatSuggestion(q),
+      ];
+
   List<String> _pickQuestions() {
-    final pool = _questionPool
-        .where((q) => !_lastSuggestedQuestions.contains(q))
-        .toList();
-    // If the pool is somehow smaller than 4 (shouldn't happen), fall back to full pool.
+    final pool =
+        _questionPool.where((q) => !_lastSuggestions.contains(q)).toList();
     final source = pool.length >= 4 ? pool : List<String>.from(_questionPool);
     source.shuffle(_rng);
     return source.take(4).toList();
   }
 
-  AiChatController() {
-    suggestedQuestions = _pickQuestions();
-  }
+  // ── State ───────────────────────────────────────────────────────────────
 
-  final List<ChatMessage> messages = [_greeting];
+  /// Messages of the active chat. Empty means the welcome screen shows.
+  final List<ChatMessage> messages = [];
+  String _sessionId = _newId();
 
-  /// All previous sessions, newest first.
-  final List<ChatSession> chatHistory = [];
+  /// Saved chats, newest first, including the active one once it has
+  /// a question.
+  final List<ChatSession> _sessions = [];
 
-  /// Whether the chat panel is visible at all.
+  /// Saved chats other than the active one.
+  List<ChatSession> get history =>
+      _sessions.where((s) => s.id != _sessionId).toList();
+
   bool isOpen = false;
-
-  /// When true the panel collapses to a small floating pill.
   bool isMinimized = false;
 
-  /// True while waiting for a Gemini response.
+  /// True while waiting for a reply.
   bool isLoading = false;
 
-  /// True when the history list is being shown instead of the active chat.
-  bool isShowingHistory = false;
-
-  /// When non-null, shows the detail view for this past session.
+  ChatView view = ChatView.chat;
   ChatSession? selectedSession;
+
+  String? _userId;
+
+  static String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
+  static String _key(String userId) => 'ai_chat.sessions.v1.$userId';
+
+  // ── Account ─────────────────────────────────────────────────────────────
+
+  /// Loads the chats of [userId]. A different user never sees the
+  /// previous user's conversation.
+  Future<void> bindUser(String userId) async {
+    if (userId == _userId) return;
+    _userId = userId;
+    _resetActive();
+    _sessions.clear();
+    view = ChatView.chat;
+    selectedSession = null;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_key(userId));
+      if (raw == null || userId != _userId) return;
+      for (final e in jsonDecode(raw) as List<dynamic>) {
+        try {
+          _sessions.add(ChatSession.fromJson(e as Map<String, dynamic>));
+        } catch (_) {
+          // Skip a damaged record rather than losing all history.
+        }
+      }
+      _sessions.sort((a, b) => b.savedAt.compareTo(a.savedAt));
+    } catch (_) {
+      // History is a convenience; chatting still works without it.
+    }
+    notifyListeners();
+  }
+
+  /// Removes [userId]'s saved chats from this device, e.g. when the
+  /// account is deleted.
+  static Future<void> deleteStoredHistory(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key(userId));
+  }
+
+  // ── Panel ───────────────────────────────────────────────────────────────
 
   void open() {
     isOpen = true;
@@ -113,101 +242,190 @@ class AiChatController extends ChangeNotifier {
   }
 
   void close() {
-    // Save the current session before closing if it has real messages.
-    _saveCurrentSession();
     isOpen = false;
     isMinimized = false;
-    isShowingHistory = false;
+    view = ChatView.chat;
     selectedSession = null;
     notifyListeners();
   }
 
   void showHistory() {
-    isShowingHistory = true;
+    view = ChatView.history;
     selectedSession = null;
     notifyListeners();
   }
 
-  void hideHistory() {
-    isShowingHistory = false;
+  void showChat() {
+    view = ChatView.chat;
     selectedSession = null;
     notifyListeners();
   }
 
   void selectSession(ChatSession session) {
     selectedSession = session;
+    view = ChatView.session;
     notifyListeners();
   }
 
-  void deselectSession() {
-    selectedSession = null;
-    notifyListeners();
-  }
+  // ── Chat ────────────────────────────────────────────────────────────────
 
-  Future<void> sendMessage(String text) async {
+  /// Sends [text]. Pass [prompt] to send something richer to the model
+  /// than what is shown in the bubble.
+  Future<void> sendMessage(String text, {String? prompt}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || isLoading) return;
+    final clipped = trimmed.length > maxInputLength
+        ? trimmed.substring(0, maxInputLength)
+        : trimmed;
 
-    // If we were in the history view, go back to active chat first.
-    if (isShowingHistory) {
-      isShowingHistory = false;
-      selectedSession = null;
-    }
+    view = ChatView.chat;
+    selectedSession = null;
+    messages.add(ChatMessage(
+      text: clipped,
+      isUser: true,
+      sentAt: DateTime.now(),
+      prompt: prompt,
+    ));
+    await _requestReply();
+  }
 
-    // Add user message and show loading state.
-    messages.add(ChatMessage(text: trimmed, isUser: true));
+  /// Retries the last question after an error.
+  Future<void> retry() async {
+    if (isLoading || messages.isEmpty || !messages.last.isError) return;
+    messages.removeLast();
+    await _requestReply();
+  }
+
+  Future<void> _requestReply() async {
+    final question = messages.lastWhere((m) => m.isUser);
+    final sessionId = _sessionId;
     isLoading = true;
     notifyListeners();
 
+    ChatMessage reply;
     try {
-      final reply = await _gemini.chat(trimmed);
-      messages.add(ChatMessage(text: reply, isUser: false));
+      final text = await _gemini.chat(question.modelText);
+      reply = ChatMessage(text: text, isUser: false, sentAt: DateTime.now());
     } on GeminiException catch (e) {
-      messages.add(ChatMessage(text: e.message, isUser: false));
-    } catch (_) {
-      messages.add(const ChatMessage(
-        text:
-            'Something went wrong. Please check your connection and try again.',
+      reply = ChatMessage(
+        text: e.message,
         isUser: false,
-      ));
-    } finally {
-      isLoading = false;
-      notifyListeners();
+        isError: true,
+        sentAt: DateTime.now(),
+      );
+    } catch (_) {
+      reply = ChatMessage(
+        text: 'Something went wrong. Please try again.',
+        isUser: false,
+        isError: true,
+        sentAt: DateTime.now(),
+      );
     }
-  }
 
-  /// Saves the current active session (if it contains user messages) to
-  /// [chatHistory], then starts a fresh session.
-  void clearChat() {
-    _saveCurrentSession();
-    messages
-      ..clear()
-      ..add(_greeting);
-    isShowingHistory = false;
-    selectedSession = null;
-    _gemini.resetSession();
-    // Rotate suggested questions — exclude the ones just shown.
-    _lastSuggestedQuestions = List.unmodifiable(suggestedQuestions);
-    suggestedQuestions = _pickQuestions();
+    // The user started a new chat while waiting; drop the stale reply.
+    if (sessionId != _sessionId) return;
+    messages.add(reply);
+    isLoading = false;
+    _saveActive();
     notifyListeners();
   }
 
-  /// Saves current session to history if it has at least one user message.
-  void _saveCurrentSession() {
-    final userMessages = messages.where((m) => m.isUser).toList();
-    if (userMessages.isEmpty) return;
+  /// Starts a fresh chat. The current one stays in history.
+  void newChat() {
+    if (isLoading) return;
+    _resetActive();
+    view = ChatView.chat;
+    selectedSession = null;
+    _lastSuggestions = List.unmodifiable(_suggestions);
+    _suggestions = _pickQuestions();
+    notifyListeners();
+  }
 
-    // Use the first user question as the session title.
-    final title = userMessages.first.text;
+  /// Makes a saved chat the active one, with its context restored.
+  void continueSession(ChatSession session) {
+    if (isLoading) return;
+    _sessionId = session.id;
+    messages
+      ..clear()
+      ..addAll(session.messages);
+    _gemini.restoreSession(_contextTurns(session.messages));
+    view = ChatView.chat;
+    selectedSession = null;
+    notifyListeners();
+  }
 
-    chatHistory.insert(
-      0,
-      ChatSession(
-        title: title,
-        messages: List.unmodifiable(messages),
-        savedAt: DateTime.now(),
-      ),
+  void deleteSession(String id) {
+    _sessions.removeWhere((s) => s.id == id);
+    if (selectedSession?.id == id) {
+      selectedSession = null;
+      view = ChatView.history;
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  /// Deletes all saved chats, including the active one.
+  void clearHistory() {
+    _sessions.clear();
+    if (!isLoading) _resetActive();
+    view = ChatView.chat;
+    selectedSession = null;
+    _persist();
+    notifyListeners();
+  }
+
+  // ── Internals ───────────────────────────────────────────────────────────
+
+  void _resetActive() {
+    messages.clear();
+    _sessionId = _newId();
+    isLoading = false;
+    _gemini.resetSession();
+  }
+
+  /// Answered turns only: failed questions and error notices are left
+  /// out so the model sees a clean alternating conversation.
+  static Iterable<(bool, String)> _contextTurns(List<ChatMessage> all) sync* {
+    for (var i = 0; i < all.length; i++) {
+      final m = all[i];
+      if (m.isError) continue;
+      if (m.isUser) {
+        final next = i + 1 < all.length ? all[i + 1] : null;
+        if (next == null || next.isUser || next.isError) continue;
+      }
+      yield (m.isUser, m.modelText);
+    }
+  }
+
+  void _saveActive() {
+    if (!messages.any((m) => m.isUser)) return;
+    final session = ChatSession(
+      id: _sessionId,
+      title: messages.firstWhere((m) => m.isUser).text,
+      messages: List.unmodifiable(messages),
+      savedAt: DateTime.now(),
     );
+    _sessions
+      ..removeWhere((s) => s.id == _sessionId)
+      ..insert(0, session);
+    if (_sessions.length > _maxSessions) {
+      _sessions.removeRange(_maxSessions, _sessions.length);
+    }
+    _persist();
+  }
+
+  Future<void> _persist() async {
+    final userId = _userId;
+    if (userId == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _key(userId),
+        jsonEncode(_sessions.map((s) => s.toJson()).toList()),
+      );
+    } catch (_) {
+      // Best-effort; the chat itself is unaffected.
+    }
   }
 }
 
@@ -220,8 +438,14 @@ class AiChatScope extends InheritedNotifier<AiChatController> {
   }) : super(notifier: controller);
 
   static AiChatController of(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<AiChatScope>();
+    final scope = context.dependOnInheritedWidgetOfExactType<AiChatScope>();
+    assert(scope != null, 'No AiChatScope found in widget tree');
+    return scope!.notifier!;
+  }
+
+  /// For callbacks: reads the controller without subscribing to changes.
+  static AiChatController read(BuildContext context) {
+    final scope = context.getInheritedWidgetOfExactType<AiChatScope>();
     assert(scope != null, 'No AiChatScope found in widget tree');
     return scope!.notifier!;
   }

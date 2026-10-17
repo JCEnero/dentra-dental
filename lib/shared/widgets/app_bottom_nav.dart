@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 import 'glass_card.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_glass.dart';
 
 // ── Nav item model ─────────────────────────────────────────────
 
@@ -60,65 +61,133 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final duration =
-        reduceMotion ? Duration.zero : const Duration(milliseconds: 200);
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 220);
+    const pillRadius = BorderRadius.all(Radius.circular(36));
 
-    return GlassBar(
-      child: SafeArea(
-        top: false,
-        // Labels may grow with system font size, but only so far: a tab bar
-        // that overflows is worse than one that scales slightly less.
-        child: MediaQuery.withClampedTextScaling(
-          maxScaleFactor: 1.3,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
-            child: Row(
-              children: List.generate(_items.length, (i) {
-                final isActive = i == activeIndex;
-                final item = _items[i];
-                final color =
-                    isActive ? AppColors.navy : AppColors.secondaryText;
+    // Floating Dock-style pill: frosted glass with round buttons, set in
+    // from the screen edges so the backdrop flows around it.
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+        child: Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: ClipRRect(
+              borderRadius: pillRadius,
+              child: GlassBlur(
+                child: DecoratedBox(
+                  decoration: AppGlass.surface(
+                    borderRadius: pillRadius,
+                    borderWidth: 1.2,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(_items.length, (i) {
+                        return _DockButton(
+                          item: _items[i],
+                          active: i == activeIndex,
+                          duration: duration,
+                          onTap: () => onTap(i),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-                return Expanded(
-                  child: Semantics(
-                    button: true,
-                    selected: isActive,
-                    label: item.label,
-                    excludeSemantics: true,
-                    child: InkResponse(
-                      onTap: () => onTap(i),
-                      highlightShape: BoxShape.rectangle,
-                      containedInkWell: true,
-                      borderRadius: BorderRadius.circular(16),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 56),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AnimatedContainer(
-                              duration: duration,
-                              curve: Curves.easeOut,
-                              width: 56,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? AppColors.lightLavender
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              child: Icon(
-                                isActive ? item.activeIcon : item.inactiveIcon,
-                                size: 22,
-                                color: isActive ? AppColors.g2 : color,
-                              ),
-                            ),
-                          ],
-                        ),
+/// One round Dock button: a glossy teal disc when active, a plain glass
+/// icon otherwise, with a small indicator dot like the macOS Dock.
+class _DockButton extends StatelessWidget {
+  const _DockButton({
+    required this.item,
+    required this.active,
+    required this.duration,
+    required this.onTap,
+  });
+
+  final _NavItem item;
+  final bool active;
+  final Duration duration;
+  final VoidCallback onTap;
+
+  static const double _size = 52;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: active,
+      label: item.label,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: item.label,
+        child: InkResponse(
+          onTap: onTap,
+          radius: _size / 2,
+          customBorder: const CircleBorder(),
+          splashColor: AppColors.lightLavender.withValues(alpha: 0.7),
+          highlightColor: Colors.transparent,
+          child: SizedBox(
+            width: _size,
+            height: _size,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                AnimatedScale(
+                  duration: duration,
+                  curve: Curves.easeOutBack,
+                  scale: active ? 1 : 0.86,
+                  child: AnimatedContainer(
+                    duration: duration,
+                    curve: Curves.easeOut,
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: active ? AppColors.cardGradient : null,
+                      color: active ? null : Colors.transparent,
+                      border: Border.all(
+                        color: active
+                            ? AppColors.white.withValues(alpha: 0.6)
+                            : Colors.transparent,
+                      ),
+                    ),
+                    child: Icon(
+                      active ? item.activeIcon : item.inactiveIcon,
+                      size: 22,
+                      color: active ? AppColors.white : AppColors.secondaryText,
+                    ),
+                  ),
+                ),
+                // Dock indicator dot under the active app.
+                Positioned(
+                  bottom: 0,
+                  child: AnimatedOpacity(
+                    duration: duration,
+                    opacity: active ? 1 : 0,
+                    child: Container(
+                      width: 4,
+                      height: 4,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.g2,
                       ),
                     ),
                   ),
-                );
-              }),
+                ),
+              ],
             ),
           ),
         ),

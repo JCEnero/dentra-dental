@@ -28,6 +28,10 @@ abstract class AppColors {
   static const Color peachBg       = Color(0xFFF5D5C0); // soft peach background
   static const Color successGreen  = Color(0xFF4CAF93); // health score green
 
+  /// Destructive actions (log out, delete). Dark enough for 4.5:1 text
+  /// contrast on white and glass surfaces.
+  static const Color danger        = Color(0xFFCF4141);
+
   // ── Aliases ───────────────────────────────────────────────────
   static const Color primary = g2; // use medium teal as primary for text/icons
 

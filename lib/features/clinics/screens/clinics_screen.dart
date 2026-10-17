@@ -9,12 +9,17 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/map_style.dart';
+import '../../../core/services/maps_loader.dart';
 import '../../../shared/widgets/dentra_meta_chip.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../clinic_finder/data/models/clinic_model.dart';
 import '../../clinic_finder/providers/clinic_provider.dart';
 import 'clinic_detail_screen.dart';
+
+/// The map is switched off for now: on web it renders glitches over the
+/// glass UI. Set to true to bring it back.
+const bool _kShowMap = false;
 
 class ClinicsScreen extends ConsumerStatefulWidget {
   const ClinicsScreen({super.key, this.onBack});
@@ -250,7 +255,7 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Map in rounded card (only show when not searching)
-                    if (filterState.searchQuery.isEmpty)
+                    if (_kShowMap && filterState.searchQuery.isEmpty)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(
                             AppSpacing.screenH, 20, AppSpacing.screenH, 0),
@@ -443,11 +448,21 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
     return LatLng(avgLat, avgLng);
   }
 
+  // On web the Maps JavaScript API has to be loaded before the map builds.
+  late Future<void> _mapsReady = ensureMapsLoaded();
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 220,
-      child: GoogleMap(
+      child: FutureBuilder<void>(
+        future: _mapsReady,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done ||
+              snapshot.hasError) {
+            return const ColoredBox(color: AppColors.lightLavender);
+          }
+          return GoogleMap(
         initialCameraPosition: CameraPosition(
           target: _calculateCenter(),
           zoom: 14.5,
@@ -463,6 +478,8 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
         compassEnabled: false,
         gestureRecognizers: {
           Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+        },
+      );
         },
       ),
     );

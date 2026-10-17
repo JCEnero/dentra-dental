@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../notifications/data/notification_events.dart';
+import '../../notifications/providers/notifications_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
@@ -131,6 +135,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
 
     if (result.success) {
+      unawaited(ref
+          .read(notificationsProvider.notifier)
+          .record(NotificationEvents.signedIn()));
       // Keep the loading state so the button cannot fire again mid-transition.
       _navigateToApp();
       return;

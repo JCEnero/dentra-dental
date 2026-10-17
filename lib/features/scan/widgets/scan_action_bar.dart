@@ -48,10 +48,16 @@ class ScanActionBar extends StatelessWidget {
       alignment: Alignment.bottomCenter,
       child: content == null
           ? const SizedBox(width: double.infinity)
-          : GlassBar(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, 12, AppSpacing.screenH, 12),
+          // Floating glass card, inset like the tab bar pill below it,
+          // with clear space between the two.
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenH, 8, AppSpacing.screenH, 10),
+              child: GlassCard(
+                width: double.infinity,
+                borderRadius: const BorderRadius.all(Radius.circular(28)),
+                borderWidth: 1.2,
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
                 child: AnimatedSwitcher(
                   duration: ScanMotion.of(context, ScanMotion.fast),
                   child: content,

@@ -11,7 +11,7 @@ class GeminiService {
 
   /// Dental-focused system instruction so Gemini stays on topic.
   static const _systemInstruction = '''
-You are DENTRA AI, a helpful dental health assistant built into the DENTRA app.
+You are Rabi, the helpful dental health assistant built into the DENTRA app.
 Your role is to answer questions about oral health, dental hygiene, screening results,
 common dental conditions, treatment options, and when to see a dentist.
 
@@ -22,6 +22,10 @@ Guidelines:
 - If a question is completely unrelated to oral/dental health, politely redirect the
   user and offer to help with dental questions instead.
 - Use plain language — avoid heavy medical jargon unless the user asks for detail.
+- Keep answers short and scannable: a brief answer first, then short bullet
+  points if useful. Use **bold** sparingly for key terms. No headings or tables.
+- When the message includes the user's screening data, explain it in plain
+  terms without inventing findings that are not in the data.
 ''';
 
   final String _apiKey;
@@ -29,14 +33,38 @@ Guidelines:
   /// Conversation history: list of {role, parts} maps sent with every request.
   final List<Map<String, dynamic>> _history = [];
 
-  GeminiService()
-      : _apiKey = dotenv.env['GEMINI_API_KEY'] ?? '' {
-    assert(_apiKey.isNotEmpty,
-        'GEMINI_API_KEY is missing from your .env file');
+  GeminiService() : _apiKey = _readKey();
+
+  static String _readKey() {
+    try {
+      return dotenv.env['GEMINI_API_KEY'] ?? '';
+    } catch (_) {
+      // dotenv not loaded (e.g. in tests).
+      return '';
+    }
   }
 
   /// Sends [userMessage] to Gemini and returns the assistant reply.
+  ///
+  /// On failure the user turn is removed again, so a retry doesn't send
+  /// the same question twice in the conversation context.
   Future<String> chat(String userMessage) async {
+    if (_apiKey.isEmpty) {
+      throw const GeminiException(
+        "Rabi isn't set up on this build yet. Please try again later.",
+      );
+    }
+    try {
+      return await _send(userMessage);
+    } catch (_) {
+      if (_history.isNotEmpty && _history.last['role'] == 'user') {
+        _history.removeLast();
+      }
+      rethrow;
+    }
+  }
+
+  Future<String> _send(String userMessage) async {
     // Add user turn to history.
     _history.add({
       'role': 'user',
@@ -83,18 +111,21 @@ Guidelines:
 
         return reply;
       } else {
-        // Parse API error message for a readable error.
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final message =
-            (json['error'] as Map<String, dynamic>?)?['message'] as String? ??
-                'Unknown API error (status ${response.statusCode})';
-        throw GeminiException(message);
+        // Raw API messages can mention keys and quotas; keep them out of
+        // the UI and explain by status instead.
+        throw GeminiException(switch (response.statusCode) {
+          429 => 'Rabi is getting a lot of questions right now. '
+              'Please try again in a minute.',
+          400 || 401 || 403 =>
+            "Rabi isn't available right now. Please try again later.",
+          _ => 'Rabi had trouble answering. Please try again.',
+        });
       }
     } on GeminiException {
       rethrow;
     } catch (e) {
-      throw GeminiException(
-        'Could not reach the AI service. Please check your connection and try again.',
+      throw const GeminiException(
+        "Couldn't reach Rabi. Check your connection and try again.",
       );
     }
   }
@@ -113,6 +144,22 @@ Guidelines:
 
   /// Resets the conversation history, starting a fresh session.
   void resetSession() => _history.clear();
+
+  /// Replaces the conversation context, e.g. to continue a saved chat.
+  /// [turns] are (isUser, text) pairs in order.
+  void restoreSession(Iterable<(bool, String)> turns) {
+    _history
+      ..clear()
+      ..addAll([
+        for (final (isUser, text) in turns)
+          {
+            'role': isUser ? 'user' : 'model',
+            'parts': [
+              {'text': text}
+            ],
+          },
+      ]);
+  }
 }
 
 /// Thrown when [GeminiService.chat] encounters an unrecoverable error.

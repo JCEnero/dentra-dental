@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../notifications/data/notification_events.dart';
+import '../../notifications/providers/notifications_provider.dart';
 import '../../screening/data/models/screening_session.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
 import '../data/models/captured_image.dart';
@@ -157,6 +159,9 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
   /// Invalidates in-flight work when the session resets.
   int _token = 0;
 
+  /// The history record of the finished session, updated with analysis.
+  ScreeningSession? _recorded;
+
   @override
   ScanSessionState build() =>
       ScanSessionState(selectedRegionId: scanRegions.first.id);
@@ -279,21 +284,45 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     final now = DateTime.now();
     state = state.copyWith(finishPhase: FinishPhase.saving, finishedAt: now);
 
+    final captured = [
+      for (final r in scanRegions)
+        if (state.isCaptured(r.id)) r.id,
+    ];
+    final session = ScreeningSession(
+      id: now.microsecondsSinceEpoch.toString(),
+      completedAt: now,
+      capturedRegions: captured,
+      totalRegions: scanRegions.length,
+      captures: [
+        for (final id in captured)
+          ScreeningCapture(
+            regionId: id,
+            source: state.captures[id]!.source.name,
+            capturedAt: state.captures[id]!.capturedAt,
+          ),
+      ],
+    );
+    _recorded = session;
+    // Images aren't persisted yet; keep them for this app run so the
+    // history detail page can show them.
+    ref.read(screeningImageCacheProvider.notifier).put(session.id, {
+      for (final id in captured) id: state.captures[id]!.bytes,
+    });
+
     var saveFailed = false;
     try {
-      await ref.read(screeningSessionsProvider.notifier).record(
-            ScreeningSession(
-              id: now.microsecondsSinceEpoch.toString(),
-              completedAt: now,
-              capturedRegions: [
-                for (final r in scanRegions)
-                  if (state.isCaptured(r.id)) r.id,
-              ],
-              totalRegions: scanRegions.length,
-            ),
-          );
+      await ref.read(screeningSessionsProvider.notifier).record(session);
     } catch (_) {
       saveFailed = true;
+    }
+    if (!saveFailed) {
+      unawaited(ref.read(notificationsProvider.notifier).record(
+            NotificationEvents.screeningSaved(
+              sessionId: session.id,
+              captured: captured.length,
+              total: scanRegions.length,
+            ),
+          ));
     }
     if (token != _token) return;
     state = state.copyWith(historySaveFailed: saveFailed);
@@ -322,6 +351,7 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
   /// Starts a fresh session. The device connection is left as it is.
   void reset() {
     _token++;
+    _recorded = null;
     state = ScanSessionState(selectedRegionId: scanRegions.first.id);
   }
 
@@ -339,6 +369,23 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
       }).timeout(analysisTimeout);
       if (token != _token) return;
       state = state.copyWith(finishPhase: FinishPhase.done, analysis: result);
+      final recorded = _recorded;
+      if (recorded != null) {
+        // Best-effort: the result is already on screen; history keeps the
+        // scan either way.
+        unawaited(ref
+            .read(screeningSessionsProvider.notifier)
+            .save(recorded.copyWith(
+              analysis: ScreeningAnalysis(
+                summary: result.summary,
+                analyzedAt: DateTime.now(),
+              ),
+            ))
+            .catchError((_) {}));
+        unawaited(ref
+            .read(notificationsProvider.notifier)
+            .record(NotificationEvents.analysisReady(sessionId: recorded.id)));
+      }
     } catch (e) {
       if (token != _token) return;
       state = state.copyWith(

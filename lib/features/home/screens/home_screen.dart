@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/avatar_widget.dart';
 import '../../../shared/widgets/glass_card.dart';
@@ -13,15 +13,21 @@ import '../../../core/services/mock_data.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../ai_assistant/ai_chat_controller.dart';
 import '../../treatment/screens/treatment_screen.dart';
+import '../../notifications/widgets/notification_bell.dart';
+import '../../profile/providers/profile_provider.dart';
+import '../../screening/providers/screening_sessions_provider.dart';
+import '../../../core/utils/dentra_dates.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   final ValueChanged<int> onNavigate;
 
   const HomeScreen({super.key, required this.onNavigate});
 
   @override
-  Widget build(BuildContext context) {
-    final last = MockData.screenings.first;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(profileProvider).valueOrNull;
+    final firstName = profile?.firstName ?? '';
+    final last = ref.watch(screeningSessionsProvider).valueOrNull?.firstOrNull;
     final tip = MockData.dailyTips.first;
 
     return SafeArea(
@@ -54,7 +60,7 @@ class HomeScreen extends StatelessWidget {
                             ),
                             children: [
                               TextSpan(
-                                text: 'Rommel',
+                                text: firstName.isEmpty ? 'there' : firstName,
                                 style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.navy,
@@ -68,26 +74,13 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Bell icon
-                  GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.white.withValues(alpha: 0.6),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppGlass.border),
-                      ),
-                      child: Icon(
-                        Icons.notifications_none_rounded,
-                        size: 20,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                  ),
+                  NotificationBell(onOpenProfile: () => onNavigate(4)),
                   const SizedBox(width: 10),
-                  const AvatarWidget(size: 40),
+                  AvatarWidget(
+                    size: 44,
+                    initials: profile?.initials ?? '',
+                    imageBytes: profile?.avatarBytes,
+                  ),
                 ],
               ),
             ),
@@ -161,15 +154,15 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   _ServiceButton(
-                    glyph: _ServiceGlyph.scan,
-                    label: 'AI Analysis',
-                    onTap: () {},
-                  ),
-                  const SizedBox(width: 12),
-                  _ServiceButton(
                     glyph: _ServiceGlyph.trend,
                     label: 'Reports',
                     onTap: () => onNavigate(2),
+                  ),
+                  const SizedBox(width: 12),
+                  _ServiceButton(
+                    glyph: _ServiceGlyph.scan,
+                    label: 'Rabi AI',
+                    onTap: () => AiChatScope.read(context).open(),
                   ),
                 ],
               ),
@@ -185,6 +178,19 @@ class HomeScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: 28),
+            const GradientDivider(),
+
+            // ── DAILY TIP ─────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
+              child: _DailyTipCard(
+                headline: tip['headline']!,
+                body: tip['body']!,
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.sectionGap),
             const GradientDivider(),
 
             // ── YOUR SCREENING ────────────────────────────────
@@ -206,7 +212,9 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'September 7',
+                    last == null
+                        ? 'No screenings yet'
+                        : DentraDates.long(last.completedAt),
                     style: GoogleFonts.outfit(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
@@ -215,7 +223,11 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${last.teeth} teeth detected · ${last.images} images captured',
+                    last == null
+                        ? 'Start a scan to see it here.'
+                        : '${last.capturedRegions.length} images captured · '
+                            '${last.capturedRegions.length} of '
+                            '${last.totalRegions} regions',
                     style: GoogleFonts.outfit(
                       fontSize: 13,
                       color: AppColors.secondaryText,
@@ -227,88 +239,6 @@ class HomeScreen extends StatelessWidget {
                     onTap: () => onNavigate(2),
                   ),
                 ],
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-            const GradientDivider(),
-
-            // ── SCREENING OVERVIEW ────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionLabel('Screening overview',
-                      color: AppColors.secondaryText),
-                  const SizedBox(height: 20),
-                  IntrinsicHeight(
-                    child: Row(
-                      children: [
-                        const _StatColumn(value: '18', label: 'Teeth'),
-                        _VerticalDivider(),
-                        const _StatColumn(value: '4', label: 'Images'),
-                        _VerticalDivider(),
-                        const _StatColumn(value: '5', label: 'Regions'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-            const GradientDivider(),
-
-            // ── YOUR MONITORING ───────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionLabel('Your monitoring',
-                      color: AppColors.secondaryText),
-                  const SizedBox(height: 16),
-                  Text(
-                    '3 screenings this month',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Your screening history is available to help you\nreview visual observations over time.',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      color: AppColors.secondaryText,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _MonitoringTimeline(),
-                  const SizedBox(height: 4),
-                  _LinkButton(
-                    label: 'View history',
-                    onTap: () => onNavigate(2),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-            const GradientDivider(),
-
-            // ── DAILY TIP ─────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: _DailyTipCard(
-                headline: tip['headline']!,
-                body: tip['body']!,
               ),
             ),
 
@@ -958,120 +888,6 @@ class _CircularScorePainter extends CustomPainter {
   bool shouldRepaint(_CircularScorePainter old) => old.score != score;
 }
 
-// ── Stat column ───────────────────────────────────────────────────
-
-class _StatColumn extends StatelessWidget {
-  final String value;
-  final String label;
-  const _StatColumn({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: GoogleFonts.outfit(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              color: AppColors.navy,
-              height: 1.0,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 11,
-              color: AppColors.secondaryText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VerticalDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      color: AppColors.border,
-    );
-  }
-}
-
-// ── Monitoring timeline ───────────────────────────────────────────
-
-class _MonitoringTimeline extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final points = [
-      {'label': 'Aug 12', 'active': false},
-      {'label': 'Aug 28', 'active': false},
-      {'label': 'Sep 7', 'active': true},
-    ];
-
-    return Row(
-      children: List.generate(points.length, (i) {
-        final isActive = points[i]['active'] as bool;
-        final label = points[i]['label'] as String;
-        return Expanded(
-          flex: i < points.length - 1 ? 1 : 0,
-          child: Row(
-            children: [
-              Column(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isActive ? AppColors.g2 : AppColors.border,
-                      boxShadow: isActive
-                          ? [
-                              BoxShadow(
-                                color: AppColors.g2.withValues(alpha: 0.3),
-                                blurRadius: 0,
-                                spreadRadius: 3,
-                              ),
-                            ]
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    label,
-                    style: GoogleFonts.outfit(
-                      fontSize: 10,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                      color:
-                          isActive ? AppColors.navy : AppColors.secondaryText,
-                    ),
-                  ),
-                ],
-              ),
-              if (i < points.length - 1)
-                Expanded(
-                  child: Container(
-                    height: 1,
-                    margin:
-                        const EdgeInsets.only(bottom: 16, left: 4, right: 4),
-                    color: AppColors.border,
-                  ),
-                ),
-            ],
-          ),
-        );
-      }),
-    );
-  }
-}
-
 // ── Daily tip card ────────────────────────────────────────────────
 
 class _DailyTipCard extends StatelessWidget {
@@ -1175,7 +991,7 @@ class _AskAiButtonState extends State<_AskAiButton> {
                 child: Row(
                   children: [
                     Text(
-                      'Ask AI',
+                      'Ask Rabi',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,

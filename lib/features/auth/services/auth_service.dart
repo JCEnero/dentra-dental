@@ -152,6 +152,88 @@ class AuthService extends ChangeNotifier {
     return const AuthResult(success: true);
   }
 
+  // ── Change Password ───────────────────────────────────────────
+
+  /// Change the signed-in user's password after re-checking the current one.
+  Future<AuthResult> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 1200));
+
+    // ── TODO: Replace with real backend call ──────────────────
+    // Example (Firebase):
+    //   final user = FirebaseAuth.instance.currentUser!;
+    //   await user.reauthenticateWithCredential(
+    //     EmailAuthProvider.credential(email: user.email!, password: currentPassword),
+    //   );
+    //   await user.updatePassword(newPassword);
+    // ─────────────────────────────────────────────────────────
+
+    // Stub: mirrors signInWithEmail, which rejects passwords under 6 chars.
+    if (currentPassword.length < 6) {
+      return const AuthResult(
+        success: false,
+        error: 'Your current password is incorrect.',
+      );
+    }
+    return const AuthResult(success: true);
+  }
+
+  // ── Two-Factor Authentication ─────────────────────────────────
+
+  /// Email a one-time code to the signed-in user to confirm 2FA setup.
+  Future<AuthResult> sendTwoFactorCode() async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    // TODO: POST '$baseUrl/auth/2fa/send' (or your provider's equivalent).
+    return const AuthResult(success: true);
+  }
+
+  /// Confirm the emailed code and turn on two-factor authentication.
+  Future<AuthResult> enableTwoFactor({required String code}) async {
+    await Future.delayed(const Duration(milliseconds: 1000));
+    // TODO: POST '$baseUrl/auth/2fa/verify' with the code.
+
+    // Stub: '000000' plays the part of a wrong or expired code.
+    if (code == '000000') {
+      return const AuthResult(
+        success: false,
+        error: 'That code is incorrect or has expired. Request a new one.',
+      );
+    }
+    return const AuthResult(success: true);
+  }
+
+  /// Turn off two-factor authentication.
+  Future<AuthResult> disableTwoFactor() async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    // TODO: DELETE '$baseUrl/auth/2fa'.
+    return const AuthResult(success: true);
+  }
+
+  // ── Account ───────────────────────────────────────────────────
+
+  /// Keep the session's name and email in step after a profile edit.
+  void updateIdentity({String? displayName, String? email}) {
+    if (!_isAuthenticated) return;
+    _currentDisplayName = displayName ?? _currentDisplayName;
+    _currentEmail = email ?? _currentEmail;
+    notifyListeners();
+  }
+
+  /// Permanently delete the signed-in account, then sign out.
+  Future<AuthResult> deleteAccount() async {
+    await Future.delayed(const Duration(milliseconds: 1400));
+
+    // ── TODO: Replace with real backend call ──────────────────
+    // Example (Firebase):
+    //   await FirebaseAuth.instance.currentUser?.delete();
+    // ─────────────────────────────────────────────────────────
+
+    _clearUser();
+    return const AuthResult(success: true);
+  }
+
   // ── Sign Out ──────────────────────────────────────────────────
 
   /// Sign out the current user.

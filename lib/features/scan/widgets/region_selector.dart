@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/glass_card.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
@@ -140,8 +141,7 @@ class _RegionCard extends StatelessWidget {
       excludeSemantics: true,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
-        child: BackdropFilter.grouped(
-          filter: AppGlass.blur,
+        child: GlassBlur(
           child: AnimatedContainer(
             duration: duration,
             curve: ScanMotion.curve,

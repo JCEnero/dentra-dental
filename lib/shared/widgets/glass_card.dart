@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_glass.dart';
@@ -55,8 +56,7 @@ class GlassCard extends StatelessWidget {
       width: width,
       child: ClipRRect(
         borderRadius: borderRadius,
-        child: BackdropFilter.grouped(
-          filter: AppGlass.blur,
+        child: GlassBlur(
           child: DecoratedBox(
             decoration: AppGlass.surface(
               borderRadius: borderRadius,
@@ -84,8 +84,7 @@ class GlassBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final side = BorderSide(color: AppGlass.divider);
     return ClipRect(
-      child: BackdropFilter.grouped(
-        filter: AppGlass.blur,
+      child: GlassBlur(
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: AppGlass.barFill,
@@ -101,3 +100,21 @@ class GlassBar extends StatelessWidget {
 }
 
 enum GlassBarEdge { top, bottom }
+
+/// Background blur behind glass surfaces.
+///
+/// Skipped on web: there, platform views such as the Google Map split the
+/// scene into separate layers, and backdrop blurs read stale pixels across
+/// them (ghosted, duplicated content). The page backdrop is already soft,
+/// so the translucent fill alone looks nearly identical.
+class GlassBlur extends StatelessWidget {
+  const GlassBlur({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) return child;
+    return BackdropFilter.grouped(filter: AppGlass.blur, child: child);
+  }
+}

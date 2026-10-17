@@ -62,9 +62,9 @@ class _AppShellState extends State<AppShell> {
     final screens = <Widget>[
       HomeScreen(onNavigate: _navigate),
       const ScanScreen(),
-      const HistoryScreen(),
+      HistoryScreen(onNavigate: _navigate),
       const ClinicsScreen(),
-      const ProfileScreen(),
+      ProfileScreen(onNavigate: _navigate),
     ];
 
     return AiChatScope(
