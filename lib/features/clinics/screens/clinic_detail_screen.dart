@@ -1,238 +1,209 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/app_backdrop.dart';
-import '../../../shared/widgets/dentra_glance_tile.dart';
+import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_note_card.dart';
+import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../clinic_finder/data/models/clinic_model.dart';
+import '../widgets/clinic_ui.dart';
 
-class ClinicDetailScreen extends StatelessWidget {
+/// Detail page for one clinic.
+///
+/// Light glass header (initials tile, name, address, rating), a facts
+/// strip, the service price list and contact details. The top bar starts
+/// clear and frosts over, showing the name, once the title scrolls away.
+/// Call and Directions stay docked at the bottom.
+class ClinicDetailScreen extends StatefulWidget {
   final ClinicModel clinic;
-  final Position? userPosition;
+
+  /// Distance from the user, in kilometers. Null when unknown.
+  final double? distanceKm;
 
   const ClinicDetailScreen({
     super.key,
     required this.clinic,
-    this.userPosition,
+    this.distanceKm,
   });
 
-  String _formatDistance() {
-    if (userPosition == null) {
-      return '-- km';
-    }
-    final distanceMeters = Geolocator.distanceBetween(
-      userPosition!.latitude,
-      userPosition!.longitude,
-      clinic.latitude,
-      clinic.longitude,
+  @override
+  State<ClinicDetailScreen> createState() => _ClinicDetailScreenState();
+}
+
+class _ClinicDetailScreenState extends State<ClinicDetailScreen> {
+  static const double _barHeight = 60;
+
+  final ScrollController _scroll = ScrollController();
+
+  // 0 at rest, 1 once the header title is under the bar.
+  final ValueNotifier<double> _collapse = ValueNotifier(0);
+
+  ClinicModel get _clinic => widget.clinic;
+
+  bool get _hasPhone {
+    final digits = _clinic.phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+    return digits.length >= 7;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() {
+      // The title sits ~100px down; fade the bar in over the next 60px.
+      final t = ((_scroll.offset - 70) / 60).clamp(0.0, 1.0);
+      if (t != _collapse.value) _collapse.value = t;
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _collapse.dispose();
+    super.dispose();
+  }
+
+  Future<void> _call() async {
+    final uri = Uri(
+      scheme: 'tel',
+      path: _clinic.phoneNumber.replaceAll(RegExp(r'[^0-9+]'), ''),
     );
-    final distanceKm = distanceMeters / 1000;
-    return '${distanceKm.toStringAsFixed(1)} km';
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else if (mounted) {
+      showDentraSnack(context, 'Could not open the phone dialer.',
+          tone: DentraFeedbackTone.error);
+    }
+  }
+
+  Future<void> _directions() async {
+    final uri = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': '${_clinic.latitude},${_clinic.longitude}',
+    });
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      showDentraSnack(context, 'Could not open maps.',
+          tone: DentraFeedbackTone.error);
+    }
+  }
+
+  Future<void> _copy(String text, String what) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) showDentraSnack(context, '$what copied');
   }
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final services = [..._clinic.services]
+      ..sort((a, b) => a.price.compareTo(b.price));
+
     return Scaffold(
       backgroundColor: AppColors.lightLavender,
       body: AppBackdrop(
         child: Stack(
           children: [
-            // Main scrollable content
             CustomScrollView(
+              controller: _scroll,
               physics: const BouncingScrollPhysics(),
               slivers: [
-                // ── HERO SLIVER APP BAR ──────────────────────────────
-                SliverAppBar(
-                  expandedHeight: 200,
-                  pinned: true,
-                  automaticallyImplyLeading: false,
-                  backgroundColor: AppGlass.barFill,
-                  surfaceTintColor: Colors.transparent,
-                  flexibleSpace: FlexibleSpaceBar(
-                    collapseMode: CollapseMode.pin,
-                    background: _HeroBanner(clinic: clinic),
-                  ),
-                  title: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // Calculate collapse progress based on flexible space shrink
-                      final settings = context
-                          .dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
-                      final t = settings != null
-                          ? (1 - (settings.currentExtent - settings.minExtent) /
-                                  (settings.maxExtent - settings.minExtent))
-                              .clamp(0.0, 1.0)
-                          : 1.0;
-                      return Opacity(
-                        opacity: t,
-                        child: _CollapsedTitle(name: clinic.name),
-                      );
-                    },
-                  ),
-                  leading: Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          size: 15,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // ── BODY ─────────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
+                    padding: EdgeInsets.fromLTRB(
                       AppSpacing.screenH,
-                      24,
+                      media.padding.top + _barHeight + 8,
                       AppSpacing.screenH,
-                      110, // Space for sticky bottom bar
+                      0,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // At a glance tiles, sharing one height
-                        IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: DentraGlanceTile(
-                                  icon: Icons.location_on_rounded,
-                                  label: 'Distance',
-                                  value: _formatDistance(),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: DentraGlanceTile(
-                                  icon: Icons.star_rounded,
-                                  label: 'Rating',
-                                  value: '${clinic.rating}\n(${clinic.reviewCount})',
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: DentraGlanceTile(
-                                  icon: Icons.medical_services_rounded,
-                                  label: 'Services',
-                                  value: '${clinic.services.length}',
-                                ),
+                    child: _Header(clinic: _clinic),
+                  ),
+                ),
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.screenH,
+                    24,
+                    AppSpacing.screenH,
+                    112 + media.padding.bottom,
+                  ),
+                  sliver: SliverList.list(
+                    children: [
+                      _FactsStrip(
+                        clinic: _clinic,
+                        distanceKm: widget.distanceKm,
+                      ),
+                      const SizedBox(height: 32),
+                      _SectionTitle(
+                        'Services & pricing',
+                        trailing: services.isEmpty
+                            ? null
+                            : '${services.length} '
+                                '${services.length == 1 ? 'service' : 'services'}',
+                      ),
+                      const SizedBox(height: 12),
+                      _ServicesCard(services: services),
+                      const SizedBox(height: 32),
+                      const _SectionTitle('Contact'),
+                      const SizedBox(height: 12),
+                      GlassCard(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Column(
+                          children: [
+                            _ContactRow(
+                              icon: Icons.call_rounded,
+                              label: 'Phone',
+                              value: _hasPhone
+                                  ? _clinic.phoneNumber
+                                  : 'Not available',
+                              onTap: _hasPhone ? _call : null,
+                              onCopy: _hasPhone
+                                  ? () => _copy(_clinic.phoneNumber, 'Number')
+                                  : null,
+                            ),
+                            if (_clinic.address.isNotEmpty) ...[
+                              const _Hairline(indent: 66),
+                              _ContactRow(
+                                icon: Icons.location_on_rounded,
+                                label: 'Address',
+                                value: _clinic.address,
+                                onTap: _directions,
+                                onCopy: () => _copy(_clinic.address, 'Address'),
                               ),
                             ],
-                          ),
+                          ],
                         ),
-
-                        const SizedBox(height: 28),
-
-                        // Divider
-                        Container(
-                          height: 1,
-                          color: AppColors.border,
-                        ),
-
-                        const SizedBox(height: 28),
-
-                        // Services section
-                        Text(
-                          'Services',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.navy,
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Services cards
-                        if (clinic.services.isEmpty)
-                          GlassCard(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Text(
-                              'No services listed',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                          )
-                        else
-                          ...clinic.services.map((service) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: GlassCard(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(16),
-                                borderRadius: BorderRadius.circular(14),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        service.name,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.navy,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      '₱${service.price.toStringAsFixed(0)}',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.g2,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-
-                        const SizedBox(height: 16),
-
-                        // Info note card
-                        const DentraNoteCard(
-                          message: 'Estimated pricing - actual services and rates may vary by clinic. '
-                              'Please contact the clinic to confirm.',
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 24),
+                      const DentraNoteCard(
+                        message: 'Estimated pricing. Actual services and '
+                            'rates may vary by clinic. Please contact the '
+                            'clinic to confirm.',
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
 
-            // Sticky bottom bar with Call and Directions buttons
+            // Top bar, drawn over the content.
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _TopBar(
+                height: _barHeight,
+                collapse: _collapse,
+                title: _clinic.name,
+                onBack: () => Navigator.of(context).maybePop(),
+              ),
+            ),
+
+            // Docked actions.
             Positioned(
               left: 0,
               right: 0,
@@ -242,123 +213,19 @@ class ClinicDetailScreen extends StatelessWidget {
                   top: false,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.screenH,
-                      16,
-                      AppSpacing.screenH,
-                      16,
-                    ),
-                    child: Row(
-                      children: [
-                        // Call button (outlined)
-                        Expanded(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () async {
-                                final uri = Uri(scheme: 'tel', path: clinic.phoneNumber);
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri);
-                                } else if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Could not open the phone dialer.'),
-                                    ),
-                                  );
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(14),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: AppColors.g2,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Container(
-                                  height: 54,
-                                  alignment: Alignment.center,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.phone_rounded,
-                                        size: 20,
-                                        color: AppColors.g2,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Call',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.g2,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(width: 12),
-
-                        // Directions button (gradient)
-                        Expanded(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () async {
-                                final uri = Uri.parse(
-                                  'https://www.google.com/maps/dir/?api=1&destination=${clinic.latitude},${clinic.longitude}',
-                                );
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                } else if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Could not open maps.'),
-                                    ),
-                                  );
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(14),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  gradient: AppColors.primaryGradient,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Container(
-                                  height: 54,
-                                  alignment: Alignment.center,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.directions_rounded,
-                                        size: 20,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Directions',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                        AppSpacing.screenH, 14, AppSpacing.screenH, 14),
+                    child: DentraButtonRow(
+                      secondary: DentraPillButton(
+                        label: 'Call',
+                        icon: Icons.call_rounded,
+                        variant: DentraButtonVariant.outline,
+                        onPressed: _hasPhone ? _call : null,
+                      ),
+                      primary: DentraPillButton(
+                        label: 'Directions',
+                        icon: Icons.directions_rounded,
+                        onPressed: _directions,
+                      ),
                     ),
                   ),
                 ),
@@ -372,61 +239,323 @@ class ClinicDetailScreen extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hero banner – gradient with large icon and clinic name
+// Top bar: clear at rest, frosted with the title once scrolled
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _HeroBanner extends StatelessWidget {
-  final ClinicModel clinic;
+class _TopBar extends StatelessWidget {
+  const _TopBar({
+    required this.height,
+    required this.collapse,
+    required this.title,
+    required this.onBack,
+  });
 
-  const _HeroBanner({required this.clinic});
+  final double height;
+  final ValueNotifier<double> collapse;
+  final String title;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: AppColors.cardGradient,
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 40),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(22),
+    final top = MediaQuery.paddingOf(context).top;
+    return ValueListenableBuilder<double>(
+      valueListenable: collapse,
+      builder: (context, t, _) {
+        final bar = SizedBox(
+          height: top + height,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(AppSpacing.screenH - 4, top, 16, 0),
+            child: Row(
+              children: [
+                DentraBackButton(onPressed: onBack),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Opacity(
+                    opacity: t,
+                    child: ExcludeSemantics(
+                      // The header title already announces the page.
+                      excluding: t < 1,
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.local_hospital_rounded,
-                  size: 40,
-                  color: Colors.white,
+              ],
+            ),
+          ),
+        );
+
+        if (t == 0) return bar;
+        return ClipRect(
+          child: GlassBlur(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color:
+                    AppGlass.barFill.withValues(alpha: AppGlass.barFill.a * t),
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppGlass.divider.withValues(
+                      alpha: AppGlass.divider.a * t,
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: bar,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Header: initials tile, tag, name, address, rating
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Header extends StatelessWidget {
+  const _Header({required this.clinic});
+
+  final ClinicModel clinic;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            ClinicAvatar(name: clinic.name, size: 64),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: _Tag(label: 'Dental clinic'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Semantics(
+          header: true,
+          child: Text(
+            clinic.name,
+            style: GoogleFonts.outfit(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+              letterSpacing: -0.6,
+              height: 1.15,
+            ),
+          ),
+        ),
+        if (clinic.address.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: AppColors.secondaryText,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
                 child: Text(
-                  clinic.name,
-                  textAlign: TextAlign.center,
+                  clinic.address,
                   style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 8,
-                      ),
-                    ],
+                    fontSize: 14,
+                    color: AppColors.secondaryText,
+                    height: 1.45,
                   ),
                 ),
               ),
             ],
           ),
+        ],
+        const SizedBox(height: 12),
+        MergeSemantics(
+          child: Row(
+            children: [
+              ClinicStars(rating: clinic.rating, size: 16),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  clinic.reviewCount > 0
+                      ? '${clinic.rating.toStringAsFixed(1)} · '
+                          '${clinic.reviewCount} '
+                          '${clinic.reviewCount == 1 ? 'review' : 'reviews'}'
+                      : 'No reviews yet',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.navy,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
+      decoration: BoxDecoration(
+        color: AppColors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppGlass.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              color: AppColors.g2,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Facts strip: one glass card, segments split by hairlines
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FactsStrip extends StatelessWidget {
+  const _FactsStrip({required this.clinic, required this.distanceKm});
+
+  final ClinicModel clinic;
+  final double? distanceKm;
+
+  @override
+  Widget build(BuildContext context) {
+    final lowest = clinic.lowestServicePrice;
+    final facts = [
+      (Icons.near_me_rounded, 'Distance', formatClinicDistance(distanceKm)),
+      (
+        Icons.star_rounded,
+        'Rating',
+        clinic.reviewCount > 0 ? clinic.rating.toStringAsFixed(1) : '--',
+      ),
+      (
+        Icons.payments_rounded,
+        'Starts at',
+        lowest != null ? formatPeso(lowest) : '--',
+      ),
+    ];
+
+    return GlassCard(
+      borderRadius: BorderRadius.circular(20),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < facts.length; i++) ...[
+              if (i > 0)
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: AppColors.g2.withValues(alpha: 0.14),
+                ),
+              Expanded(
+                child: _Fact(
+                  icon: facts[i].$1,
+                  label: facts[i].$2,
+                  value: facts[i].$3,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Fact extends StatelessWidget {
+  const _Fact({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return MergeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 15, color: AppColors.g2),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+                height: 1.2,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -434,25 +563,225 @@ class _HeroBanner extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Collapsed title shown when hero is scrolled away
+// Sections
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _CollapsedTitle extends StatelessWidget {
-  final String name;
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title, {this.trailing});
 
-  const _CollapsedTitle({required this.name});
+  final String title;
+  final String? trailing;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      name,
-      style: GoogleFonts.outfit(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: AppColors.navy,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(
+              title,
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ),
+        ),
+        if (trailing != null)
+          Text(
+            trailing!,
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppColors.secondaryText,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _Hairline extends StatelessWidget {
+  const _Hairline({this.indent = 16});
+
+  final double indent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      indent: indent,
+      endIndent: 16,
+      color: AppGlass.divider,
+    );
+  }
+}
+
+/// Small frosted tile holding a row's icon.
+class _IconTile extends StatelessWidget {
+  const _IconTile({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: AppColors.lightLavender.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppGlass.border),
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
+      child: Icon(icon, size: 19, color: AppColors.g2),
+    );
+  }
+}
+
+/// Every service in one glass card, cheapest first.
+class _ServicesCard extends StatelessWidget {
+  const _ServicesCard({required this.services});
+
+  final List<ClinicService> services;
+
+  @override
+  Widget build(BuildContext context) {
+    if (services.isEmpty) {
+      return GlassCard(
+        width: double.infinity,
+        borderRadius: BorderRadius.circular(20),
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          'No services listed yet. Call the clinic to ask what they offer.',
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            color: AppColors.secondaryText,
+            height: 1.45,
+          ),
+        ),
+      );
+    }
+
+    return GlassCard(
+      borderRadius: BorderRadius.circular(20),
+      child: Column(
+        children: [
+          for (var i = 0; i < services.length; i++) ...[
+            if (i > 0) const _Hairline(indent: 66),
+            MergeSemantics(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+                child: Row(
+                  children: [
+                    _IconTile(icon: serviceIcon(services[i].name)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        services[i].name,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      formatPeso(services[i].price),
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.g2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Contact line: icon, label and value, tappable, with a copy button.
+class _ContactRow extends StatelessWidget {
+  const _ContactRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+    required this.onCopy,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  final VoidCallback? onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+          child: Row(
+            children: [
+              _IconTile(icon: icon),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: onTap != null
+                            ? AppColors.navy
+                            : AppColors.secondaryText,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onCopy != null)
+                IconButton(
+                  onPressed: onCopy,
+                  tooltip: 'Copy ${label.toLowerCase()}',
+                  icon: const Icon(
+                    Icons.copy_rounded,
+                    size: 18,
+                    color: AppColors.secondaryText,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
