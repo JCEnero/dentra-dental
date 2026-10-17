@@ -111,17 +111,7 @@ class HomeScreen extends ConsumerWidget {
                       color: AppColors.navy,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Text(
-                      'See All',
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
+
                 ],
               ),
             ),
@@ -356,7 +346,10 @@ class _DeviceHeroCard extends StatefulWidget {
 }
 
 class _DeviceHeroCardState extends State<_DeviceHeroCard> {
-  late VideoPlayerController _controller;
+  late final VideoPlayerController _controller;
+
+  /// False while Home is a hidden tab or covered by another page.
+  bool _onScreen = true;
 
   @override
   void initState() {
@@ -367,9 +360,28 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
       ..initialize().then((_) {
         if (mounted) {
           setState(() {});
-          _controller.play();
+          _syncPlayback();
         }
       });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // IndexedStack marks inactive tabs invisible, and routes under an
+    // opaque page have tickers disabled. Either way nobody sees the video,
+    // so stop decoding it until it is back on screen.
+    _onScreen = Visibility.of(context) && TickerMode.valuesOf(context).enabled;
+    _syncPlayback();
+  }
+
+  void _syncPlayback() {
+    if (!_controller.value.isInitialized) return;
+    if (_onScreen) {
+      _controller.play();
+    } else {
+      _controller.pause();
+    }
   }
 
   @override
@@ -774,7 +786,7 @@ class _DentalHealthScoreCard extends StatelessWidget {
                   color: AppColors.navy,
                 ),
               ),
-              Icon(Icons.more_horiz_rounded,
+              const Icon(Icons.more_horiz_rounded,
                   size: 20, color: AppColors.secondaryText),
             ],
           ),
@@ -786,7 +798,7 @@ class _DentalHealthScoreCard extends StatelessWidget {
                 width: 80,
                 height: 80,
                 child: CustomPaint(
-                  painter: _CircularScorePainter(score: score),
+                  painter: const _CircularScorePainter(score: score),
                   child: Center(
                     child: Text(
                       '$percent%',
@@ -816,7 +828,7 @@ class _DentalHealthScoreCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Icon(
+                        const Icon(
                           Icons.thumb_up_rounded,
                           size: 18,
                           color: AppColors.g2,
@@ -906,7 +918,7 @@ class _DailyTipCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline_rounded,
+              const Icon(Icons.info_outline_rounded,
                   size: 13, color: AppColors.secondaryText),
               const SizedBox(width: 6),
               Text(
@@ -962,7 +974,7 @@ class _AskAiButtonState extends State<_AskAiButton> {
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         onTap: () {
-          AiChatScope.of(context).open();
+          AiChatScope.read(context).open();
         },
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 150),
@@ -978,7 +990,7 @@ class _AskAiButtonState extends State<_AskAiButton> {
                     ? [
                         BoxShadow(
                           color: AppColors.primaryGradient.colors.first
-                              .withOpacity(0.35),
+                              .withValues(alpha: 0.35),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -1036,7 +1048,7 @@ class _LinkButton extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 5),
-            Icon(Icons.arrow_forward_rounded,
+            const Icon(Icons.arrow_forward_rounded,
                 size: 14, color: AppColors.primary),
           ],
         ),

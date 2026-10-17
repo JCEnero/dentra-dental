@@ -30,10 +30,19 @@ Guidelines:
 
   final String _apiKey;
 
+  /// One client for the whole chat, so follow-up questions reuse the open
+  /// connection instead of a new TCP/TLS handshake each time.
+  final http.Client _client;
+
   /// Conversation history: list of {role, parts} maps sent with every request.
   final List<Map<String, dynamic>> _history = [];
 
-  GeminiService() : _apiKey = _readKey();
+  GeminiService({http.Client? client})
+      : _apiKey = _readKey(),
+        _client = client ?? http.Client();
+
+  /// Releases the connection. The service can't be used afterwards.
+  void close() => _client.close();
 
   static String _readKey() {
     try {
@@ -89,7 +98,7 @@ Guidelines:
     });
 
     try {
-      final response = await http
+      final response = await _client
           .post(
             url,
             headers: {'Content-Type': 'application/json'},

@@ -1217,7 +1217,7 @@ class _MapPlaceholderState extends State<_MapPlaceholder> {
   }
 
   // On web the Maps JavaScript API has to be loaded before the map builds.
-  late Future<void> _mapsReady = ensureMapsLoaded();
+  late final Future<void> _mapsReady = ensureMapsLoaded();
 
   @override
   Widget build(BuildContext context) {

@@ -366,7 +366,7 @@ class _TreatmentCard extends StatelessWidget {
                         ),
                         // Follow-up
                         if (treatment.requiresFollowUp)
-                          DentraMetaChip(
+                          const DentraMetaChip(
                             icon: Icons.event_repeat_rounded,
                             label: 'Follow-up',
                             color: AppColors.secondaryText,

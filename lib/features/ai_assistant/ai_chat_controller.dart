@@ -374,6 +374,12 @@ class AiChatController extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
+  void dispose() {
+    _gemini.close();
+    super.dispose();
+  }
+
   // ── Internals ───────────────────────────────────────────────────────────
 
   void _resetActive() {

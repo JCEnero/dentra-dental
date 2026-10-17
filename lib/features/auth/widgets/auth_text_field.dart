@@ -123,9 +123,9 @@ class AuthTextField extends StatelessWidget {
                 width: 1.0,
               ),
             ),
-            focusedErrorBorder: OutlineInputBorder(
+            focusedErrorBorder: const OutlineInputBorder(
               borderRadius: AppRadius.mdAll,
-              borderSide: const BorderSide(
+              borderSide: BorderSide(
                 color: AppColors.coral,
                 width: 1.5,
               ),
@@ -141,7 +141,7 @@ class AuthTextField extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 5, left: 2),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.error_outline_rounded,
                         size: 13,
                         color: AppColors.coral,

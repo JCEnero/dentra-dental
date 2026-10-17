@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -313,6 +315,7 @@ class _Images extends StatelessWidget {
       final columns = c.maxWidth > 420 ? 3 : 2;
       const gap = 10.0;
       final size = (c.maxWidth - gap * (columns - 1)) / columns;
+      final pixels = (size * MediaQuery.devicePixelRatioOf(context)).ceil();
       return Wrap(
         spacing: gap,
         runSpacing: gap,
@@ -321,6 +324,7 @@ class _Images extends StatelessWidget {
             _ImageTile(
               size: size,
               image: image,
+              thumbnail: _CoverResizeImage(image, pixels),
               label: scanRegionById(id).label,
             ),
         ],
@@ -329,15 +333,87 @@ class _Images extends StatelessWidget {
   }
 }
 
+/// Decodes [image] just large enough to cover a [pixels]-wide square,
+/// keeping its aspect ratio, so a grid tile doesn't hold a full camera
+/// frame in memory. Never upscales.
+///
+/// Unlike `cacheWidth`, this works out the target from the photo's own
+/// aspect ratio, so landscape photos stay sharp under [BoxFit.cover].
+class _CoverResizeImage extends ImageProvider<_CoverResizeKey> {
+  const _CoverResizeImage(this.image, this.pixels);
+
+  final ImageProvider image;
+  final int pixels;
+
+  @override
+  Future<_CoverResizeKey> obtainKey(ImageConfiguration configuration) =>
+      image
+          .obtainKey(configuration)
+          .then((inner) => _CoverResizeKey(inner, pixels));
+
+  @override
+  ImageStreamCompleter loadImage(
+    _CoverResizeKey key,
+    ImageDecoderCallback decode,
+  ) {
+    return image.loadImage(
+      key.inner,
+      (buffer, {getTargetSize}) => decode(
+        buffer,
+        getTargetSize: (width, height) {
+          final scale = math.max(pixels / width, pixels / height);
+          if (scale >= 1) return ui.TargetImageSize(width: width, height: height);
+          return ui.TargetImageSize(
+            width: (width * scale).ceil(),
+            height: (height * scale).ceil(),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is _CoverResizeImage &&
+      other.image == image &&
+      other.pixels == pixels;
+
+  @override
+  int get hashCode => Object.hash(image, pixels);
+}
+
+@immutable
+class _CoverResizeKey {
+  const _CoverResizeKey(this.inner, this.pixels);
+
+  final Object inner;
+  final int pixels;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _CoverResizeKey &&
+      other.inner == inner &&
+      other.pixels == pixels;
+
+  @override
+  int get hashCode => Object.hash(inner, pixels);
+}
+
 class _ImageTile extends StatelessWidget {
   const _ImageTile({
     required this.size,
     required this.image,
+    required this.thumbnail,
     required this.label,
   });
 
   final double size;
+
+  /// Full resolution, for the zoomable view.
   final ImageProvider image;
+
+  /// Downscaled to the tile, for the grid.
+  final ImageProvider thumbnail;
   final String label;
 
   void _open(BuildContext context) {
@@ -397,7 +473,7 @@ class _ImageTile extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 Image(
-                  image: image,
+                  image: thumbnail,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: AppColors.lightLavender,
