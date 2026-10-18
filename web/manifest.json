@@ -1,11 +1,11 @@
 {
-    "name": "dentra_mobile",
-    "short_name": "dentra_mobile",
+    "name": "DENTRA",
+    "short_name": "DENTRA",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#E2F5F3",
+    "theme_color": "#2CA6A4",
+    "description": "DENTRA - AI-assisted dental imaging",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

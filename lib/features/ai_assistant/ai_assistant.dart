@@ -453,35 +453,20 @@ class _HeaderButton extends StatelessWidget {
   }
 }
 
-/// Rabi's mark: a teal gradient disc with a sparkle.
+/// Rabi's mark: the bunny logo.
 class _RabiAvatar extends StatelessWidget {
   const _RabiAvatar({this.size = 32});
 
   final double size;
 
+  static const String asset = 'assets/images/rabi_avatar.png';
+
   @override
   Widget build(BuildContext context) {
     return ExcludeSemantics(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: AppColors.cardGradient,
-          border: Border.all(color: AppColors.white, width: size / 20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.g2.withValues(alpha: 0.25),
-              blurRadius: size / 3,
-              offset: Offset(0, size / 12),
-            ),
-          ],
-        ),
-        child: Icon(
-          Icons.auto_awesome_rounded,
-          size: size * 0.48,
-          color: AppColors.white,
-        ),
+      child: SizedBox.square(
+        dimension: size,
+        child: Image.asset(asset, fit: BoxFit.contain),
       ),
     );
   }

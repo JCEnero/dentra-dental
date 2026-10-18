@@ -1,5 +1,5 @@
 /// Which hero illustration (and backdrop/forms variation) a slide uses.
-enum OnboardingVisual { introduction, imagingDevice, aiScreening, monitoring }
+enum OnboardingVisual { introduction, imagingDevice, monitoring }
 
 /// Static copy and visual configuration for a single onboarding slide.
 ///
@@ -36,41 +36,33 @@ class OnboardingSlideContent {
   final String? imageAsset;
 }
 
-/// The four onboarding slides, in order.
+/// The three onboarding slides, in order.
 ///
 /// To swap an illustration for a real render, set `imageAsset`, e.g.
 /// `imageAsset: 'assets/images/onboarding_device.png'`.
 const List<OnboardingSlideContent> onboardingSlides = [
   OnboardingSlideContent(
-    headline: 'A CLOSER\nLOOK AT\nYOUR SMILE.',
-    tagline: 'Your companion for AI-assisted dental screening.',
+    headline: 'MEET YOUR\nSMILE\nCOMPANION.',
+    tagline: 'Friendly, AI-assisted dental screening at home.',
     visual: OnboardingVisual.introduction,
-    visualDescription: 'A molar tooth floating above a flowing white form.',
-    // imageAsset: 'assets/images/onboarding_intro.png',
+    visualDescription:
+        'The DENTRA tooth-rabbit mascot waving hello from a pedestal, '
+        'with a toothbrush, bubbles and sparkles floating around it.',
   ),
   OnboardingSlideContent(
     headline: 'SEE\nBEYOND\nTHE OBVIOUS.',
     tagline: "Capture hard-to-reach areas with DENTRA's imaging device.",
     visual: OnboardingVisual.imagingDevice,
     visualDescription:
-        'A handheld intraoral imaging device positioned beside a tooth, '
-        'framed as it is captured.',
-    // imageAsset: 'assets/images/onboarding_device.png',
+        'A handheld intraoral imaging device scanning the DENTRA mascot, '
+        'who looks up at the lens.',
   ),
   OnboardingSlideContent(
-    headline: 'A SMARTER\nWAY TO\nLOOK CLOSER.',
-    tagline: 'Highlights potential concerns. Not a diagnosis.',
-    visual: OnboardingVisual.aiScreening,
-    visualDescription:
-        'A tooth being scanned, with fine outlines marking areas to review.',
-    // imageAsset: 'assets/images/onboarding_screening.png',
-  ),
-  OnboardingSlideContent(
-    headline: 'YOUR SMILE.\nYOUR\nJOURNEY.',
+    headline: 'YOUR SMILE.\nYOUR JOURNEY.',
     tagline: 'Track changes and know when to see a dentist.',
     visual: OnboardingVisual.monitoring,
     visualDescription:
-        'Three teeth along a timeline, representing check-ins over time.',
-    // imageAsset: 'assets/images/onboarding_monitoring.png',
+        'Teeth along a timeline, representing check-ins over time, ending '
+        'with the DENTRA mascot cheering beside a check mark.',
   ),
 ];

@@ -5,6 +5,7 @@ import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
 import 'package:dentra_mobile/features/onboarding/data/onboarding_content.dart';
 import 'package:dentra_mobile/features/onboarding/screens/onboarding_screen.dart';
 import 'package:dentra_mobile/features/onboarding/services/onboarding_storage.dart';
+import 'package:dentra_mobile/features/splash/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -18,13 +19,20 @@ Future<void> settle(WidgetTester tester) async {
   }
 }
 
+/// Runs the launch animation and its fade into the next screen.
+Future<void> _runSplash(WidgetTester tester) async {
+  for (var i = 0; i < 40; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 final _next = find.bySemanticsLabel('Next slide');
 final _previous = find.bySemanticsLabel('Previous slide');
 
 String _headline(int i) => onboardingSlides[i].headline;
 
 Future<void> _advanceToLast(WidgetTester tester) async {
-  for (var i = 0; i < 3; i++) {
+  for (var i = 0; i < 2; i++) {
     await tester.tap(_next);
     await settle(tester);
   }
@@ -48,26 +56,70 @@ void main() {
     await tester.pump();
   }
 
-  test('content defines exactly four slides with short copy', () {
-    expect(onboardingSlides, hasLength(4));
-    expect(_headline(0), 'A CLOSER\nLOOK AT\nYOUR SMILE.');
-    expect(_headline(3), 'YOUR SMILE.\nYOUR\nJOURNEY.');
+  test('content defines exactly three slides with short copy', () {
+    expect(onboardingSlides, hasLength(3));
+    expect(_headline(0), 'MEET YOUR\nSMILE\nCOMPANION.');
+    expect(_headline(2), 'YOUR SMILE.\nYOUR JOURNEY.');
     for (final slide in onboardingSlides) {
       expect(slide.tagline == null || slide.tagline!.length <= 60, isTrue);
     }
   });
 
-  testWidgets('first launch shows onboarding; completed launch shows login',
-      (tester) async {
+  testWidgets(
+      'first launch shows onboarding; completed launch plays the splash, '
+      'then shows login', (tester) async {
     await pumpApp(tester);
     expect(find.byType(OnboardingScreen), findsOneWidget);
 
     await pumpApp(tester, completed: true);
     expect(find.byType(OnboardingScreen), findsNothing);
+    expect(find.byType(SplashScreen), findsOneWidget);
+
+    // Run the launch animation out, then the fade into login.
+    await _runSplash(tester);
     expect(find.byType(LoginScreen), findsOneWidget);
+    // Login is the root screen: nothing to go back to.
+    expect(find.byTooltip('Back'), findsNothing);
   });
 
-  testWidgets('Next walks all four slides, Back returns', (tester) async {
+  testWidgets(
+      'a web refresh on #/home signed out still plays the splash, then '
+      'login with no back button', (tester) async {
+    tester.binding.platformDispatcher.defaultRouteNameTestValue = '/home';
+    addTearDown(
+        tester.binding.platformDispatcher.clearDefaultRouteNameTestValue);
+
+    await pumpApp(tester, completed: true);
+    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(find.byType(LoginScreen), findsNothing,
+        reason: 'nothing may be stacked over the splash from the URL');
+
+    await _runSplash(tester);
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byTooltip('Back'), findsNothing);
+  });
+
+  testWidgets('hot reload replays the splash, then login with no back button',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'onboarding.completed.v1': true,
+    });
+    await pumpApp(tester, completed: true);
+    await _runSplash(tester);
+    expect(find.byType(LoginScreen), findsOneWidget);
+
+    tester.binding.reassembleApplication();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(LoginScreen), findsNothing,
+        reason: 'the splash plays before login comes back');
+
+    await _runSplash(tester);
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byTooltip('Back'), findsNothing);
+  });
+
+  testWidgets('Next walks all three slides, Back returns', (tester) async {
     await pumpApp(tester);
 
     expect(find.text(_headline(0)), findsOneWidget);
@@ -82,7 +134,7 @@ void main() {
     expect(find.text(_headline(0)), findsOneWidget);
 
     await _advanceToLast(tester);
-    expect(find.text(_headline(3)), findsOneWidget);
+    expect(find.text(_headline(2)), findsOneWidget);
     expect(find.bySemanticsLabel('Get Started'), findsOneWidget);
     expect(find.bySemanticsLabel('Log in'), findsOneWidget);
     expect(_next, findsNothing);

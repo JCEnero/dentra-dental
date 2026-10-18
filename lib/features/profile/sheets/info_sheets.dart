@@ -15,9 +15,17 @@ Future<void> showPrivacyPolicySheet(BuildContext context) {
     builder: (_) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          ProfileContent.policyIntro,
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            color: AppColors.secondaryText,
+            height: 1.6,
+          ),
+        ),
         for (final (i, (heading, body))
             in ProfileContent.policySections.indexed) ...[
-          if (i > 0) const SizedBox(height: 18),
+          const SizedBox(height: 18),
           Semantics(
             header: true,
             child: Text(

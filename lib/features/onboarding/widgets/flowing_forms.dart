@@ -53,12 +53,6 @@ class FlowingForms extends StatelessWidget {
           _Ribbon.solid(y: [0.50, 0.32, 0.54, 0.24], t: [0.08, 0.17, 0.12]),
           _Ribbon.line(y: [0.60, 0.50, 0.66, 0.40]),
         ],
-      // A low, calm sweep that leaves the analysis frame uncluttered.
-      OnboardingVisual.aiScreening => const [
-          _Ribbon.sideForm(center: Offset(0.66, 0.10), radius: 0.36),
-          _Ribbon.veil(y: [0.30, 0.52, 0.30, 0.44], t: [0.06, 0.12, 0.06]),
-          _Ribbon.solid(y: [0.44, 0.56, 0.42, 0.50], t: [0.07, 0.13, 0.07]),
-        ],
       // A long, continuous path under the timeline of teeth.
       OnboardingVisual.monitoring => const [
           _Ribbon.sideForm(center: Offset(-0.60, -0.22), radius: 0.38),

@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../profile/data/profile_content.dart';
 import '../../notifications/data/notification_events.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../providers/auth_provider.dart';
@@ -249,21 +250,33 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
             'decisions.',
       );
 
+  // Same copy as Profile > Privacy policy, so the two never drift apart.
   void _openPrivacy() => _showInfoSheet(
         title: 'Privacy Policy',
-        body: 'DENTRA collects only the information necessary to provide its '
-            'services. Your dental imaging data is stored securely and is never '
-            'shared with third parties without your explicit consent. You may '
-            'request deletion of your data at any time from your profile '
-            'settings.',
+        subtitle: 'Last updated ${ProfileContent.policyUpdated}',
+        body: ProfileContent.policyIntro,
+        sections: ProfileContent.policySections,
       );
 
-  void _showInfoSheet({required String title, required String body}) {
+  void _showInfoSheet({
+    required String title,
+    required String body,
+    String? subtitle,
+    List<(String, String)> sections = const [],
+  }) {
+    final bodyStyle = GoogleFonts.outfit(
+      fontSize: 14,
+      color: AppColors.secondaryText,
+      height: 1.6,
+    );
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.white,
       isScrollControlled: true,
       showDragHandle: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+      ),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(AppRadius.xxl),
@@ -271,45 +284,74 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       ),
       builder: (sheetContext) => SafeArea(
         top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            0,
-            AppSpacing.lg,
-            AppSpacing.lg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Semantics(
-                header: true,
-                child: Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                    letterSpacing: -0.3,
-                  ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Long policies scroll while "Got it" stays reachable below.
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        title,
+                        style: GoogleFonts.outfit(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm + 4),
+                    Text(body, style: bodyStyle),
+                    for (final (i, (heading, text)) in sections.indexed) ...[
+                      const SizedBox(height: 18),
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          '${i + 1}. $heading',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(text, style: bodyStyle),
+                    ],
+                  ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm + 4),
-              Text(
-                body,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  color: AppColors.secondaryText,
-                  height: 1.6,
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.lg,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              AuthPillButton(
+              child: AuthPillButton(
                 label: 'Got it',
                 onPressed: () => Navigator.pop(sheetContext),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

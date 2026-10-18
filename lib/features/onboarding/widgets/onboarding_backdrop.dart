@@ -61,11 +61,6 @@ class OnboardingBackdrop extends StatelessWidget {
           stops: [0.0, 0.55, 1.0],
           glowCenter: Alignment(0.45, 0.1),
         ),
-      OnboardingVisual.aiScreening => const _Tone(
-          colors: [turquoise, mint, base],
-          stops: [0.0, 0.5, 1.0],
-          glowCenter: Alignment(0.0, 0.2),
-        ),
       OnboardingVisual.monitoring => _Tone(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

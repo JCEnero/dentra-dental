@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,56 +7,76 @@ import '../../../../core/constants/app_colors.dart';
 import '../onboarding_palette.dart';
 import 'ambient_motion.dart';
 import 'studio_stage.dart';
-import 'tooth_illustration.dart';
+import 'mascot.dart';
+import 'studio_props.dart';
 
 /// Slide 2: PLACEHOLDER illustration of DENTRA's intraoral imaging device.
 ///
 /// The real device design is not in the project, so this draws a generic
-/// slim intraoral wand (handle, tapered neck, side-facing lens) capturing a
-/// tooth. It shows no capabilities beyond "a handheld device captures an
-/// image". Replace it with a product render by setting `imageAsset` on the
-/// second entry in `onboardingSlides`.
+/// slim intraoral wand (handle, tapered neck, side-facing lens). The mascot
+/// stands in its field of view, looking up at the lens while a scan line
+/// sweeps over it. Replace it with a product render by setting `imageAsset`
+/// on the second entry in `onboardingSlides`.
 class DevicePlaceholderVisual extends StatelessWidget {
   const DevicePlaceholderVisual({super.key, required this.animate});
 
   final bool animate;
 
-  static const double _toothWidth = 72;
-  static const Rect _toothRect = Rect.fromLTWH(
-    200 - _toothWidth / 2,
-    240 - _toothWidth / ToothIllustration.aspectRatio / 2,
-    _toothWidth,
-    _toothWidth / ToothIllustration.aspectRatio,
-  );
+  static const Offset _floor = Offset(214, 298);
+  static const double _mascotWidth = 116;
+  static final Rect _mascotRect =
+      Mascot.rectStandingAt(_floor, _mascotWidth);
+
+  /// The character's visible extent (ears to feet), framed by the capture.
+  static final Rect _captureTarget = Rect.fromLTRB(
+    _mascotRect.left + _mascotRect.width * 0.08,
+    _mascotRect.top,
+    _mascotRect.right - _mascotRect.width * 0.02,
+    _floor.dy,
+  ).inflate(10);
+
+  /// Centre of the mascot's face, where the lens is aimed.
+  static final Offset _mascotFace = _mascotRect.topLeft +
+      const Offset(105, 160) * (_mascotWidth / Mascot.designSize.width);
 
   @override
   Widget build(BuildContext context) {
     return AmbientMotion(
       active: animate,
-      period: const Duration(milliseconds: 2600),
-      restingValue: 0.5,
-      child: const ToothIllustration(width: _toothWidth),
-      builder: (context, t, tooth) {
-        // Gentle status-light breathing.
-        final pulse = 0.5 + 0.5 * math.sin(t * 2 * math.pi);
+      period: const Duration(milliseconds: 5200),
+      restingValue: 0.2,
+      builder: (context, t, _) {
+        // Gentle status-light breathing, two breaths per loop.
+        final pulse = 0.5 + 0.5 * math.sin(t * 4 * math.pi);
         return Stack(
           clipBehavior: Clip.none,
           children: [
             StudioStage(
-              lightCenter: const Offset(176, 150),
+              lightCenter: const Offset(190, 160),
               floor: Rect.fromCenter(
-                center: Offset(_toothRect.center.dx, _toothRect.bottom + 14),
-                width: 96,
-                height: 14,
+                center: _floor.translate(0, 2),
+                width: 110,
+                height: 16,
               ),
             ),
-            Positioned.fromRect(rect: _toothRect, child: tooth!),
             CustomPaint(
               size: const Size.square(kVisualCanvas),
-              painter: _DevicePainter(
-                pulse: pulse,
-                captureTarget: _toothRect.inflate(12),
+              painter: _CapturePainter(
+                target: _captureTarget,
+                subject: _mascotFace,
               ),
+            ),
+            Positioned.fromRect(
+              rect: _mascotRect,
+              child: Mascot(width: _mascotWidth, rig: MascotRig.curious(t)),
+            ),
+            CustomPaint(
+              size: const Size.square(kVisualCanvas),
+              painter: _ScanPainter(t: t, target: _captureTarget),
+            ),
+            CustomPaint(
+              size: const Size.square(kVisualCanvas),
+              painter: _DevicePainter(pulse: pulse),
             ),
             if (kDebugMode)
               const Positioned(
@@ -70,36 +91,160 @@ class DevicePlaceholderVisual extends StatelessWidget {
   }
 }
 
+/// A scan line sweeping down the capture frame, twice per loop, with a soft
+/// trail and a pair of sparkles riding its ends.
+class _ScanPainter extends CustomPainter {
+  const _ScanPainter({required this.t, required this.target});
+
+  final double t;
+  final Rect target;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = (t * 2) % 1.0;
+    final eased = p * p * (3 - 2 * p);
+    final fade = math.min(1.0, math.min(p / 0.1, (1 - p) / 0.1));
+    final inner = target.deflate(6);
+    final y = inner.top + inner.height * eased;
+
+    canvas.save();
+    canvas.clipRect(inner);
+    final trail = Rect.fromLTRB(inner.left, y - 34, inner.right, y);
+    canvas.drawRect(
+      trail,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.white.withValues(alpha: 0.0),
+            AppColors.mintGreen.withValues(alpha: 0.28 * fade),
+          ],
+        ).createShader(trail),
+    );
+    canvas.drawLine(
+      Offset(inner.left, y),
+      Offset(inner.right, y),
+      Paint()
+        ..strokeWidth = 4
+        ..color = AppColors.g1.withValues(alpha: 0.5 * fade)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
+    canvas.drawLine(
+      Offset(inner.left, y),
+      Offset(inner.right, y),
+      Paint()
+        ..strokeWidth = 1.4
+        ..color = AppColors.white.withValues(alpha: 0.95 * fade),
+    );
+    canvas.restore();
+
+    StudioProps.sparkle(canvas, Offset(inner.left, y), 5, opacity: fade);
+    StudioProps.sparkle(canvas, Offset(inner.right, y), 5, opacity: fade);
+  }
+
+  @override
+  bool shouldRepaint(_ScanPainter old) => old.t != t || old.target != target;
+}
+
+/// Field of view and viewfinder, drawn behind the mascot.
+class _CapturePainter extends CustomPainter {
+  const _CapturePainter({required this.target, required this.subject});
+
+  final Rect target;
+  final Offset subject;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final lens = _DevicePainter.lensPosition();
+    _paintBeam(canvas, lens);
+    _paintViewfinder(canvas);
+  }
+
+  /// A soft beam of light from the lens, widening toward the subject.
+  void _paintBeam(Canvas canvas, Offset lens) {
+    final axis = subject - lens;
+    final normal = Offset(-axis.dy, axis.dx) / axis.distance;
+    const spread = 46.0;
+    final beam = Path()
+      ..moveTo(lens.dx, lens.dy)
+      ..lineTo(subject.dx + normal.dx * spread, subject.dy + normal.dy * spread)
+      ..lineTo(subject.dx - normal.dx * spread, subject.dy - normal.dy * spread)
+      ..close();
+    canvas.drawPath(
+      beam,
+      Paint()
+        ..shader = ui.Gradient.linear(lens, subject, [
+          AppColors.white.withValues(alpha: 0.45),
+          AppColors.white.withValues(alpha: 0.0),
+        ])
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+  }
+
+  /// Corner brackets marking the captured frame.
+  void _paintViewfinder(Canvas canvas) {
+    final r = target;
+    const arm = 12.0;
+    final paint = Paint()
+      ..color = AppColors.white.withValues(alpha: 0.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+    for (final (corner, dx, dy) in [
+      (r.topLeft, 1.0, 1.0),
+      (r.topRight, -1.0, 1.0),
+      (r.bottomLeft, 1.0, -1.0),
+      (r.bottomRight, -1.0, -1.0),
+    ]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(corner.dx + dx * arm, corner.dy)
+          ..lineTo(corner.dx, corner.dy)
+          ..lineTo(corner.dx, corner.dy + dy * arm),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CapturePainter old) => old.target != target;
+}
+
 class _DevicePainter extends CustomPainter {
-  const _DevicePainter({required this.pulse, required this.captureTarget});
+  const _DevicePainter({required this.pulse});
 
   final double pulse;
-  final Rect captureTarget;
 
   // Device axis: from the handle end to the head tip, in design space.
-  static const Offset _start = Offset(300, 34);
-  static const Offset _tip = Offset(124, 179);
+  static const Offset _start = Offset(304, 10);
+  static const Offset _tip = Offset(118, 140);
 
   // Proportions of a slim intraoral wand.
   static const double _halfHandle = 15;
   static const double _halfNeck = 7.5;
   static const double _halfHead = 10;
 
+  static Matrix4 _transform() {
+    final axis = _tip - _start;
+    return Matrix4.identity()
+      ..translateByDouble(_start.dx, _start.dy, 0, 1)
+      ..rotateZ(axis.direction);
+  }
+
+  static Offset _lensLocal() =>
+      Offset((_tip - _start).distance * 0.915, -_halfHead * 0.35);
+
+  /// Lens centre in design space, where the field of view starts.
+  static Offset lensPosition() =>
+      MatrixUtils.transformPoint(_transform(), _lensLocal());
+
   @override
   void paint(Canvas canvas, Size size) {
-    final axis = _tip - _start;
-    final length = axis.distance;
-    final angle = axis.direction;
-    final transform = Matrix4.identity()
-      ..translateByDouble(_start.dx, _start.dy, 0, 1)
-      ..rotateZ(angle);
-
+    final length = (_tip - _start).distance;
+    final transform = _transform();
     final body = _silhouette(length);
-    final lensLocal = Offset(length * 0.915, -_halfHead * 0.35);
-    final lens = MatrixUtils.transformPoint(transform, lensLocal);
-
-    _paintCaptureCone(canvas, lens);
-    _paintViewfinder(canvas);
+    final lensLocal = _lensLocal();
 
     // Soft shadow cast down and away from the key light.
     canvas.drawPath(
@@ -227,60 +372,8 @@ class _DevicePainter extends CustomPainter {
     canvas.drawCircle(c, 2.4, Paint()..color = AppColors.g1);
   }
 
-  /// A faint field of view from the lens toward the tooth.
-  void _paintCaptureCone(Canvas canvas, Offset lens) {
-    final cone = Path()
-      ..moveTo(lens.dx, lens.dy)
-      ..lineTo(captureTarget.right, captureTarget.top)
-      ..lineTo(captureTarget.left, captureTarget.bottom)
-      ..close();
-    canvas.drawPath(
-      cone,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.white.withValues(alpha: 0.28),
-            AppColors.white.withValues(alpha: 0.02),
-          ],
-        ).createShader(cone.getBounds()),
-    );
-    final edge = Paint()
-      ..color = AppColors.white.withValues(alpha: 0.35)
-      ..strokeWidth = 0.8;
-    canvas.drawLine(lens, captureTarget.topRight, edge);
-    canvas.drawLine(lens, captureTarget.bottomLeft, edge);
-  }
-
-  /// Corner brackets marking the captured frame.
-  void _paintViewfinder(Canvas canvas) {
-    final r = captureTarget;
-    const arm = 12.0;
-    final paint = Paint()
-      ..color = AppColors.white.withValues(alpha: 0.9)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round;
-    for (final (corner, dx, dy) in [
-      (r.topLeft, 1.0, 1.0),
-      (r.topRight, -1.0, 1.0),
-      (r.bottomLeft, 1.0, -1.0),
-      (r.bottomRight, -1.0, -1.0),
-    ]) {
-      canvas.drawPath(
-        Path()
-          ..moveTo(corner.dx + dx * arm, corner.dy)
-          ..lineTo(corner.dx, corner.dy)
-          ..lineTo(corner.dx, corner.dy + dy * arm),
-        paint,
-      );
-    }
-  }
-
   @override
-  bool shouldRepaint(_DevicePainter old) =>
-      old.pulse != pulse || old.captureTarget != captureTarget;
+  bool shouldRepaint(_DevicePainter old) => old.pulse != pulse;
 }
 
 /// Debug-only marker so nobody ships the placeholder by mistake.

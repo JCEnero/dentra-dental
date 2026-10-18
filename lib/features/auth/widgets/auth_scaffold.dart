@@ -127,7 +127,12 @@ class _AuthScaffoldState extends State<AuthScaffold>
                               child: _AuthHero(
                                 // Any auth screen pushed on top of another
                                 // gets a way back; the root login doesn't.
-                                onBack: Navigator.canPop(context)
+                                // Reactive (unlike Navigator.canPop), so a
+                                // screen that faded in over the splash
+                                // drops the button once the splash is gone.
+                                onBack: (ModalRoute.of(context)
+                                            ?.impliesAppBarDismissal ??
+                                        false)
                                     ? () => Navigator.maybePop(context)
                                     : null,
                                 title: widget.title,

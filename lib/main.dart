@@ -28,16 +28,13 @@ Future<void> main() async {
   // Signed-in users skip the login screen. Capped so a slow or offline
   // server never holds up launch; they just see login instead.
   final auth = AuthService.fromEnvironment();
-  final signedIn = await auth
+  await auth
       .restoreSession()
       .timeout(const Duration(seconds: 4), onTimeout: () => false);
   runApp(
     ProviderScope(
       overrides: [authServiceProvider.overrideWith((ref) => auth)],
-      child: DentraApp(
-        onboardingCompleted: onboardingCompleted,
-        signedIn: signedIn,
-      ),
+      child: DentraApp(onboardingCompleted: onboardingCompleted),
     ),
   );
 }

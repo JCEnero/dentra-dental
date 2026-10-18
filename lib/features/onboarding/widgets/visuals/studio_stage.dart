@@ -7,7 +7,7 @@ import '../onboarding_palette.dart';
 const double kVisualCanvas = 320;
 
 /// Shared staging for the onboarding illustrations: a soft white
-/// key-light pool and an optional floor shadow, so all four slides read as
+/// key-light pool and an optional floor shadow, so all three slides read as
 /// one studio set against the turquoise backdrop.
 class StudioStage extends StatelessWidget {
   const StudioStage({

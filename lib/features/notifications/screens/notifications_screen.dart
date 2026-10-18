@@ -13,7 +13,6 @@ import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../auth/screens/login_screen.dart';
 import '../../history/screens/screening_detail_screen.dart';
 import '../../screening/data/models/screening_session.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
@@ -228,10 +227,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   Future<void> _signInAgain() async {
     await ref.read(authServiceProvider).signOut();
     if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
+    // Signed out, the root SignedInGate shows sign-in: just close
+    // everything above it.
+    Navigator.of(context, rootNavigator: true)
+        .popUntil((route) => route.isFirst);
   }
 
   // ── Build ───────────────────────────────────────────────────────────────

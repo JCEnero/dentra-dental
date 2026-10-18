@@ -4,7 +4,6 @@ import '../../data/onboarding_content.dart';
 import 'device_visual.dart';
 import 'intro_visual.dart';
 import 'monitoring_visual.dart';
-import 'screening_visual.dart';
 import 'studio_stage.dart';
 
 /// Hero visual for a slide.
@@ -54,7 +53,6 @@ class OnboardingHeroVisual extends StatelessWidget {
       OnboardingVisual.introduction => IntroVisual(animate: animate),
       OnboardingVisual.imagingDevice =>
         DevicePlaceholderVisual(animate: animate),
-      OnboardingVisual.aiScreening => ScreeningVisual(animate: animate),
       OnboardingVisual.monitoring => MonitoringVisual(animate: animate),
     };
     return FittedBox(

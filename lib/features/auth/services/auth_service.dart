@@ -105,7 +105,8 @@ class AuthService extends ChangeNotifier {
     if (api == null || store == null) return false;
 
     final stored = await store.readRefreshToken();
-    if (stored == null) return false;
+    // Empty means a sign-out could only blank the token (see _endSession).
+    if (stored == null || stored.isEmpty) return false;
 
     try {
       await _startSession(await api.refresh(stored));
@@ -502,8 +503,20 @@ class AuthService extends ChangeNotifier {
     _accessToken = null;
     _accessTokenExpiresAt = null;
     _refreshToken = null;
-    await _tokenStore?.clear();
+    // Sign the user out in memory first, so a storage error can't keep
+    // them in.
     _clearUser();
+    final store = _tokenStore;
+    if (store == null) return;
+    try {
+      await store.clear();
+    } catch (_) {
+      // Deleting failed: blank the token instead, so the next launch
+      // can't restore this session from it.
+      try {
+        await store.writeRefreshToken('');
+      } catch (_) {}
+    }
   }
 
   /// Lets the next Google sign-in offer the account picker again.

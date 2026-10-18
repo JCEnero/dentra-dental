@@ -8,7 +8,6 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../auth/screens/login_screen.dart';
 import '../../notifications/data/models/app_notification.dart';
 import '../../notifications/data/notification_events.dart';
 import '../../notifications/providers/notifications_provider.dart';
@@ -206,14 +205,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (deleted && mounted) _goToSignIn('Your account has been deleted.');
   }
 
-  /// Clears the whole stack (shell, tabs, AI chat) so nothing from the
-  /// old session stays reachable with the back button.
+  /// Closes everything above the root screen. The session has ended, so
+  /// the root's [SignedInGate] already shows sign-in there: one login
+  /// screen, with nothing from the old session reachable behind it.
   void _goToSignIn(String message) {
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
+    Navigator.of(context, rootNavigator: true)
+        .popUntil((route) => route.isFirst);
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(

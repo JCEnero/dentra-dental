@@ -122,7 +122,9 @@ class _Headline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    var size = (width * 0.125).clamp(38.0, 60.0);
+    // Sized so the longest line ("YOUR JOURNEY.") fits a 360pt phone at
+    // full size; FittedBox only shrinks it further on narrower screens.
+    var size = (width * 0.098).clamp(30.0, 46.0);
     // On short screens give the hero more room.
     if (availableHeight < 520) {
       size *= (availableHeight / 520).clamp(0.78, 1.0);

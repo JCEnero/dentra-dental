@@ -23,7 +23,7 @@ enum OnboardingMode {
 
 enum _AuthDestination { login, registration }
 
-/// Four-slide introduction to DENTRA.
+/// Three-slide introduction to DENTRA.
 ///
 /// Slide copy and visuals come from `onboardingSlides`. This widget owns only
 /// navigation, completion, and hand-off to the auth screens.
