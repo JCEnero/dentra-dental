@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
+import 'onboarding_palette.dart';
 
-/// Understated pagination: small white dots, with the current step drawn as
-/// a short pill.
+/// Understated pagination on the white surface: small pale-teal dots, with
+/// the current step drawn as a short teal pill.
 class OnboardingProgressIndicator extends StatelessWidget {
   const OnboardingProgressIndicator({
     super.key,
@@ -30,12 +30,12 @@ class OnboardingProgressIndicator extends StatelessWidget {
                 duration: duration,
                 curve: Curves.easeOutCubic,
                 margin: EdgeInsets.only(right: i == count - 1 ? 0 : 6),
-                width: i == current ? 22 : 6,
+                width: i == current ? 24 : 6,
                 height: 6,
                 decoration: BoxDecoration(
                   color: i == current
-                      ? AppColors.white
-                      : AppColors.white.withValues(alpha: 0.4),
+                      ? OnboardingPalette.base
+                      : OnboardingPalette.base.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),

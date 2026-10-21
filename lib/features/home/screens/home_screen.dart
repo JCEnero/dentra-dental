@@ -12,11 +12,14 @@ import '../../../shared/widgets/primary_button.dart';
 import '../../../core/services/mock_data.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../ai_assistant/ai_chat_controller.dart';
+import '../../comparison/screens/comparison_screen.dart';
+import '../../history/screens/tooth_history_explorer.dart';
 import '../../treatment/screens/treatment_screen.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
 import '../../../core/utils/dentra_dates.dart';
+import '../widgets/screening_activity_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   final ValueChanged<int> onNavigate;
@@ -111,7 +114,6 @@ class HomeScreen extends ConsumerWidget {
                       color: AppColors.navy,
                     ),
                   ),
-
                 ],
               ),
             ),
@@ -125,8 +127,15 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   _ServiceButton(
                     glyph: _ServiceGlyph.tooth,
-                    label: 'My Teeth',
-                    onTap: () => onNavigate(2),
+                    label: 'Teeth',
+                    semanticLabel: 'Dental Explorer',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ToothHistoryExplorer(),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(width: 12),
                   _ServiceButton(
@@ -144,9 +153,20 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   _ServiceButton(
-                    glyph: _ServiceGlyph.trend,
-                    label: 'Reports',
-                    onTap: () => onNavigate(2),
+                    glyph: _ServiceGlyph.compare,
+                    label: 'Comparison',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (routeContext) => ComparisonScreen(
+                            onStartScreening: () {
+                              Navigator.of(routeContext).pop();
+                              onNavigate(1);
+                            },
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(width: 12),
                   _ServiceButton(
@@ -160,11 +180,22 @@ class HomeScreen extends ConsumerWidget {
 
             const SizedBox(height: 28),
 
-            // ── DENTAL HEALTH SCORE ───────────────────────────
+            // ── SCREENING HISTORY GRAPH ───────────────────────
             Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: _DentalHealthScoreCard(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const ScreeningActivityCard(),
+                  const SizedBox(height: 2),
+                  // Full history and reports live on the History tab.
+                  _LinkButton(
+                    label: 'View Full Reports',
+                    onTap: () => onNavigate(2),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 28),
@@ -597,16 +628,20 @@ class _StatusPill extends StatelessWidget {
 
 // ── Service button ────────────────────────────────────────────────
 
-enum _ServiceGlyph { tooth, capsule, scan, trend }
+enum _ServiceGlyph { tooth, capsule, scan, compare }
 
 class _ServiceButton extends StatelessWidget {
   final _ServiceGlyph glyph;
   final String label;
+
+  /// Fuller name for screen readers when the visible label is short.
+  final String? semanticLabel;
   final VoidCallback onTap;
 
   const _ServiceButton({
     required this.glyph,
     required this.label,
+    this.semanticLabel,
     required this.onTap,
   });
 
@@ -615,7 +650,7 @@ class _ServiceButton extends StatelessWidget {
     return Expanded(
       child: Semantics(
         button: true,
-        label: label,
+        label: semanticLabel ?? label,
         excludeSemantics: true,
         child: GlassCard(
           onTap: onTap,
@@ -735,169 +770,20 @@ class _ServiceGlyphPainter extends CustomPainter {
           ..close();
         canvas.drawPath(spark, fill);
 
-      case _ServiceGlyph.trend:
-        final area = Path()
-          ..moveTo(4.5, 16)
-          ..lineTo(9.5, 11)
-          ..lineTo(13, 14)
-          ..lineTo(19.5, 7.5)
-          ..lineTo(19.5, 20)
-          ..lineTo(4.5, 20)
-          ..close();
-        canvas.drawPath(area, tint);
-        final line = Path()
-          ..moveTo(4.5, 16)
-          ..lineTo(9.5, 11)
-          ..lineTo(13, 14)
-          ..lineTo(19.5, 7.5);
-        canvas.drawPath(line, stroke);
-        canvas.drawLine(const Offset(4, 20), const Offset(20, 20), stroke);
-        canvas.drawCircle(const Offset(19.5, 7.5), 1.9, fill);
+      case _ServiceGlyph.compare:
+        // Two frames side by side with a shared baseline: earlier | later.
+        final left = RRect.fromLTRBR(3.5, 6, 11, 18, const Radius.circular(2.2));
+        final right = RRect.fromLTRBR(13, 6, 20.5, 18, const Radius.circular(2.2));
+        canvas.drawRRect(right, tint);
+        canvas.drawRRect(left, stroke);
+        canvas.drawRRect(right, stroke);
+        canvas.drawLine(const Offset(12, 3.5), const Offset(12, 20.5), stroke);
+        canvas.drawCircle(const Offset(16.75, 12), 1.6, fill);
     }
   }
 
   @override
   bool shouldRepaint(_ServiceGlyphPainter old) => old.glyph != glyph;
-}
-
-// ── Dental Health Score card ──────────────────────────────────────
-
-class _DentalHealthScoreCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const double score = 0.85;
-    const int percent = 85;
-
-    return GlassCard(
-      borderRadius: BorderRadius.circular(20),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Dental Health Score',
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
-                ),
-              ),
-              const Icon(Icons.more_horiz_rounded,
-                  size: 20, color: AppColors.secondaryText),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              // Circular progress
-              SizedBox(
-                width: 80,
-                height: 80,
-                child: CustomPaint(
-                  painter: const _CircularScorePainter(score: score),
-                  child: Center(
-                    child: Text(
-                      '$percent%',
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 18),
-              // Right side text
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Great!',
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.navy,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.thumb_up_rounded,
-                          size: 18,
-                          color: AppColors.g2,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "You're doing an amazing job caring for your teeth.",
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: AppColors.secondaryText,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CircularScorePainter extends CustomPainter {
-  final double score; // 0.0 to 1.0
-
-  const _CircularScorePainter({required this.score});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const strokeWidth = 7.0;
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width / 2) - strokeWidth / 2;
-
-    // Background track
-    final trackPaint = Paint()
-      ..color = AppColors.border
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, trackPaint);
-
-    // Progress arc — teal gradient effect via single color
-    final progressPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF5DE8D8), Color(0xFF2CA6A4)],
-      ).createShader(Rect.fromCircle(center: center, radius: radius))
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final sweepAngle = 2 * math.pi * score;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2, // start at top
-      sweepAngle,
-      false,
-      progressPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_CircularScorePainter old) => old.score != score;
 }
 
 // ── Daily tip card ────────────────────────────────────────────────

@@ -1,3 +1,5 @@
+import '../../../dental_profile/data/models/dental_answers.dart';
+
 /// A finished scan session, as recorded in the user's screening history.
 ///
 /// JSON keys match the `screening_sessions` / `screening_captures` /
@@ -25,6 +27,11 @@ class ScreeningSession {
   /// AI analysis, only when an analysis service actually returned one.
   final ScreeningAnalysis? analysis;
 
+  /// What the user had reported in their dental profile when this
+  /// screening was saved. Self-reported, never a finding: show it apart
+  /// from [analysis]. Set by the server; null without a profile.
+  final ScreeningReportedContext? reportedContext;
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -36,6 +43,7 @@ class ScreeningSession {
     this.userId,
     this.captures = const [],
     this.analysis,
+    this.reportedContext,
     this.createdAt,
     this.updatedAt,
   });
@@ -66,6 +74,7 @@ class ScreeningSession {
       totalRegions: totalRegions,
       captures: captures ?? this.captures,
       analysis: analysis ?? this.analysis,
+      reportedContext: reportedContext,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -80,6 +89,7 @@ class ScreeningSession {
         'status': status.name,
         'captures': captures.map((c) => c.toJson()).toList(),
         'analysis': analysis?.toJson(),
+        'reported_context': reportedContext?.toJson(),
         'created_at': createdAt?.toUtc().toIso8601String(),
         'updated_at': updatedAt?.toUtc().toIso8601String(),
       };
@@ -94,6 +104,7 @@ class ScreeningSession {
     }
 
     final analysis = json['analysis'];
+    final context = json['reported_context'];
     return ScreeningSession(
       id: json['id'] as String,
       userId: pick<String>('user_id', 'userId'),
@@ -108,6 +119,9 @@ class ScreeningSession {
       analysis: analysis == null
           ? null
           : ScreeningAnalysis.fromJson(analysis as Map<String, dynamic>),
+      reportedContext: context == null
+          ? null
+          : ScreeningReportedContext.fromJson(context as Map<String, dynamic>),
       createdAt: date('created_at'),
       updatedAt: date('updated_at'),
     );
@@ -229,4 +243,60 @@ class ScreeningFinding {
         tooth: json['tooth'] as String?,
         confidence: (json['confidence'] as num?)?.toDouble(),
       );
+}
+
+/// User-reported context attached to a screening: a snapshot of the
+/// relevant dental profile answers when the session was first saved.
+///
+/// This is the user's own account, not something the model detected, and
+/// it is never sent to the image model. Reported symptoms don't confirm a
+/// finding, and no reported symptoms doesn't mean healthy teeth.
+class ScreeningReportedContext {
+  const ScreeningReportedContext({
+    required this.profileVersion,
+    required this.recordedAt,
+    this.currentConcerns = const {},
+    this.concernDuration,
+    this.discomfortLevel,
+    this.screeningGoals = const {},
+    this.difficultAreas = const {},
+    this.dentalAppliances = const {},
+  });
+
+  /// Dental profile version the snapshot was taken from.
+  final int profileVersion;
+  final DateTime recordedAt;
+  final Set<CurrentConcern> currentConcerns;
+  final ConcernDuration? concernDuration;
+  final DiscomfortLevel? discomfortLevel;
+  final Set<ScreeningGoal> screeningGoals;
+  final Set<DifficultArea> difficultAreas;
+  final Set<DentalAppliance> dentalAppliances;
+
+  /// Read through [DentalAnswers] so ids are parsed in one place.
+  factory ScreeningReportedContext.fromJson(Map<String, dynamic> json) {
+    final a = DentalAnswers.fromJson(json);
+    return ScreeningReportedContext(
+      profileVersion: json['profile_version'] as int? ?? 1,
+      recordedAt: DateTime.parse(json['recorded_at'] as String).toLocal(),
+      currentConcerns: a.currentConcerns,
+      concernDuration: a.concernDuration,
+      discomfortLevel: a.discomfortLevel,
+      screeningGoals: a.screeningGoals,
+      difficultAreas: a.difficultAreas,
+      dentalAppliances: a.dentalAppliances,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'source': 'user_reported',
+        'profile_version': profileVersion,
+        'current_concerns': [for (final c in currentConcerns) c.id],
+        'concern_duration': concernDuration?.id,
+        'discomfort_level': discomfortLevel?.id,
+        'screening_goals': [for (final g in screeningGoals) g.id],
+        'difficult_areas': [for (final d in difficultAreas) d.id],
+        'dental_appliances': [for (final d in dentalAppliances) d.id],
+        'recorded_at': recordedAt.toUtc().toIso8601String(),
+      };
 }

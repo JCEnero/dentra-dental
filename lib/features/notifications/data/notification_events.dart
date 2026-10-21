@@ -1,4 +1,3 @@
-import '../../../core/utils/dentra_dates.dart';
 import 'models/app_notification.dart';
 
 /// Notifications the app raises for real events. Each is built from what
@@ -16,21 +15,6 @@ abstract class NotificationEvents {
             'appear here.',
         createdAt: DateTime.now(),
       );
-
-  /// The user signed in with email and password on this device.
-  static AppNotification signedIn() {
-    final now = DateTime.now();
-    return AppNotification(
-      id: 'signin-${now.microsecondsSinceEpoch}',
-      category: NotificationCategory.security,
-      title: 'New sign-in',
-      body: 'Your account was signed in on this device on '
-          '${DentraDates.medium(now)} at ${DentraDates.time(now)}. '
-          "If this wasn't you, change your password.",
-      createdAt: now,
-      target: NotificationTarget.profile,
-    );
-  }
 
   static AppNotification passwordChanged() {
     final now = DateTime.now();

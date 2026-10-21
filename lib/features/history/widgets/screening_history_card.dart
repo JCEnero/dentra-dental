@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/dentra_dates.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../dental_records/widgets/record_source_label.dart';
 import '../../scan/data/scan_regions.dart';
 import '../../screening/data/models/screening_session.dart';
 
@@ -40,7 +41,8 @@ class ScreeningHistoryCard extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '${isLatest ? 'Latest screening' : 'Screening'}, '
+      label: '${RecordSource.aiScreening.label}. '
+          '${isLatest ? 'Latest screening' : 'Screening'}, '
           '${DentraDates.full(at)} at ${DentraDates.time(at)}. '
           '${session.status.label}, $captured of ${session.totalRegions} '
           'regions captured. Opens details.',
@@ -57,6 +59,8 @@ class ScreeningHistoryCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const RecordSourceLabel(source: RecordSource.aiScreening),
+                  const SizedBox(height: 8),
                   Text(
                     '${DentraDates.long(at)} · ${DentraDates.time(at)}',
                     style: GoogleFonts.outfit(

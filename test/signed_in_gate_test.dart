@@ -2,10 +2,13 @@ import 'package:dentra_mobile/app/app.dart';
 import 'package:dentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:dentra_mobile/features/auth/screens/login_screen.dart';
 import 'package:dentra_mobile/features/auth/services/auth_service.dart';
+import 'package:dentra_mobile/features/dental_profile/providers/dental_profile_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'support/fake_dental_profile_repository.dart';
 
 /// The app must never open without a live session, however it is reached.
 void main() {
@@ -65,13 +68,20 @@ void main() {
     expect(auth.isAuthenticated, isTrue);
     final navKey = GlobalKey<NavigatorState>();
     await tester.pumpWidget(ProviderScope(
-      overrides: [authServiceProvider.overrideWith((ref) => auth)],
+      overrides: [
+        authServiceProvider.overrideWith((ref) => auth),
+        // A returning user: dental onboarding already done.
+        dentalProfileRepositoryProvider
+            .overrideWithValue(FakeDentalProfileRepository.completed()),
+      ],
       child: MaterialApp(
         navigatorKey: navKey,
         home: const SignedInGate(app: Scaffold(body: Text('APP'))),
       ),
     ));
+    // The gate first confirms onboarding is done.
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('APP'), findsOneWidget);
 
     // A screen above the shell, like notifications, then sign out the way

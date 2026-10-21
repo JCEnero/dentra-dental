@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dentra_mobile/features/auth/screens/login_screen.dart';
+import 'package:dentra_mobile/features/auth/screens/sign_in_loading_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/reset_password_screen.dart';
 import 'package:flutter/material.dart';
@@ -113,14 +114,22 @@ void main() {
     );
   });
 
-  testWidgets('successful login replaces the stack with /home', (tester) async {
+  testWidgets('successful login shows the loader, then replaces the stack '
+      'with /home', (tester) async {
     await pumpLogin(tester);
     await tester.enterText(_email, 'jane@example.com');
     await tester.enterText(_password, 'secret123');
     await tester.tap(_logIn);
     await settle(tester, steps: 20);
 
+    expect(find.byType(SignInLoadingScreen), findsOneWidget);
+    expect(find.text('HOME'), findsNothing);
+
+    // The loader leaves on its own; wait out its exit and the route fade.
+    await tester.pumpAndSettle();
+
     expect(find.text('HOME'), findsOneWidget);
+    expect(find.byType(SignInLoadingScreen), findsNothing);
     expect(find.byType(LoginScreen), findsNothing);
   });
 

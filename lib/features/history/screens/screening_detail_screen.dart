@@ -1,6 +1,4 @@
-import 'dart:math' as math;
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,8 +10,10 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/dentra_dates.dart';
 import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../shared/widgets/dentra_image_viewer.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../dental_records/widgets/record_source_label.dart';
 import '../../scan/data/scan_regions.dart';
 import '../../scan/widgets/scan_result_view.dart' show ScanDisclaimer;
 import '../../scan/widgets/visuals/region_visual.dart';
@@ -220,6 +220,8 @@ class _Summary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const RecordSourceHeader(source: RecordSource.aiScreening),
+          const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -324,79 +326,13 @@ class _Images extends StatelessWidget {
             _ImageTile(
               size: size,
               image: image,
-              thumbnail: _CoverResizeImage(image, pixels),
+              thumbnail: CoverResizeImage(image, pixels),
               label: scanRegionById(id).label,
             ),
         ],
       );
     });
   }
-}
-
-/// Decodes [image] just large enough to cover a [pixels]-wide square,
-/// keeping its aspect ratio, so a grid tile doesn't hold a full camera
-/// frame in memory. Never upscales.
-///
-/// Unlike `cacheWidth`, this works out the target from the photo's own
-/// aspect ratio, so landscape photos stay sharp under [BoxFit.cover].
-class _CoverResizeImage extends ImageProvider<_CoverResizeKey> {
-  const _CoverResizeImage(this.image, this.pixels);
-
-  final ImageProvider image;
-  final int pixels;
-
-  @override
-  Future<_CoverResizeKey> obtainKey(ImageConfiguration configuration) =>
-      image
-          .obtainKey(configuration)
-          .then((inner) => _CoverResizeKey(inner, pixels));
-
-  @override
-  ImageStreamCompleter loadImage(
-    _CoverResizeKey key,
-    ImageDecoderCallback decode,
-  ) {
-    return image.loadImage(
-      key.inner,
-      (buffer, {getTargetSize}) => decode(
-        buffer,
-        getTargetSize: (width, height) {
-          final scale = math.max(pixels / width, pixels / height);
-          if (scale >= 1) return ui.TargetImageSize(width: width, height: height);
-          return ui.TargetImageSize(
-            width: (width * scale).ceil(),
-            height: (height * scale).ceil(),
-          );
-        },
-      ),
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is _CoverResizeImage &&
-      other.image == image &&
-      other.pixels == pixels;
-
-  @override
-  int get hashCode => Object.hash(image, pixels);
-}
-
-@immutable
-class _CoverResizeKey {
-  const _CoverResizeKey(this.inner, this.pixels);
-
-  final Object inner;
-  final int pixels;
-
-  @override
-  bool operator ==(Object other) =>
-      other is _CoverResizeKey &&
-      other.inner == inner &&
-      other.pixels == pixels;
-
-  @override
-  int get hashCode => Object.hash(inner, pixels);
 }
 
 class _ImageTile extends StatelessWidget {
@@ -416,45 +352,11 @@ class _ImageTile extends StatelessWidget {
   final ImageProvider thumbnail;
   final String label;
 
-  void _open(BuildContext context) {
-    showGlassDialog<void>(
-      context: context,
-      builder: (dialogContext) => GestureDetector(
-        onTap: () => Navigator.of(dialogContext).pop(),
-        child: Material(
-          type: MaterialType.transparency,
-          child: SafeArea(
-            child: Stack(
-              children: [
-                Center(
-                  child: InteractiveViewer(
-                    maxScale: 4,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image(image: image, fit: BoxFit.contain),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: IconButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    tooltip: 'Close',
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.white.withValues(alpha: 0.85),
-                      foregroundColor: AppColors.navy,
-                    ),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  void _open(BuildContext context) => showDentraImageViewer(
+        context,
+        image: image,
+        caption: 'AI Screening · $label',
+      );
 
   @override
   Widget build(BuildContext context) {

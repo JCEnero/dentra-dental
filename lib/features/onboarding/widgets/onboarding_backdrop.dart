@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import '../data/onboarding_content.dart';
 import 'onboarding_palette.dart';
 
-/// Full-bleed turquoise background for a slide.
+/// Full-bleed turquoise background, one tone per [OnboardingVisual].
 ///
-/// Each slide is a different direction and blend of the Home tab's
-/// cyan-mint → turquoise gradient, with a soft mint glow behind the hero
-/// visual.
+/// Each tone is a different direction and blend of the Home tab's
+/// cyan-mint → turquoise gradient, with a soft mint glow. The auth screens
+/// use the final slide's tone behind their hero.
 class OnboardingBackdrop extends StatelessWidget {
   const OnboardingBackdrop({super.key, required this.visual});
 
@@ -54,7 +54,7 @@ class OnboardingBackdrop extends StatelessWidget {
           stops: const [0.0, 0.5, 1.0],
           glowCenter: const Alignment(0.0, 0.15),
         ),
-      OnboardingVisual.imagingDevice => const _Tone(
+      OnboardingVisual.screening => const _Tone(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
           colors: [mint, turquoise, base],

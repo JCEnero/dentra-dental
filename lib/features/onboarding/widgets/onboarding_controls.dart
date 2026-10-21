@@ -4,9 +4,9 @@ import '../../../core/constants/app_colors.dart';
 import 'onboarding_palette.dart';
 import 'onboarding_progress_indicator.dart';
 
-/// Bottom controls: pagination on the left; on the right, a ghost Back
-/// button and a white circular Next button that expands into a
-/// "Get Started" pill on the final slide.
+/// Bottom controls on the white surface: pagination on the left; on the
+/// right, an outlined Back button and a teal circular Next button that
+/// expands into a "Get Started" pill on the final slide.
 class OnboardingControls extends StatelessWidget {
   const OnboardingControls({
     super.key,
@@ -16,6 +16,7 @@ class OnboardingControls extends StatelessWidget {
     required this.onNext,
     required this.onBack,
     required this.isBusy,
+    required this.buttonSize,
     this.isPrimaryLoading = false,
   });
 
@@ -30,10 +31,12 @@ class OnboardingControls extends StatelessWidget {
   /// True while onboarding is exiting. Disables every action.
   final bool isBusy;
 
+  /// Diameter of the round buttons and height of the pill.
+  final double buttonSize;
+
   /// Shows a spinner in the primary button (when it triggered the exit).
   final bool isPrimaryLoading;
 
-  static const double _buttonSize = 56;
   static const double _gap = 12;
 
   bool get _isLast => currentIndex == slideCount - 1;
@@ -48,8 +51,8 @@ class OnboardingControls extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Leave room for the pagination (~60) and the back button.
-        final pillWidth = (constraints.maxWidth - 60 - _buttonSize - _gap * 2)
-            .clamp(_buttonSize, 220.0);
+        final pillWidth = (constraints.maxWidth - 60 - buttonSize - _gap * 2)
+            .clamp(buttonSize, 220.0);
 
         return Row(
           children: [
@@ -65,8 +68,8 @@ class OnboardingControls extends StatelessWidget {
                 ignoring: !showBack,
                 child: ExcludeSemantics(
                   excluding: !showBack,
-                  child: _GhostCircleButton(
-                    size: _buttonSize,
+                  child: _OutlinedCircleButton(
+                    size: buttonSize,
                     onTap: isBusy ? null : onBack,
                   ),
                 ),
@@ -74,7 +77,7 @@ class OnboardingControls extends StatelessWidget {
             ),
             const SizedBox(width: _gap),
             _PrimaryMorphButton(
-              size: _buttonSize,
+              size: buttonSize,
               expandedWidth: pillWidth,
               expanded: _isLast,
               label: finalLabel,
@@ -89,8 +92,8 @@ class OnboardingControls extends StatelessWidget {
   }
 }
 
-class _GhostCircleButton extends StatelessWidget {
-  const _GhostCircleButton({required this.size, required this.onTap});
+class _OutlinedCircleButton extends StatelessWidget {
+  const _OutlinedCircleButton({required this.size, required this.onTap});
 
   final double size;
   final VoidCallback? onTap;
@@ -102,11 +105,11 @@ class _GhostCircleButton extends StatelessWidget {
       label: 'Previous slide',
       excludeSemantics: true,
       child: Material(
-        type: MaterialType.transparency,
+        color: AppColors.white,
         shape: CircleBorder(
           side: BorderSide(
-            color: AppColors.white.withValues(alpha: 0.55),
-            width: 1.4,
+            color: OnboardingPalette.base.withValues(alpha: 0.30),
+            width: 1.2,
           ),
         ),
         clipBehavior: Clip.antiAlias,
@@ -117,7 +120,7 @@ class _GhostCircleButton extends StatelessWidget {
             child: const Icon(
               Icons.arrow_back_rounded,
               size: 22,
-              color: AppColors.white,
+              color: OnboardingPalette.ink,
             ),
           ),
         ),
@@ -126,7 +129,9 @@ class _GhostCircleButton extends StatelessWidget {
   }
 }
 
-/// White circle with a teal arrow that morphs into a wide pill with a label.
+/// Teal circle with a white arrow that morphs into a wide pill with a label.
+/// Same gradient and shadow as the auth screens' primary pill, so the hand-off
+/// to registration feels continuous.
 class _PrimaryMorphButton extends StatelessWidget {
   const _PrimaryMorphButton({
     required this.size,
@@ -148,7 +153,7 @@ class _PrimaryMorphButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const ink = OnboardingPalette.base;
+    const ink = AppColors.white;
 
     final Widget content;
     if (loading) {
@@ -174,7 +179,7 @@ class _PrimaryMorphButton extends StatelessWidget {
                 maxLines: 1,
                 style: GoogleFonts.outfit(
                   fontSize: 16,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
                   color: ink,
                 ),
@@ -204,12 +209,16 @@ class _PrimaryMorphButton extends StatelessWidget {
         width: expanded ? expandedWidth : size,
         height: size,
         decoration: BoxDecoration(
-          color: AppColors.white,
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [OnboardingPalette.turquoise, OnboardingPalette.base],
+          ),
           borderRadius: BorderRadius.circular(size / 2),
           boxShadow: [
             BoxShadow(
-              color: OnboardingPalette.shadow.withValues(alpha: 0.35),
-              blurRadius: 20,
+              color: OnboardingPalette.shadow.withValues(alpha: 0.28),
+              blurRadius: 18,
               offset: const Offset(0, 8),
             ),
           ],

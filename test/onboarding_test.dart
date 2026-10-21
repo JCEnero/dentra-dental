@@ -56,14 +56,50 @@ void main() {
     await tester.pump();
   }
 
-  test('content defines exactly three slides with short copy', () {
+  test('content defines exactly three slides with the welcome copy', () {
     expect(onboardingSlides, hasLength(3));
-    expect(_headline(0), 'MEET YOUR\nSMILE\nCOMPANION.');
-    expect(_headline(2), 'YOUR SMILE.\nYOUR JOURNEY.');
-    for (final slide in onboardingSlides) {
-      expect(slide.tagline == null || slide.tagline!.length <= 60, isTrue);
-    }
+    expect(_headline(0), 'Meet DENTRA');
+    expect(_headline(1), 'See Your Smile Differently');
+    expect(_headline(2), 'Your Smile, Your Journey');
+    expect(onboardingSlides[0].description,
+        'Your companion for smarter oral health monitoring.');
+    expect(
+        onboardingSlides[1].description,
+        'Explore AI-assisted dental screening designed to help you monitor '
+        'your oral health.');
+    expect(
+        onboardingSlides[2].description,
+        'Keep track of your screening history and stay informed about your '
+        'oral health over time.');
   });
+
+  for (final (name, size, textScale) in const [
+    ('small phone', Size(320, 568), 1.0),
+    ('small phone, large text', Size(360, 640), 1.6),
+    ('large phone', Size(430, 932), 1.0),
+    ('tablet', Size(820, 1180), 1.0),
+  ]) {
+    testWidgets('every slide lays out without overflow on a $name',
+        (tester) async {
+      tester.view.physicalSize = size * 2;
+      tester.view.devicePixelRatio = 2;
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await tester.pumpWidget(const MaterialApp(home: OnboardingScreen()));
+      await tester.pump();
+      for (var i = 0; i < 3; i++) {
+        expect(find.text(_headline(i)), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        if (i < 2) {
+          await tester.tap(_next);
+          await settle(tester);
+        }
+      }
+      expect(find.bySemanticsLabel('Get Started'), findsOneWidget);
+    });
+  }
 
   testWidgets(
       'first launch shows onboarding; completed launch plays the splash, '

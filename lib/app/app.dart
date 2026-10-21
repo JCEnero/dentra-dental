@@ -14,6 +14,7 @@ import '../features/ai_assistant/ai_chat_controller.dart';
 import '../features/ai_assistant/ai_assistant.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/providers/auth_provider.dart';
+import '../features/dental_profile/widgets/dental_onboarding_gate.dart';
 import '../features/onboarding/screens/onboarding_screen.dart';
 import '../features/onboarding/services/onboarding_storage.dart';
 import '../features/splash/screens/splash_screen.dart';
@@ -73,9 +74,26 @@ class _DentraAppState extends ConsumerState<DentraApp> {
       onGenerateInitialRoutes: (_) => [
         MaterialPageRoute<void>(builder: (_) => _start),
       ],
-      routes: {
-        '/home': (_) => const SignedInGate(),
-      },
+      // '/home' fades in (with a slight settle) so the hand-off from the
+      // sign-in loading screen stays seamless.
+      onGenerateRoute: (settings) => settings.name == '/home'
+          ? PageRouteBuilder<void>(
+              settings: settings,
+              pageBuilder: (_, __, ___) => const SignedInGate(),
+              transitionsBuilder: (_, anim, __, child) {
+                final curved =
+                    CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+                return FadeTransition(
+                  opacity: curved,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 1.03, end: 1).animate(curved),
+                    child: child,
+                  ),
+                );
+              },
+              transitionDuration: const Duration(milliseconds: 420),
+            )
+          : null,
     );
   }
 }
@@ -83,7 +101,8 @@ class _DentraAppState extends ConsumerState<DentraApp> {
 /// Shows the app only while a session is live; sign-in otherwise. Every
 /// way into the app goes through here, so no route, stale flag or hot
 /// reload can open it signed out. Swaps to sign-in as soon as the
-/// session ends.
+/// session ends. Signed-in users who haven't completed their dental
+/// profile get the onboarding questionnaire first.
 class SignedInGate extends ConsumerWidget {
   const SignedInGate({super.key, this.app = const AppShell()});
 
@@ -94,7 +113,7 @@ class SignedInGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final signedIn = ref.watch(authServiceProvider).isAuthenticated;
-    return signedIn ? app : const LoginScreen();
+    return signedIn ? DentalOnboardingGate(app: app) : const LoginScreen();
   }
 }
 

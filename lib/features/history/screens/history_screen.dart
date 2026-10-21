@@ -9,14 +9,18 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/dentra_dates.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
-import '../../screening/data/models/screening_session.dart';
+import '../../dental_records/data/models/dental_record.dart';
+import '../../dental_records/providers/dental_records_provider.dart';
+import '../../dental_records/widgets/add_record_sheet.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
 import '../state/history_controller.dart';
+import '../state/history_entry.dart';
 import '../state/history_query.dart';
 import '../widgets/history_calendar.dart';
 import '../widgets/history_filter_sheet.dart';
+import '../widgets/record_history_card.dart';
 import '../widgets/screening_history_card.dart';
-import 'screening_detail_screen.dart';
+import '../widgets/tooth_history.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key, this.onBack, this.onNavigate});
@@ -66,22 +70,33 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (_searchOpen) setState(() => _searchOpen = false);
   }
 
-  void _open(ScreeningSession s) {
+  void _open(HistoryEntry entry) {
     FocusScope.of(context).unfocus();
-    Navigator.of(context, rootNavigator: true)
-        .push(ScreeningDetailScreen.route(s.id));
+    openHistoryEntry(context, entry);
   }
+
+  Future<void> _refresh() => Future.wait([
+        ref.refresh(screeningSessionsProvider.future),
+        // A records failure is shown by the banner, not the pull-to-refresh.
+        ref
+            .refresh(dentalRecordsProvider.future)
+            .catchError((Object _) => const <DentalRecord>[]),
+      ]);
 
   @override
   Widget build(BuildContext context) {
-    final sessionsAsync = ref.watch(screeningSessionsProvider);
+    final entriesAsync = ref.watch(historyEntriesProvider);
+    final recordsFailed = ref.watch(
+        dentalRecordsProvider.select((r) => r.hasError && !r.isLoading));
     final view = ref.watch(historyControllerProvider);
     final results = ref.watch(historyResultsProvider);
-    final all = sessionsAsync.valueOrNull ?? const <ScreeningSession>[];
+    final all = entriesAsync.valueOrNull ?? const <HistoryEntry>[];
 
     final thisMonth = DentraDates.monthOf(DateTime.now());
-    final earliest =
-        all.isEmpty ? thisMonth : DentraDates.monthOf(all.last.completedAt);
+    final earliest = all.isEmpty
+        ? thisMonth
+        : DentraDates.monthOf(
+            all.map((e) => e.at).reduce((a, b) => a.isBefore(b) ? a : b));
 
     return SafeArea(
       bottom: false,
@@ -90,11 +105,17 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         children: [
           // ── HEADER ──────────────────────────────────────────
           DentraPageHeader(
-            title: 'Screening History',
+            title: 'Dental History',
             onBack: widget.onBack,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                _HeaderButton(
+                  icon: Icons.add_rounded,
+                  tooltip: 'Add a clinic visit, photo or note',
+                  onPressed: () => showAddRecordSheet(context),
+                ),
+                const SizedBox(width: 8),
                 _HeaderButton(
                   icon: _searchOpen ? Icons.search_off_rounded : Icons.search_rounded,
                   tooltip: _searchOpen ? 'Close search' : 'Search history',
@@ -130,7 +151,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           Expanded(
             child: RefreshIndicator(
               color: AppColors.primary,
-              onRefresh: () => ref.refresh(screeningSessionsProvider.future),
+              onRefresh: _refresh,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
@@ -149,15 +170,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             month: view.month,
                             weekStart: view.weekStart,
                             selectedDay: view.usesCalendar ? view.day : null,
-                            markedDays: {
-                              for (final s in all)
-                                DentraDates.dateOnly(s.completedAt),
-                            },
+                            markedDays: {for (final e in all) e.day},
                             dimmed: !view.usesCalendar,
                             canGoBack: view.month.isAfter(earliest),
                             canGoForward: view.month.isBefore(thisMonth),
                             onShiftMonth: (d) =>
-                                _controller.shiftMonth(d, sessions: all),
+                                _controller.shiftMonth(d, entries: all),
                             onShiftWeek: _controller.shiftWeek,
                             onDayTap: (day) {
                               // Picking a day returns to calendar mode.
@@ -165,6 +183,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                               _controller.toggleDay(day);
                             },
                           ),
+                          if (recordsFailed)
+                            _RecordsErrorBanner(
+                              onRetry: () => ref.invalidate(dentalRecordsProvider),
+                            ),
                           _ListHeader(
                             view: view,
                             count: results.valueOrNull?.length,
@@ -186,8 +208,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Widget _buildResults(
-    AsyncValue<List<ScreeningSession>> results,
-    List<ScreeningSession> all,
+    AsyncValue<List<HistoryEntry>> results,
+    List<HistoryEntry> all,
     HistoryViewState view,
   ) {
     final Widget child;
@@ -201,7 +223,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         actions: [
           DentraPillButton(
             label: 'Try again',
-            onPressed: () => ref.invalidate(screeningSessionsProvider),
+            onPressed: () {
+              ref.invalidate(screeningSessionsProvider);
+              ref.invalidate(dentalRecordsProvider);
+            },
           ),
         ],
       );
@@ -223,8 +248,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         key: ValueKey(
             '${view.month}${view.day}${view.query}${view.filters.activeCount}'
             '${view.filters.sort}'),
-        sessions: results.requireValue,
-        latestId: all.firstOrNull?.id,
+        entries: results.requireValue,
+        latestScreeningKey: all.whereType<ScreeningEntry>().firstOrNull?.key,
         grouped: !view.usesCalendar,
         onOpen: _open,
       );
@@ -251,20 +276,27 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  Widget _emptyState(List<ScreeningSession> all, HistoryViewState view) {
+  Widget _emptyState(List<HistoryEntry> all, HistoryViewState view) {
     if (all.isEmpty) {
       return HistoryMessage(
         key: const ValueKey('empty-all'),
         icon: Icons.document_scanner_outlined,
-        title: 'No screenings yet',
-        message: 'Your completed screenings will appear here.',
+        title: 'Nothing in your history yet',
+        message: 'Completed screenings appear here. You can also add clinic '
+            'visits, photos and notes.',
         actions: [
           if (widget.onNavigate != null)
             DentraPillButton(
               label: 'Start a screening',
-              icon: Icons.add_rounded,
+              icon: Icons.document_scanner_outlined,
               onPressed: () => widget.onNavigate!(HistoryScreen.scanTab),
             ),
+          DentraPillButton(
+            label: 'Add a visit, photo or note',
+            variant: DentraButtonVariant.outline,
+            icon: Icons.add_rounded,
+            onPressed: () => showAddRecordSheet(context),
+          ),
         ],
       );
     }
@@ -272,11 +304,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       return HistoryMessage(
         key: const ValueKey('empty-filtered'),
         icon: Icons.search_off_rounded,
-        title: 'No matching screenings',
+        title: 'Nothing matches',
         message: view.isSearching
             ? 'Nothing matches "${view.query.trim()}". Try a date like '
-                '"Sep 7" or a region like "upper left".'
-            : 'No screenings match these filters.',
+                '"Sep 7", a clinic name or "tooth 26".'
+            : 'No history items match these filters.',
         actions: [
           DentraPillButton(
             label: 'Reset search and filters',
@@ -290,8 +322,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       return HistoryMessage(
         key: const ValueKey('empty-day'),
         icon: Icons.event_busy_outlined,
-        title: 'No screening on ${DentraDates.medium(view.day!)}',
-        message: 'Days with a dot have screenings.',
+        title: 'Nothing recorded on ${DentraDates.medium(view.day!)}',
+        message: 'Days with a dot have history items.',
         actions: [
           DentraPillButton(
             label: 'Show all of ${DentraDates.monthNames[view.month.month - 1]}',
@@ -301,22 +333,22 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         ],
       );
     }
-    final latest = all.first.completedAt;
+    final latest = all.first.at;
     return HistoryMessage(
       key: const ValueKey('empty-month'),
       icon: Icons.event_note_outlined,
-      title: 'No screenings in ${DentraDates.monthYear(view.month)}',
-      message: 'Your latest screening was on ${DentraDates.medium(latest)}.',
+      title: 'Nothing in ${DentraDates.monthYear(view.month)}',
+      message: 'Your latest history item is from ${DentraDates.medium(latest)}.',
       actions: [
         DentraPillButton(
-          label: 'Go to latest screening',
+          label: 'Go to latest',
           onPressed: () {
-            _controller.goToMonth(latest, sessions: all);
+            _controller.goToMonth(latest, entries: all);
             _controller.toggleDay(latest);
           },
         ),
         DentraPillButton(
-          label: 'View all screenings',
+          label: 'View all history',
           variant: DentraButtonVariant.outline,
           onPressed: () => _controller.setFilters(
             view.filters.copyWith(scope: HistoryScope.allTime),
@@ -415,7 +447,7 @@ class _SearchField extends StatelessWidget {
         textInputAction: TextInputAction.search,
         style: GoogleFonts.outfit(fontSize: 14, color: AppColors.navy),
         decoration: InputDecoration(
-          hintText: 'Search by date, region or status',
+          hintText: 'Search dates, clinics, notes or teeth',
           hintStyle: GoogleFonts.outfit(
             fontSize: 14,
             color: AppColors.secondaryText.withValues(alpha: 0.7),
@@ -468,7 +500,7 @@ class _ListHeader extends StatelessWidget {
     final title = view.isSearching
         ? 'Search results'
         : !view.usesCalendar
-            ? 'All screenings'
+            ? 'All history'
             : view.day != null
                 ? DentraDates.long(view.day!)
                 : DentraDates.monthYear(view.month);
@@ -504,7 +536,7 @@ class _ListHeader extends StatelessWidget {
                 ),
                 if (count != null)
                   Text(
-                    '$count ${count == 1 ? 'screening' : 'screenings'}',
+                    '$count ${count == 1 ? 'item' : 'items'}',
                     style: GoogleFonts.outfit(
                       fontSize: 12,
                       color: AppColors.secondaryText,
@@ -545,26 +577,28 @@ class _HeaderLink extends StatelessWidget {
 class _ResultsList extends StatelessWidget {
   const _ResultsList({
     super.key,
-    required this.sessions,
-    required this.latestId,
+    required this.entries,
+    required this.latestScreeningKey,
     required this.grouped,
     required this.onOpen,
   });
 
-  final List<ScreeningSession> sessions;
-  final String? latestId;
+  final List<HistoryEntry> entries;
+
+  /// The newest screening overall, labelled "Latest".
+  final String? latestScreeningKey;
 
   /// Adds month headings, for lists that span many months.
   final bool grouped;
-  final ValueChanged<ScreeningSession> onOpen;
+  final ValueChanged<HistoryEntry> onOpen;
 
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[];
     DateTime? month;
-    for (var i = 0; i < sessions.length; i++) {
-      final s = sessions[i];
-      final m = DentraDates.monthOf(s.completedAt);
+    var screenings = 0;
+    for (final e in entries) {
+      final m = DentraDates.monthOf(e.at);
       if (grouped && m != month) {
         children.add(Padding(
           padding: EdgeInsets.fromLTRB(4, children.isEmpty ? 0 : 10, 4, 8),
@@ -582,17 +616,74 @@ class _ResultsList extends StatelessWidget {
       } else if (children.isNotEmpty) {
         children.add(const SizedBox(height: 10));
       }
-      children.add(ScreeningHistoryCard(
-        key: ValueKey(s.id),
-        session: s,
-        isLatest: s.id == latestId,
-        alternate: i.isOdd,
-        onTap: () => onOpen(s),
-      ));
+      children.add(switch (e) {
+        ScreeningEntry(:final session) => ScreeningHistoryCard(
+            key: ValueKey(e.key),
+            session: session,
+            isLatest: e.key == latestScreeningKey,
+            alternate: (screenings++).isOdd,
+            onTap: () => onOpen(e),
+          ),
+        RecordEntry(:final record) => RecordHistoryCard(
+            key: ValueKey(e.key),
+            record: record,
+            onTap: () => onOpen(e),
+          ),
+      });
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: children,
+    );
+  }
+}
+
+/// Shown when screenings loaded but the user's own records didn't.
+class _RecordsErrorBanner extends StatelessWidget {
+  const _RecordsErrorBanner({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.08),
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: AppColors.danger.withValues(alpha: 0.28)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.danger),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Your clinic visits, photos and notes couldn't load.",
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.g2,
+                minimumSize: const Size(44, 44),
+              ),
+              child: Text(
+                'Retry',
+                style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

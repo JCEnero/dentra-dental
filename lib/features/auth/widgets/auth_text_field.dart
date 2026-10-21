@@ -26,6 +26,13 @@ class AuthTextField extends StatelessWidget {
   /// Restricts what can be typed, e.g. digits only for a code.
   final List<TextInputFormatter>? inputFormatters;
 
+  /// Multi-line input when [maxLines] is above 1 (or null to grow).
+  final int? minLines;
+  final int? maxLines;
+
+  /// Caps the length; the limit is enforced without showing a counter.
+  final int? maxLength;
+
   const AuthTextField({
     super.key,
     required this.label,
@@ -42,6 +49,9 @@ class AuthTextField extends StatelessWidget {
     this.autofillHints,
     this.textCapitalization = TextCapitalization.none,
     this.inputFormatters,
+    this.minLines,
+    this.maxLines = 1,
+    this.maxLength,
   });
 
   @override
@@ -73,7 +83,12 @@ class AuthTextField extends StatelessWidget {
           autofocus: autofocus,
           autofillHints: autofillHints,
           textCapitalization: textCapitalization,
-          inputFormatters: inputFormatters,
+          inputFormatters: [
+            ...?inputFormatters,
+            if (maxLength != null) LengthLimitingTextInputFormatter(maxLength),
+          ],
+          minLines: minLines,
+          maxLines: maxLines,
           autocorrect: !isEmail,
           enableSuggestions: !isEmail,
           onChanged: onChanged,

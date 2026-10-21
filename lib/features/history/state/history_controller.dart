@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/dentra_dates.dart';
-import '../../screening/data/models/screening_session.dart';
-import '../../screening/providers/screening_sessions_provider.dart';
+import 'history_entry.dart';
 import 'history_query.dart';
 
 /// Calendar position, search and filters for the History tab.
@@ -17,16 +16,13 @@ class HistoryController extends Notifier<HistoryViewState> {
   }
 
   /// Shows [month] and a sensible week inside it: the week of its latest
-  /// screening, today's week for the current month, else the first week.
-  void goToMonth(DateTime month, {List<ScreeningSession> sessions = const []}) {
+  /// history item, today's week for the current month, else the first week.
+  void goToMonth(DateTime month, {List<HistoryEntry> entries = const []}) {
     final m = DentraDates.monthOf(month);
     final now = DateTime.now();
-    final inMonth =
-        sessions.where((s) => DentraDates.sameMonth(s.completedAt, m));
+    final inMonth = entries.where((e) => DentraDates.sameMonth(e.at, m));
     final anchor = inMonth.isNotEmpty
-        ? inMonth
-            .map((s) => s.completedAt)
-            .reduce((a, b) => a.isAfter(b) ? a : b)
+        ? inMonth.map((e) => e.at).reduce((a, b) => a.isAfter(b) ? a : b)
         : DentraDates.sameMonth(now, m)
             ? now
             : m;
@@ -37,8 +33,8 @@ class HistoryController extends Notifier<HistoryViewState> {
     );
   }
 
-  void shiftMonth(int delta, {List<ScreeningSession> sessions = const []}) =>
-      goToMonth(DentraDates.addMonths(state.month, delta), sessions: sessions);
+  void shiftMonth(int delta, {List<HistoryEntry> entries = const []}) =>
+      goToMonth(DentraDates.addMonths(state.month, delta), entries: entries);
 
   /// Moves the week strip; the month follows when the week crosses over.
   void shiftWeek(int delta) {
@@ -87,11 +83,10 @@ class HistoryController extends Notifier<HistoryViewState> {
 final historyControllerProvider =
     NotifierProvider<HistoryController, HistoryViewState>(HistoryController.new);
 
-/// The records the list shows, recomputed when history or the view changes.
-final historyResultsProvider =
-    Provider<AsyncValue<List<ScreeningSession>>>((ref) {
+/// The items the list shows, recomputed when history or the view changes.
+final historyResultsProvider = Provider<AsyncValue<List<HistoryEntry>>>((ref) {
   final view = ref.watch(historyControllerProvider);
   return ref
-      .watch(screeningSessionsProvider)
+      .watch(historyEntriesProvider)
       .whenData((all) => applyHistoryQuery(all, view));
 });

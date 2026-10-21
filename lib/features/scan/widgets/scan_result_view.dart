@@ -1,8 +1,11 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../dental_profile/providers/dental_profile_providers.dart';
+import '../../dental_profile/widgets/prompt_care_note.dart';
 import '../data/scan_regions.dart';
 import '../providers/scan_session_provider.dart';
 import '../services/screening_analysis_service.dart';
@@ -201,6 +204,7 @@ class _Done extends StatelessWidget {
             ],
           ],
         ),
+        const _ReportedCareNote(),
         const SizedBox(height: 14),
         const ScanDisclaimer(),
       ],
@@ -223,6 +227,25 @@ class _Done extends StatelessWidget {
       'December',
     ];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+}
+
+/// Care advice from what the user reported (severe discomfort in their
+/// dental profile). Shown next to the result, never folded into it, and
+/// no screening result removes it.
+class _ReportedCareNote extends ConsumerWidget {
+  const _ReportedCareNote();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(dentalProfileProvider).valueOrNull;
+    if (profile == null || !profile.answers.needsPromptCare) {
+      return const SizedBox.shrink();
+    }
+    return const Padding(
+      padding: EdgeInsets.only(top: 14),
+      child: PromptCareNote(),
+    );
   }
 }
 

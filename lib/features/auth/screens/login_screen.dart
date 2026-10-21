@@ -6,14 +6,13 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../notifications/data/notification_events.dart';
-import '../../notifications/providers/notifications_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
 import '../widgets/auth_widgets.dart';
 import 'registration_screen.dart';
 import 'reset_password_screen.dart';
+import 'sign_in_loading_screen.dart';
 import 'verify_email_screen.dart';
 
 /// Sign-in screen, built on the shared [AuthScaffold].
@@ -141,9 +140,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      unawaited(ref
-          .read(notificationsProvider.notifier)
-          .record(NotificationEvents.signedIn()));
       // Keep the loading state so the button cannot fire again mid-transition.
       _navigateToApp();
       return;
@@ -186,9 +182,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      unawaited(ref
-          .read(notificationsProvider.notifier)
-          .record(NotificationEvents.signedIn()));
       _navigateToApp();
       return;
     }
@@ -251,8 +244,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
 
   void _navigateToApp() {
-    // Replace the entire navigation stack with the main app shell.
-    Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
+    // Replace the whole stack with the loading screen, which hands off
+    // to '/home' once its animation ends.
+    Navigator.of(context).pushAndRemoveUntil(
+      SignInLoadingScreen.route(name: _authService.currentDisplayName),
+      (_) => false,
+    );
   }
 
   void _goToRegister() {

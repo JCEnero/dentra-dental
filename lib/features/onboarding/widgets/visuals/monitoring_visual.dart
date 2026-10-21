@@ -1,202 +1,177 @@
 import 'dart:math' as math;
+import 'dart:ui' show PathMetric;
+
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../onboarding_palette.dart';
 import 'ambient_motion.dart';
-import 'mascot.dart';
-import 'studio_props.dart';
-import 'studio_stage.dart';
-import 'tooth_illustration.dart';
+import 'onboarding_hero_visual.dart';
+import 'tooth_glyph.dart';
 
-/// Slide 3: past check-ins recede along a timeline toward the latest one,
-/// where the mascot hops and cheers under falling confetti and a check
-/// badge. A dashed path continues forward. It shows continuity over time
-/// without any data or scores.
+/// Slide 3: a screening history as a gently rising timeline. Three past
+/// check-ins (small glass nodes with a tooth) lead to a larger node with a
+/// check mark; a soft light travels the path. No numbers or data.
 class MonitoringVisual extends StatelessWidget {
   const MonitoringVisual({super.key, required this.animate});
 
   final bool animate;
 
-  /// Check-ins from oldest to latest: centre x, width, baseline y, opacity.
-  /// The latest is the mascot; its width is the mascot's.
-  static const List<({double x, double width, double base, double opacity})>
-      _checkIns = [
-    (x: 62, width: 56, base: 226, opacity: 0.45),
-    (x: 128, width: 80, base: 232, opacity: 0.7),
-    (x: 230, width: 118, base: 238, opacity: 1.0),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final latest = _checkIns.last;
     return AmbientMotion(
       active: animate,
-      period: const Duration(milliseconds: 5600),
-      // Grounded between hops, arms up: a complete frame when motion is off.
-      restingValue: 0.7,
-      builder: (context, t, _) {
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            const StudioStage(lightCenter: Offset(200, 150)),
-            const CustomPaint(
-              size: Size.square(kVisualCanvas),
-              painter: _TimelinePainter(),
-            ),
-            for (final c in _checkIns.take(_checkIns.length - 1))
-              Positioned(
-                left: c.x - c.width / 2,
-                top: c.base - c.width / ToothIllustration.aspectRatio - 6,
-                child: Opacity(
-                  opacity: c.opacity,
-                  child: ToothIllustration(width: c.width),
-                ),
-              ),
-            CustomPaint(
-              size: const Size.square(kVisualCanvas),
-              painter: _CelebrationPainter(t: t, front: false),
-            ),
-            Positioned.fromRect(
-              rect: Mascot.rectStandingAt(
-                Offset(latest.x, latest.base + 10),
-                latest.width,
-              ),
-              child: Mascot(width: latest.width, rig: MascotRig.cheer(t)),
-            ),
-            CustomPaint(
-              size: const Size.square(kVisualCanvas),
-              painter: _CelebrationPainter(t: t, front: true),
-            ),
-          ],
-        );
-      },
+      period: const Duration(milliseconds: 5200),
+      restingValue: 0.0,
+      builder: (context, t, _) => CustomPaint(
+        size: const Size.square(kVisualCanvas),
+        painter: _MonitoringPainter(t),
+      ),
     );
   }
 }
 
-/// Confetti and sparkles around the latest check-in, plus a check badge that
-/// pops gently with each hop.
-class _CelebrationPainter extends CustomPainter {
-  const _CelebrationPainter({required this.t, required this.front});
+class _MonitoringPainter extends CustomPainter {
+  _MonitoringPainter(this.t);
 
   final double t;
-  final bool front;
+
+  static const double _baseline = 262;
+  static const List<double> _checkIns = [0.0, 0.32, 0.62];
+
+  static final Path _path = Path()
+    ..moveTo(46, 232)
+    ..cubicTo(102, 236, 128, 190, 168, 166)
+    ..cubicTo(204, 144, 230, 112, 262, 98);
+  static final PathMetric _metric = _path.computeMetrics().first;
+
+  Offset _at(double fraction) =>
+      _metric.getTangentForOffset(_metric.length * fraction)!.position;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (!front) {
-      StudioProps.confetti(
-          canvas, const Rect.fromLTWH(150, 4, 160, 200), t, count: 14);
-      for (final (at, r, phase) in const [
-        (Offset(40, 150), 6.0, 0.0),
-        (Offset(98, 96), 4.5, 0.5),
-        (Offset(300, 100), 5.0, 0.25),
-      ]) {
-        final twinkle = 0.5 + 0.5 * math.sin((t * 2 + phase) * 2 * math.pi);
-        StudioProps.sparkle(
-          canvas,
-          at,
-          r * (0.45 + 0.55 * twinkle),
-          opacity: 0.35 + 0.65 * twinkle,
-        );
-      }
-      return;
+    final end = _at(1);
+
+    // Baseline and drop lines, like a quiet timeline axis.
+    final guide = Paint()
+      ..strokeWidth = 1
+      ..color = AppColors.white.withValues(alpha: 0.24);
+    canvas.drawLine(
+      const Offset(30, _baseline),
+      const Offset(290, _baseline),
+      guide,
+    );
+    for (final f in [..._checkIns, 1.0]) {
+      _dashedDrop(canvas, _at(f), guide);
     }
 
-    final pop = math.sin(t * 4 * math.pi).abs();
-    const badge = Offset(150, 84);
-    // Expanding halo once per loop.
-    final ring = t;
-    canvas.drawCircle(
-      badge,
-      15 + ring * 16,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4
-        ..color = AppColors.white.withValues(alpha: 0.6 * (1 - ring)),
-    );
-    StudioProps.checkBadge(
-      canvas,
-      badge.translate(0, -pop * 3),
-      14 + pop * 1.2,
-    );
-    StudioProps.confetti(
-        canvas, const Rect.fromLTWH(170, 0, 130, 230), (t + 0.5) % 1.0,
-        count: 6);
-  }
-
-  @override
-  bool shouldRepaint(_CelebrationPainter old) =>
-      old.t != t || old.front != front;
-}
-
-/// A gentle path through the base of each check-in that continues beyond the
-/// latest one as a dashed line (the journey ahead).
-class _TimelinePainter extends CustomPainter {
-  const _TimelinePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final nodes = [
-      for (final c in MonitoringVisual._checkIns) Offset(c.x, c.base + 14),
-    ];
-
-    final travelled = Path()
-      ..moveTo(18, nodes.first.dy - 6)
-      ..quadraticBezierTo(40, nodes.first.dy, nodes[0].dx, nodes[0].dy)
-      ..quadraticBezierTo(
-        (nodes[0].dx + nodes[1].dx) / 2,
-        nodes[0].dy + 8,
-        nodes[1].dx,
-        nodes[1].dy,
+    // Track, then the path itself.
+    canvas
+      ..drawPath(
+        _path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 7
+          ..strokeCap = StrokeCap.round
+          ..color = AppColors.white.withValues(alpha: 0.14),
       )
-      ..quadraticBezierTo(
-        (nodes[1].dx + nodes[2].dx) / 2,
-        nodes[1].dy + 8,
-        nodes[2].dx,
-        nodes[2].dy,
+      ..drawPath(
+        _path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.6
+          ..strokeCap = StrokeCap.round
+          ..color = AppColors.white.withValues(alpha: 0.92),
       );
-    canvas.drawPath(
-      travelled,
+
+    // Light travelling the path, easing in and out.
+    final travel = Curves.easeInOutCubic.transform(t);
+    final light = _at(travel);
+    final fade = math.sin(t * math.pi);
+    canvas
+      ..drawCircle(
+        light,
+        11,
+        Paint()
+          ..color = AppColors.white.withValues(alpha: 0.45 * fade)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+      )
+      ..drawCircle(
+        light,
+        3.2,
+        Paint()..color = AppColors.white.withValues(alpha: fade),
+      );
+
+    // Past check-ins.
+    for (final f in _checkIns) {
+      final at = _at(f);
+      _glassNode(canvas, at, 16);
+      final tooth = ToothGlyph.rectAt(at, 12.5);
+      canvas.drawPath(
+        ToothGlyph.outline(tooth),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..strokeJoin = StrokeJoin.round
+          ..color = OnboardingPalette.ink,
+      );
+    }
+
+    // Latest check-in: a pulse ring, then the check mark.
+    final pulse = Curves.easeOut.transform(t);
+    canvas.drawCircle(
+      end,
+      30 + pulse * 16,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.4
-        ..strokeCap = StrokeCap.round
-        ..color = AppColors.white.withValues(alpha: 0.75),
+        ..color = AppColors.white.withValues(alpha: 0.55 * (1 - pulse)),
     );
+    _glassNode(canvas, end, 30);
+    paintCheckMark(canvas, end, 30, OnboardingPalette.ink, strokeWidth: 3.6);
+  }
 
-    // Dashed continuation toward the right edge.
-    final dash = Paint()
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round
-      ..color = AppColors.white.withValues(alpha: 0.45);
-    for (var x = nodes.last.dx + 14; x < size.width - 10; x += 9) {
-      final y = nodes.last.dy - (x - nodes.last.dx) * 0.12;
-      canvas.drawLine(Offset(x, y), Offset(x + 4, y - 0.5), dash);
-    }
+  void _glassNode(Canvas canvas, Offset at, double radius) {
+    final rect = Rect.fromCircle(center: at, radius: radius);
+    canvas
+      ..drawCircle(
+        at.translate(0, radius * 0.25),
+        radius,
+        Paint()
+          ..color = OnboardingPalette.shadow.withValues(alpha: 0.28)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * 0.45),
+      )
+      ..drawCircle(
+        at,
+        radius,
+        Paint()
+          ..shader = const RadialGradient(
+            center: Alignment(-0.35, -0.45),
+            radius: 1.1,
+            colors: [AppColors.white, OnboardingPalette.mist],
+          ).createShader(rect),
+      )
+      ..drawCircle(
+        at,
+        radius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = AppColors.white,
+      );
+  }
 
-    for (final (i, node) in nodes.indexed) {
-      final isLatest = i == nodes.length - 1;
-      if (isLatest) {
-        canvas.drawCircle(
-          node,
-          11,
-          Paint()..color = AppColors.white.withValues(alpha: 0.22),
-        );
-        canvas.drawCircle(node, 5.5, Paint()..color = AppColors.white);
-      } else {
-        canvas.drawCircle(node, 4, Paint()..color = AppColors.g2);
-        canvas.drawCircle(
-          node,
-          4,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.4
-            ..color = AppColors.white.withValues(alpha: 0.8),
-        );
-      }
+  void _dashedDrop(Canvas canvas, Offset from, Paint paint) {
+    const dash = 4.0;
+    const gap = 5.0;
+    for (var y = from.dy + 12; y < _baseline - 2; y += dash + gap) {
+      canvas.drawLine(
+        Offset(from.dx, y),
+        Offset(from.dx, math.min(y + dash, _baseline - 2)),
+        paint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(_TimelinePainter old) => false;
+  bool shouldRepaint(_MonitoringPainter old) => old.t != t;
 }

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../dental_records/data/models/dental_record.dart';
 import '../../scan/data/scan_regions.dart';
 import '../../screening/data/models/screening_session.dart';
 import '../state/history_controller.dart';
@@ -15,7 +16,7 @@ Future<void> showHistoryFilterSheet(BuildContext context) {
   return showGlassSheet<void>(
     context: context,
     title: 'Filter & sort',
-    subtitle: 'Narrow your screening history.',
+    subtitle: 'Narrow your dental history.',
     builder: (_) => const _FilterBody(),
   );
 }
@@ -51,7 +52,27 @@ class _FilterBody extends ConsumerWidget {
               ),
           ],
         ),
-        const _Label('Status'),
+        const _Label('Source'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            DentraChoiceChip(
+              label: 'All sources',
+              selected: filters.sources.isEmpty,
+              onSelected: () => set(filters.copyWith(sources: const {})),
+            ),
+            for (final source in RecordSource.values)
+              DentraChoiceChip(
+                label: source.label,
+                selected: filters.sources.contains(source),
+                onSelected: () => set(filters.copyWith(
+                  sources: toggle(filters.sources, source),
+                )),
+              ),
+          ],
+        ),
+        const _Label('Screening status', hint: 'AI screenings only'),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -71,7 +92,7 @@ class _FilterBody extends ConsumerWidget {
               ),
           ],
         ),
-        const _Label('Region captured'),
+        const _Label('Region captured', hint: 'AI screenings only'),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -126,9 +147,12 @@ class _FilterBody extends ConsumerWidget {
 }
 
 class _Label extends StatelessWidget {
-  const _Label(this.text);
+  const _Label(this.text, {this.hint});
 
   final String text;
+
+  /// Short qualifier after the label, e.g. which records it applies to.
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -136,8 +160,20 @@ class _Label extends StatelessWidget {
       padding: const EdgeInsets.only(top: 18, bottom: 10),
       child: Semantics(
         header: true,
-        child: Text(
-          text.toUpperCase(),
+        child: Text.rich(
+          TextSpan(
+            text: text.toUpperCase(),
+            children: [
+              if (hint != null)
+                TextSpan(
+                  text: '  ·  $hint',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0,
+                  ),
+                ),
+            ],
+          ),
           style: GoogleFonts.outfit(
             fontSize: 12,
             fontWeight: FontWeight.w700,

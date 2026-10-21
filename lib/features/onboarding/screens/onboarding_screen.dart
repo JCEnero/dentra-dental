@@ -11,6 +11,7 @@ import '../services/onboarding_storage.dart';
 import '../widgets/onboarding_controls.dart';
 import '../widgets/onboarding_palette.dart';
 import '../widgets/onboarding_slide_view.dart';
+import '../widgets/onboarding_stage.dart';
 
 enum OnboardingMode {
   /// Shown on first launch. Finishing persists completion and hands off to
@@ -147,12 +148,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
     }
 
+    final geometry = OnboardingGeometry.of(context);
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // Light status/navigation bar icons over the teal backdrop.
+      // Light status bar icons over the teal stage; dark navigation bar
+      // icons over the white surface.
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: OnboardingPalette.base,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: OnboardingPalette.surfaceTint,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: PopScope(
         // System back steps through slides before leaving onboarding.
@@ -161,9 +165,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           if (!didPop) _back();
         },
         child: Scaffold(
-          backgroundColor: OnboardingPalette.base,
+          backgroundColor: AppColors.white,
           body: Stack(
             children: [
+              Positioned.fill(
+                child: OnboardingStage(
+                  pageController: _pageController,
+                  geometry: geometry,
+                ),
+              ),
               PageView.builder(
                 controller: _pageController,
                 itemCount: _slides.length,
@@ -173,40 +183,44 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   index: i,
                   pageController: _pageController,
                   isActive: i == _index,
+                  geometry: geometry,
                 ),
               ),
               // Overlaid chrome. Empty areas let swipes reach the PageView.
-              SafeArea(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: kOnboardingMaxContentWidth,
-                    ),
-                    child: Column(
-                      children: [
-                        _Header(action: headerAction, enabled: !_isBusy),
-                        const Spacer(),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            AppSpacing.lg,
-                            0,
-                            AppSpacing.lg,
-                            MediaQuery.paddingOf(context).bottom > 0
-                                ? AppSpacing.sm
-                                : AppSpacing.lg,
-                          ),
-                          child: OnboardingControls(
-                            slideCount: _slides.length,
-                            currentIndex: _index,
-                            finalLabel: _isReplay ? 'Done' : 'Get Started',
-                            onNext: _next,
-                            onBack: _back,
-                            isBusy: _isBusy,
-                            isPrimaryLoading: _pendingDestination ==
-                                _AuthDestination.registration,
-                          ),
-                        ),
-                      ],
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  bottom: false,
+                  child: _Centered(
+                    child: _Header(action: headerAction, enabled: !_isBusy),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: geometry.controlsBottomPadding,
+                child: SafeArea(
+                  top: false,
+                  bottom: false,
+                  child: _Centered(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      child: OnboardingControls(
+                        slideCount: _slides.length,
+                        currentIndex: _index,
+                        finalLabel: _isReplay ? 'Done' : 'Get Started',
+                        onNext: _next,
+                        onBack: _back,
+                        isBusy: _isBusy,
+                        buttonSize: kOnboardingButtonSize,
+                        isPrimaryLoading: _pendingDestination ==
+                            _AuthDestination.registration,
+                      ),
                     ),
                   ),
                 ),
@@ -214,6 +228,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Centres chrome at the content column's maximum width.
+class _Centered extends StatelessWidget {
+  const _Centered({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: kOnboardingMaxContentWidth,
+        ),
+        child: child,
       ),
     );
   }
@@ -245,60 +278,74 @@ class _Header extends StatelessWidget {
         ? Duration.zero
         : const Duration(milliseconds: 220);
 
-    return SizedBox(
-      height: kOnboardingHeaderExtent,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          0,
-          AppSpacing.md,
-          0,
-        ),
-        child: Row(
-          children: [
-            Semantics(
-              label: 'DENTRA',
-              excludeSemantics: true,
-              child: const DentraLogo(onDark: true, size: 0.72),
-            ),
-            const Spacer(),
-            AnimatedSwitcher(
-              duration: duration,
-              child: Semantics(
-                key: ValueKey(action.label),
-                label: action.semanticLabel,
-                button: true,
-                excludeSemantics: true,
-                child: TextButton(
-                  onPressed: enabled ? action.onTap : null,
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(48, 44),
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    foregroundColor: AppColors.white,
-                    shape: action.outlined
-                        ? StadiumBorder(
-                            side: BorderSide(
-                              color: AppColors.white.withValues(alpha: 0.7),
-                              width: 1.2,
-                            ),
-                          )
-                        : const StadiumBorder(),
+    // Chrome in a fixed-height bar: cap text growth so the logo and action
+    // always fit side by side; the logo shrinks if space is still short.
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.3,
+      child: SizedBox(
+        height: kOnboardingHeaderExtent,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.md,
+            0,
+          ),
+          child: Row(
+            children: [
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Semantics(
+                    label: 'DENTRA',
+                    excludeSemantics: true,
+                    child: const DentraLogo(onDark: true, size: 0.72),
                   ),
-                  child: Text(
-                    action.label,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight:
-                          action.outlined ? FontWeight.w700 : FontWeight.w600,
-                      color: AppColors.white.withValues(
-                        alpha: action.outlined ? 1.0 : 0.85,
+                ),
+              ),
+              const Spacer(),
+              AnimatedSwitcher(
+                duration: duration,
+                child: Semantics(
+                  key: ValueKey(action.label),
+                  label: action.semanticLabel,
+                  button: true,
+                  excludeSemantics: true,
+                  child: TextButton(
+                    onPressed: enabled ? action.onTap : null,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(48, 40),
+                      tapTargetSize: MaterialTapTargetSize.padded,
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      foregroundColor: AppColors.white,
+                      // Outlined for Log In; a soft frosted pill otherwise.
+                      backgroundColor: action.outlined
+                          ? Colors.transparent
+                          : AppColors.white.withValues(alpha: 0.16),
+                      shape: StadiumBorder(
+                        side: BorderSide(
+                          color: AppColors.white.withValues(
+                            alpha: action.outlined ? 0.75 : 0.32,
+                          ),
+                          width: action.outlined ? 1.2 : 1,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      action.label,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight:
+                            action.outlined ? FontWeight.w700 : FontWeight.w600,
+                        color: AppColors.white,
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -8,6 +8,10 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../dental_profile/data/dental_profile_repository.dart';
+import '../../dental_profile/data/models/dental_answers.dart';
+import '../../dental_profile/providers/dental_profile_providers.dart';
+import '../../dental_profile/screens/dental_questionnaire_screen.dart';
 import '../../notifications/data/models/app_notification.dart';
 import '../../notifications/data/notification_events.dart';
 import '../../notifications/providers/notifications_provider.dart';
@@ -48,6 +52,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _avatarBusy = false;
   bool _twoFactorBusy = false;
   bool _signingOut = false;
+  bool _dentalProfileBusy = false;
 
   /// Records an account or security event in the notification center.
   void _notify(AppNotification notification) {
@@ -99,6 +104,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
     } finally {
       if (mounted) setState(() => _avatarBusy = false);
+    }
+  }
+
+  /// Opens the saved questionnaire answers for review and editing,
+  /// loading the latest copy from the server first.
+  Future<void> _editDentalProfile() async {
+    if (_dentalProfileBusy) return;
+    setState(() => _dentalProfileBusy = true);
+    DentalProfile? profile;
+    String? error;
+    try {
+      profile = await ref.refresh(dentalProfileProvider.future);
+    } on DentalProfileException catch (e) {
+      error = e.message;
+    } catch (_) {
+      error = "Couldn't open your dental profile. Please try again.";
+    }
+    if (!mounted) return;
+    setState(() => _dentalProfileBusy = false);
+    if (profile == null) {
+      showDentraSnack(
+        context,
+        error ?? "Your dental profile isn't set up yet.",
+        tone: DentraFeedbackTone.error,
+        onRetry: _editDentalProfile,
+      );
+      return;
+    }
+
+    final saved = await Navigator.of(context, rootNavigator: true)
+        .push(DentalQuestionnaireScreen.editRoute(profile));
+    if (saved == true && mounted) {
+      showDentraSnack(context, 'Dental profile updated.');
     }
   }
 
@@ -314,6 +352,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ProfileSettingsGroup(
                 title: 'Data & privacy',
                 children: [
+                  ProfileSettingsTile(
+                    icon: Icons.medical_information_outlined,
+                    title: 'Dental profile',
+                    subtitle: 'Dental history, concerns and screening goals',
+                    trailing: _dentalProfileBusy
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : null,
+                    onTap: _editDentalProfile,
+                  ),
                   ProfileSettingsTile(
                     icon: Icons.history_rounded,
                     title: 'Screening history',

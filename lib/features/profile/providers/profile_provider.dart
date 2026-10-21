@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../ai_assistant/ai_chat_controller.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/auth_service.dart';
+import '../../dental_profile/providers/dental_profile_providers.dart';
+import '../../dental_records/data/dental_record_repository.dart';
+import '../../dental_records/providers/dental_records_provider.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
 import '../data/models/user_profile.dart';
@@ -117,10 +120,17 @@ class ProfileNotifier extends AsyncNotifier<UserProfile> {
       try {
         await ref.read(notificationRepositoryProvider).deleteAll(userId);
         await AiChatController.deleteStoredHistory(userId);
+        // An unsent dental questionnaire; the saved profile goes with the
+        // account (ON DELETE CASCADE).
+        await ref.read(questionnaireDraftStoreProvider).clear(userId);
+        // Clinic visits, photos and notes: ON DELETE CASCADE on the
+        // backend too; this clears the on-device copy in demo mode.
+        await LocalDentalRecordRepository.deleteAllFor(userId);
       } catch (_) {
         // On the backend this is an ON DELETE CASCADE from users.
       }
       ref.invalidate(notificationsProvider);
+      ref.invalidate(dentalRecordsProvider);
     }
     return result;
   }

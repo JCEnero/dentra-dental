@@ -1,5 +1,5 @@
-/// Which hero illustration (and backdrop/forms variation) a slide uses.
-enum OnboardingVisual { introduction, imagingDevice, monitoring }
+/// Which hero visual (and stage lighting) a slide uses.
+enum OnboardingVisual { introduction, screening, monitoring }
 
 /// Static copy and visual configuration for a single onboarding slide.
 ///
@@ -7,62 +7,67 @@ enum OnboardingVisual { introduction, imagingDevice, monitoring }
 /// touching layout or navigation code.
 class OnboardingSlideContent {
   const OnboardingSlideContent({
+    required this.eyebrow,
     required this.headline,
+    required this.description,
     required this.visual,
     required this.visualDescription,
-    this.tagline,
-    this.imageAsset,
+    this.headlineAccent,
+    this.note,
   });
 
-  /// Stacked display headline. Line breaks (`\n`) are deliberate and are
-  /// kept on every screen size; the headline scales down rather than
-  /// re-wrapping.
+  /// Short label above the headline that names the slide's topic.
+  final String eyebrow;
+
+  /// Slide title. Wraps naturally to the available width.
   final String headline;
 
-  /// Optional single short supporting line.
-  final String? tagline;
+  /// Part of [headline] drawn in the brand teal, e.g. the product name.
+  final String? headlineAccent;
 
-  /// Built-in illustration, backdrop tone and white-form variation.
+  /// One or two supporting sentences.
+  final String description;
+
+  /// Optional small print under the description.
+  final String? note;
+
+  /// Built-in abstract visual drawn above the copy.
   final OnboardingVisual visual;
 
   /// Screen-reader description of the hero visual.
   final String visualDescription;
-
-  /// Path to a finished render (PNG/WebP with transparent background,
-  /// square, ideally 1080×1080, lit for a turquoise background). When set, it
-  /// replaces the built-in illustration; backdrop and white forms remain.
-  /// The file must live in a folder declared under `flutter: assets:` in
-  /// pubspec.yaml (e.g. `assets/images/`).
-  final String? imageAsset;
 }
 
 /// The three onboarding slides, in order.
-///
-/// To swap an illustration for a real render, set `imageAsset`, e.g.
-/// `imageAsset: 'assets/images/onboarding_device.png'`.
 const List<OnboardingSlideContent> onboardingSlides = [
   OnboardingSlideContent(
-    headline: 'MEET YOUR\nSMILE\nCOMPANION.',
-    tagline: 'Friendly, AI-assisted dental screening at home.',
+    eyebrow: 'Welcome',
+    headline: 'Meet DENTRA',
+    headlineAccent: 'DENTRA',
+    description: 'Your companion for smarter oral health monitoring.',
     visual: OnboardingVisual.introduction,
     visualDescription:
-        'The DENTRA tooth-rabbit mascot waving hello from a pedestal, '
-        'with a toothbrush, bubbles and sparkles floating around it.',
+        'A tooth outline inside a frosted glass circle, ringed by fine '
+        'orbits.',
   ),
   OnboardingSlideContent(
-    headline: 'SEE\nBEYOND\nTHE OBVIOUS.',
-    tagline: "Capture hard-to-reach areas with DENTRA's imaging device.",
-    visual: OnboardingVisual.imagingDevice,
+    eyebrow: 'AI-assisted screening',
+    headline: 'See Your Smile Differently',
+    description: 'Explore AI-assisted dental screening designed to help you '
+        'monitor your oral health.',
+    note: 'Screening support only, not a medical diagnosis.',
+    visual: OnboardingVisual.screening,
     visualDescription:
-        'A handheld intraoral imaging device scanning the DENTRA mascot, '
-        'who looks up at the lens.',
+        'A tooth inside a scanning frame, with a light line sweeping across '
+        'it and two areas highlighted.',
   ),
   OnboardingSlideContent(
-    headline: 'YOUR SMILE.\nYOUR JOURNEY.',
-    tagline: 'Track changes and know when to see a dentist.',
+    eyebrow: 'Screening history',
+    headline: 'Your Smile, Your Journey',
+    description: 'Keep track of your screening history and stay informed '
+        'about your oral health over time.',
     visual: OnboardingVisual.monitoring,
     visualDescription:
-        'Teeth along a timeline, representing check-ins over time, ending '
-        'with the DENTRA mascot cheering beside a check mark.',
+        'A rising timeline of past check-ins, ending in a check mark.',
   ),
 ];
