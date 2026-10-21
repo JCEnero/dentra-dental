@@ -9,6 +9,7 @@ import '../../../core/constants/app_radius.dart';
 import '../data/profile_content.dart';
 import '../widgets/profile_settings.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../core/constants/app_glass.dart';
 
 /// Help & support: FAQs plus ways to reach the team.
 ///
@@ -324,7 +325,7 @@ class _FaqItemState extends State<_FaqItem> {
       child: AnimatedContainer(
         duration: duration,
         decoration: BoxDecoration(
-          color: AppColors.white.withValues(alpha: _expanded ? 0.9 : 0.7),
+          color: _expanded ? AppGlass.fillHigh : AppGlass.fillLow,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: _expanded

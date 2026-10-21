@@ -50,6 +50,11 @@ abstract class DentraDates {
     return medium(d);
   }
 
+  /// "2026-10-21", e.g. for API date parameters.
+  static String isoDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}'
+      '-${d.day.toString().padLeft(2, '0')}';
+
   static DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
   static DateTime monthOf(DateTime d) => DateTime(d.year, d.month);
 

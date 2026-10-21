@@ -14,6 +14,8 @@ import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
 import '../widgets/auth_widgets.dart';
+import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../core/constants/app_glass.dart';
 import 'login_screen.dart';
 import 'verify_email_screen.dart';
 
@@ -271,9 +273,10 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     );
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.white,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      barrierColor: AppGlass.barrier,
       isScrollControlled: true,
-      showDragHandle: true,
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.9,
       ),
@@ -282,76 +285,95 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
           top: Radius.circular(AppRadius.xxl),
         ),
       ),
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Long policies scroll while "Got it" stays reachable below.
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Semantics(
-                      header: true,
-                      child: Text(
-                        title,
-                        style: GoogleFonts.outfit(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.navy,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: AppColors.secondaryText,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.sm + 4),
-                    Text(body, style: bodyStyle),
-                    for (final (i, (heading, text)) in sections.indexed) ...[
-                      const SizedBox(height: 18),
+      builder: (sheetContext) => GlassSurface(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xxl),
+        ),
+        border:
+            const Border(top: BorderSide(color: AppGlass.border, width: 1.2)),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.navy.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Long policies scroll while "Got it" stays reachable below.
+              Flexible(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                       Semantics(
                         header: true,
                         child: Text(
-                          '${i + 1}. $heading',
+                          title,
                           style: GoogleFonts.outfit(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
                             color: AppColors.navy,
+                            letterSpacing: -0.3,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(text, style: bodyStyle),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: AppColors.secondaryText,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.sm + 4),
+                      Text(body, style: bodyStyle),
+                      for (final (i, (heading, text)) in sections.indexed) ...[
+                        const SizedBox(height: 18),
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            '${i + 1}. $heading',
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.navy,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(text, style: bodyStyle),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.md,
-                AppSpacing.lg,
-                AppSpacing.lg,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                ),
+                child: AuthPillButton(
+                  label: 'Got it',
+                  onPressed: () => Navigator.pop(sheetContext),
+                ),
               ),
-              child: AuthPillButton(
-                label: 'Got it',
-                onPressed: () => Navigator.pop(sheetContext),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

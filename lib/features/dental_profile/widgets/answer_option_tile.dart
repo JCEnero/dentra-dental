@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../core/constants/app_glass.dart';
 
 /// A full-width answer row: the label, and a check (multiple choice) or
 /// radio (single choice) mark at the end. Read by screen readers as one
@@ -51,8 +52,8 @@ class AnswerOptionTile extends StatelessWidget {
                 borderRadius: _radius,
                 color: selected
                     ? Color.alphaBlend(
-                        AppColors.g2.withValues(alpha: 0.09), AppColors.white)
-                    : AppColors.white.withValues(alpha: 0.82),
+                        AppColors.g2.withValues(alpha: 0.09), AppGlass.fillHigh)
+                    : AppGlass.fillLow,
                 border: Border.all(
                   color: selected
                       ? AppColors.g2

@@ -10,6 +10,7 @@ import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
 import '../widgets/auth_widgets.dart';
+import '../../../shared/widgets/dentra_glass_ui.dart';
 import 'registration_screen.dart';
 import 'reset_password_screen.dart';
 import 'sign_in_loading_screen.dart';
@@ -206,7 +207,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      _snackBar('Sending a reset code to $resetEmail…', AppColors.primary),
+      dentraSnackBar('Sending a reset code to $resetEmail…',
+          tone: DentraFeedbackTone.info),
     );
 
     AuthResult result;
@@ -220,7 +222,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     messenger.clearSnackBars();
     if (!result.success) {
       messenger.showSnackBar(
-        _snackBar(result.error ?? _genericError, AppColors.coral),
+        dentraSnackBar(result.error ?? _genericError,
+            tone: DentraFeedbackTone.error),
       );
       return;
     }
@@ -231,17 +234,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     ));
   }
-
-  SnackBar _snackBar(String message, Color color) => SnackBar(
-        content: Text(
-          message,
-          style: GoogleFonts.outfit(fontSize: 13, color: AppColors.white),
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-        duration: const Duration(seconds: 3),
-      );
 
   void _navigateToApp() {
     // Replace the whole stack with the loading screen, which hands off

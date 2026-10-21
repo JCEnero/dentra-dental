@@ -16,6 +16,7 @@ import '../widgets/region_selector.dart';
 import '../widgets/scan_action_bar.dart';
 import '../widgets/scan_header.dart';
 import '../widgets/scan_result_view.dart';
+import '../../../shared/widgets/dentra_glass_ui.dart';
 
 /// Guided dental scan: device status, region choice, capture and review,
 /// then saving (and analysis, when a backend is configured).
@@ -40,12 +41,10 @@ class ScanScreen extends ConsumerWidget {
     ref.listen(scanSessionProvider.select((s) => s.historySaveFailed),
         (_, failed) {
       if (!failed) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Couldn't save this screening to your history."),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(dentraSnackBar(
+        "Couldn't save this screening to your history.",
+        tone: DentraFeedbackTone.error,
+      ));
       scan.acknowledgeHistoryError();
     });
 
@@ -153,47 +152,52 @@ class ScanScreen extends ConsumerWidget {
     final count = ref.read(scanSessionProvider).capturedCount;
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: AppColors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Start over?',
-                style: GoogleFonts.outfit(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      barrierColor: AppGlass.barrier,
+      builder: (context) => GlassSurface(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        border:
+            const Border(top: BorderSide(color: AppGlass.border, width: 1.2)),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Start over?',
+                  style: GoogleFonts.outfit(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'This removes the $count image${count == 1 ? '' : 's'} '
-                'captured in this session.',
-                style: GoogleFonts.outfit(
-                  fontSize: 13,
-                  color: AppColors.secondaryText,
-                  height: 1.5,
+                const SizedBox(height: 6),
+                Text(
+                  'This removes the $count image${count == 1 ? '' : 's'} '
+                  'captured in this session.',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: AppColors.secondaryText,
+                    height: 1.5,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              PrimaryButton(
-                label: 'Keep scanning',
-                onTap: () => Navigator.of(context).pop(false),
-              ),
-              const SizedBox(height: 10),
-              PrimaryButton(
-                label: 'Start over',
-                variant: ButtonVariant.secondary,
-                onTap: () => Navigator.of(context).pop(true),
-              ),
-            ],
+                const SizedBox(height: 24),
+                PrimaryButton(
+                  label: 'Keep scanning',
+                  onTap: () => Navigator.of(context).pop(false),
+                ),
+                const SizedBox(height: 10),
+                PrimaryButton(
+                  label: 'Start over',
+                  variant: ButtonVariant.secondary,
+                  onTap: () => Navigator.of(context).pop(true),
+                ),
+              ],
+            ),
           ),
         ),
       ),

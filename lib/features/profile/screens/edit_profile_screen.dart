@@ -137,6 +137,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       firstDate: DateTime(now.year - 120),
       lastDate: now,
       initialEntryMode: DatePickerEntryMode.calendarOnly,
+      barrierColor: AppGlass.barrier,
       helpText: 'Date of birth',
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(

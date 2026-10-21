@@ -244,7 +244,7 @@ class ProfileSheetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.75),
+        color: AppGlass.fillLow,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.g2.withValues(alpha: 0.12)),
       ),

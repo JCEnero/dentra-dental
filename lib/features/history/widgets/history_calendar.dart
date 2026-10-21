@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
+import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/dentra_dates.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../shared/widgets/app_backdrop.dart';
+import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 
 /// Calendar card: month navigation, plus either a swipeable week strip or
@@ -21,6 +25,7 @@ class HistoryCalendar extends StatefulWidget {
     required this.onShiftWeek,
     required this.onDayTap,
     this.dimmed = false,
+    this.earliestMonth,
   });
 
   final DateTime month;
@@ -37,6 +42,9 @@ class HistoryCalendar extends StatefulWidget {
 
   /// Faded while search or "all time" overrides the calendar.
   final bool dimmed;
+
+  /// First month the full-screen calendar lists; defaults to a year back.
+  final DateTime? earliestMonth;
 
   @override
   State<HistoryCalendar> createState() => _HistoryCalendarState();
@@ -77,6 +85,14 @@ class _HistoryCalendarState extends State<HistoryCalendar> {
               canGoForward: widget.canGoForward,
               onShift: widget.onShiftMonth,
               onToggle: () => setState(() => _expanded = !_expanded),
+              onFullScreen: () => showCalendarFullScreen(
+                context,
+                earliestMonth: widget.earliestMonth,
+                focusMonth: widget.month,
+                selectedDay: widget.selectedDay,
+                markedDays: widget.markedDays,
+                onDayTap: widget.onDayTap,
+              ),
             ),
             const SizedBox(height: 8),
             // Horizontal swipes move by week (strip) or month (grid).
@@ -161,6 +177,7 @@ class _MonthBar extends StatelessWidget {
     required this.canGoForward,
     required this.onShift,
     required this.onToggle,
+    required this.onFullScreen,
   });
 
   final DateTime month;
@@ -169,6 +186,7 @@ class _MonthBar extends StatelessWidget {
   final bool canGoForward;
   final ValueChanged<int> onShift;
   final VoidCallback onToggle;
+  final VoidCallback onFullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -206,7 +224,7 @@ class _MonthBar extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Neighbouring month names only when there is room for them.
-        final showSides = constraints.maxWidth >= 300;
+        final showSides = constraints.maxWidth >= 340;
         return Row(
           children: [
             arrow(Icons.chevron_left_rounded, 'Previous month', canGoBack, -1),
@@ -259,6 +277,13 @@ class _MonthBar extends StatelessWidget {
             ),
             if (showSides) ExcludeSemantics(child: side(next, canGoForward, 1)),
             arrow(Icons.chevron_right_rounded, 'Next month', canGoForward, 1),
+            IconButton(
+              onPressed: onFullScreen,
+              tooltip: 'Full-screen calendar',
+              icon: const Icon(Icons.open_in_full_rounded, size: 18),
+              color: AppColors.secondaryText,
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            ),
           ],
         );
       },
@@ -291,7 +316,8 @@ class _WeekStrip extends StatelessWidget {
         for (var i = 0; i < 7; i++)
           Expanded(
             child: _DayCell(
-              date: DateTime(weekStart.year, weekStart.month, weekStart.day + i),
+              date:
+                  DateTime(weekStart.year, weekStart.month, weekStart.day + i),
               showWeekday: true,
               inMonth: DentraDates.sameMonth(
                   DateTime(weekStart.year, weekStart.month, weekStart.day + i),
@@ -315,6 +341,8 @@ class _MonthGrid extends StatelessWidget {
     required this.selectedDay,
     required this.markedDays,
     required this.onDayTap,
+    this.showWeekdays = true,
+    this.dense = false,
   });
 
   final DateTime month;
@@ -322,6 +350,10 @@ class _MonthGrid extends StatelessWidget {
   final DateTime? selectedDay;
   final Set<DateTime> markedDays;
   final ValueChanged<DateTime> onDayTap;
+  final bool showWeekdays;
+
+  /// Small numbers, for the full-screen calendar.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -331,39 +363,42 @@ class _MonthGrid extends StatelessWidget {
 
     return Column(
       children: [
-        Row(
-          children: [
-            for (var i = 1; i <= 7; i++)
-              Expanded(
-                child: ExcludeSemantics(
-                  child: Text(
-                    DentraDates.weekdayShort(i),
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.secondaryText,
+        if (showWeekdays) ...[
+          Row(
+            children: [
+              for (var i = 1; i <= 7; i++)
+                Expanded(
+                  child: ExcludeSemantics(
+                    child: Text(
+                      DentraDates.weekdayShort(i),
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.secondaryText,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 4),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
         for (var w = 0; w < weeks; w++)
           Row(
             children: [
               for (var i = 0; i < 7; i++)
                 Expanded(
                   child: Builder(builder: (context) {
-                    final date =
-                        DateTime(first.year, first.month, first.day + w * 7 + i);
+                    final date = DateTime(
+                        first.year, first.month, first.day + w * 7 + i);
                     final inMonth = DentraDates.sameMonth(date, month);
                     // Days outside the month leave a blank, keeping the grid.
-                    if (!inMonth) return const SizedBox(height: 48);
+                    if (!inMonth) return SizedBox(height: dense ? 40 : 48);
                     return _DayCell(
                       date: date,
                       showWeekday: false,
+                      dense: dense,
                       inMonth: true,
                       today: today,
                       selectedDay: selectedDay,
@@ -388,10 +423,12 @@ class _DayCell extends StatelessWidget {
     required this.selectedDay,
     required this.markedDays,
     required this.onTap,
+    this.dense = false,
   });
 
   final DateTime date;
   final bool showWeekday;
+  final bool dense;
   final bool inMonth;
   final DateTime today;
   final DateTime? selectedDay;
@@ -400,7 +437,8 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = selectedDay != null && DentraDates.sameDay(date, selectedDay!);
+    final selected =
+        selectedDay != null && DentraDates.sameDay(date, selectedDay!);
     final isToday = DentraDates.sameDay(date, today);
     final future = date.isAfter(today);
     final marked = markedDays.contains(date);
@@ -418,7 +456,7 @@ class _DayCell extends StatelessWidget {
       selected: selected,
       enabled: !future,
       label: '${DentraDates.full(date)}'
-          '${marked ? ', has screenings' : ''}'
+          '${marked ? ', has history' : ''}'
           '${isToday ? ', today' : ''}',
       excludeSemantics: true,
       child: Padding(
@@ -430,11 +468,12 @@ class _DayCell extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             child: AnimatedContainer(
               duration: dentraMotion(context, 200),
-              constraints: BoxConstraints(minHeight: showWeekday ? 64 : 44),
+              constraints: BoxConstraints(
+                  minHeight: showWeekday ? 64 : (dense ? 36 : 44)),
               padding: EdgeInsets.symmetric(vertical: showWeekday ? 8 : 4),
               decoration: BoxDecoration(
                 color: selected ? AppColors.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(dense ? 10 : 14),
                 border: isToday && !selected
                     ? Border.all(color: AppColors.g2.withValues(alpha: 0.45))
                     : null,
@@ -459,19 +498,19 @@ class _DayCell extends StatelessWidget {
                   Text(
                     '${date.day}',
                     style: GoogleFonts.outfit(
-                      fontSize: showWeekday ? 16 : 14,
-                      fontWeight: FontWeight.w700,
+                      fontSize: showWeekday ? 16 : (dense ? 12.5 : 14),
+                      fontWeight: dense ? FontWeight.w600 : FontWeight.w700,
                       color: dayColor,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  // Dot for days with screenings; same height either way.
+                  SizedBox(height: dense ? 2 : 3),
+                  // Dot for days with history; same height either way.
                   AnimatedOpacity(
                     duration: dentraMotion(context, 160),
                     opacity: marked ? 1 : 0,
                     child: Container(
-                      width: 5,
-                      height: 5,
+                      width: dense ? 4 : 5,
+                      height: dense ? 4 : 5,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: selected ? AppColors.white : AppColors.g2,
@@ -483,6 +522,290 @@ class _DayCell extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Full-screen calendar ────────────────────────────────────────────────────
+
+/// Opens every month from [earliestMonth] to this month as a scrolling
+/// list of compact grids. Choosing a day closes it and calls [onDayTap].
+Future<void> showCalendarFullScreen(
+  BuildContext context, {
+  required DateTime focusMonth,
+  required DateTime? selectedDay,
+  required Set<DateTime> markedDays,
+  required ValueChanged<DateTime> onDayTap,
+  DateTime? earliestMonth,
+}) {
+  final now = DateTime.now();
+  final thisMonth = DentraDates.monthOf(now);
+  // At least a year back, so the view never feels empty.
+  final yearBack = DentraDates.addMonths(thisMonth, -11);
+  final first = earliestMonth == null || earliestMonth.isAfter(yearBack)
+      ? yearBack
+      : DentraDates.monthOf(earliestMonth);
+
+  return Navigator.of(context, rootNavigator: true).push(PageRouteBuilder<void>(
+    transitionDuration: dentraMotion(context, 280),
+    reverseTransitionDuration: dentraMotion(context, 220),
+    pageBuilder: (_, __, ___) => _CalendarFullScreen(
+      firstMonth: first,
+      lastMonth: thisMonth,
+      focusMonth: focusMonth,
+      selectedDay: selectedDay,
+      markedDays: markedDays,
+      onDayTap: onDayTap,
+    ),
+    transitionsBuilder: (_, animation, __, child) {
+      final curved =
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, 0.04), end: Offset.zero)
+              .animate(curved),
+          child: child,
+        ),
+      );
+    },
+  ));
+}
+
+class _CalendarFullScreen extends StatefulWidget {
+  const _CalendarFullScreen({
+    required this.firstMonth,
+    required this.lastMonth,
+    required this.focusMonth,
+    required this.selectedDay,
+    required this.markedDays,
+    required this.onDayTap,
+  });
+
+  final DateTime firstMonth;
+  final DateTime lastMonth;
+  final DateTime focusMonth;
+  final DateTime? selectedDay;
+  final Set<DateTime> markedDays;
+  final ValueChanged<DateTime> onDayTap;
+
+  @override
+  State<_CalendarFullScreen> createState() => _CalendarFullScreenState();
+}
+
+class _CalendarFullScreenState extends State<_CalendarFullScreen> {
+  late final List<DateTime> _months = [
+    for (var m = widget.lastMonth;
+        !m.isBefore(widget.firstMonth);
+        m = DentraDates.addMonths(m, -1))
+      m,
+  ];
+  late final Map<DateTime, GlobalKey> _keys = {
+    for (final m in _months) m: GlobalKey()
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    // Open on the month the small calendar was showing.
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _reveal(widget.focusMonth));
+  }
+
+  void _reveal(DateTime month, {bool animate = false}) {
+    final ctx = _keys[DentraDates.monthOf(month)]?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.5,
+      duration: animate ? dentraMotion(context, 320) : Duration.zero,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _pick(DateTime day) {
+    Navigator.of(context).pop();
+    widget.onDayTap(day);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DentraDates.dateOnly(DateTime.now());
+    return Scaffold(
+      backgroundColor: AppColors.lightLavender,
+      body: AppBackdrop(
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DentraPageHeader(
+                title: 'Calendar',
+                onBack: () => Navigator.of(context).maybePop(),
+                trailing: TextButton(
+                  onPressed: () => _reveal(widget.lastMonth, animate: true),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.g2,
+                    minimumSize: const Size(44, 44),
+                  ),
+                  child: Text(
+                    'Today',
+                    semanticsLabel: 'Go to this month',
+                    style: GoogleFonts.outfit(
+                        fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              // Weekday names once, pinned above every month.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenH, 0, AppSpacing.screenH, 8),
+                child: ExcludeSemantics(
+                  child: Row(
+                    children: [
+                      for (var i = 1; i <= 7; i++)
+                        Expanded(
+                          child: Text(
+                            DentraDates.weekdayShort(i).substring(0, 1),
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.secondaryText,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Divider(height: 1, thickness: 1, color: AppGlass.divider),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                      AppSpacing.screenH,
+                      8,
+                      AppSpacing.screenH,
+                      24 + MediaQuery.paddingOf(context).bottom),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Oldest first, so time runs down the page.
+                          for (final m in _months.reversed)
+                            _MonthSection(
+                              key: _keys[m],
+                              month: m,
+                              today: today,
+                              selectedDay: widget.selectedDay,
+                              markedDays: widget.markedDays,
+                              onDayTap: _pick,
+                            ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 5,
+                                height: 5,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.g2,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Days with history',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11.5,
+                                  color: AppColors.secondaryText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthSection extends StatelessWidget {
+  const _MonthSection({
+    super.key,
+    required this.month,
+    required this.today,
+    required this.selectedDay,
+    required this.markedDays,
+    required this.onDayTap,
+  });
+
+  final DateTime month;
+  final DateTime today;
+  final DateTime? selectedDay;
+  final Set<DateTime> markedDays;
+  final ValueChanged<DateTime> onDayTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final days =
+        markedDays.where((d) => DentraDates.sameMonth(d, month)).length;
+    return Padding(
+      padding: const EdgeInsets.only(top: 18, bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      DentraDates.monthYear(month),
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                  ),
+                ),
+                if (days > 0)
+                  Text(
+                    '$days ${days == 1 ? 'day' : 'days'}',
+                    style: GoogleFonts.outfit(
+                      fontSize: 11.5,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          _MonthGrid(
+            month: month,
+            today: today,
+            selectedDay: selectedDay,
+            markedDays: markedDays,
+            onDayTap: onDayTap,
+            showWeekdays: false,
+            dense: true,
+          ),
+        ],
       ),
     );
   }

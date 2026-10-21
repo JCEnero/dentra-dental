@@ -124,7 +124,8 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
     final media = MediaQuery.of(context);
     const pillSize = Size(132, 48);
     final maxX = media.size.width - pillSize.width - 12;
-    final maxY = media.size.height - pillSize.height - media.padding.bottom - 96;
+    final maxY =
+        media.size.height - pillSize.height - media.padding.bottom - 96;
     final offset = _pillOffset ?? Offset(maxX, maxY);
     Offset clamp(Offset o) => Offset(
           o.dx.clamp(12, maxX),
@@ -157,7 +158,8 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
       ..writeln('- Date: ${DentraDates.medium(s.completedAt)}')
       ..writeln('- Status: ${s.status.label} '
           '(${s.capturedRegions.length} of ${s.totalRegions} regions captured)')
-      ..writeln('- Regions captured: ${regions.isEmpty ? 'none' : regions.join(', ')}')
+      ..writeln(
+          '- Regions captured: ${regions.isEmpty ? 'none' : regions.join(', ')}')
       ..writeln(analysis == null
           ? '- AI analysis: none available for this screening'
           : '- AI analysis summary: ${analysis.summary}');
@@ -204,6 +206,7 @@ class _ChatPanel extends StatelessWidget {
             child: ClipRRect(
               borderRadius: _radius,
               child: GlassBlur(
+                strong: true,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: _radius,
@@ -211,8 +214,9 @@ class _ChatPanel extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        AppColors.white.withValues(alpha: 0.96),
-                        AppColors.lightLavender.withValues(alpha: 0.95),
+                        AppGlass.floatHigh,
+                        AppColors.lightLavender
+                            .withValues(alpha: AppGlass.floatLow.a),
                       ],
                     ),
                     border: const Border(
@@ -536,9 +540,8 @@ class _ChatBodyState extends State<_ChatBody> {
             return _MessageTile(
               key: ValueKey('${m.sentAt.microsecondsSinceEpoch}-${m.isUser}'),
               message: m,
-              onRetry: m.isError && isLast && !ctrl.isLoading
-                  ? ctrl.retry
-                  : null,
+              onRetry:
+                  m.isError && isLast && !ctrl.isLoading ? ctrl.retry : null,
             );
           },
         ),
@@ -709,7 +712,8 @@ class _MessageTile extends StatelessWidget {
               onLongPress: () => _copy(context, message.text),
               child: Container(
                 constraints: BoxConstraints(maxWidth: maxWidth),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -766,7 +770,7 @@ class _MessageTile extends StatelessWidget {
                           constraints: BoxConstraints(maxWidth: maxWidth),
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                           decoration: BoxDecoration(
-                            color: AppColors.white.withValues(alpha: 0.88),
+                            color: AppColors.white.withValues(alpha: 0.62),
                             border: Border.all(color: AppGlass.border),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(6),
@@ -811,8 +815,9 @@ void _copy(BuildContext context, String text) {
 }
 
 /// Strips the light markdown Rabi uses, for copying.
-String _plain(String text) =>
-    text.replaceAll('**', '').replaceAll(RegExp(r'^\s*[*-]\s+', multiLine: true), '• ');
+String _plain(String text) => text
+    .replaceAll('**', '')
+    .replaceAll(RegExp(r'^\s*[*-]\s+', multiLine: true), '• ');
 
 class _Meta extends StatelessWidget {
   const _Meta({required this.text});
@@ -1008,7 +1013,8 @@ class _RichReply extends StatelessWidget {
         ));
       } else if (heading != null) {
         add(Text.rich(
-          _inline(heading.group(1)!, base.copyWith(fontWeight: FontWeight.w700)),
+          _inline(
+              heading.group(1)!, base.copyWith(fontWeight: FontWeight.w700)),
         ));
       } else {
         add(Text.rich(_inline(line, base)));
@@ -1130,14 +1136,17 @@ class _TypingBubbleState extends State<_TypingBubble>
                     mainAxisSize: MainAxisSize.min,
                     children: List.generate(3, (i) {
                       final phase = ((_ctrl.value - i * 0.18) % 1.0);
-                      final lift = phase < 0.4 ? (phase < 0.2 ? phase : 0.4 - phase) * 5 : 0.0;
+                      final lift = phase < 0.4
+                          ? (phase < 0.2 ? phase : 0.4 - phase) * 5
+                          : 0.0;
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 2.5),
                         transform: Matrix4.translationValues(0, -lift * 4, 0),
                         width: 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: AppColors.g2.withValues(alpha: 0.45 + lift * 0.55),
+                          color: AppColors.g2
+                              .withValues(alpha: 0.45 + lift * 0.55),
                           shape: BoxShape.circle,
                         ),
                       );
@@ -1525,9 +1534,8 @@ class _SessionView extends StatelessWidget {
             child: DentraPillButton(
               label: 'Continue this chat',
               icon: Icons.reply_rounded,
-              onPressed: ctrl.isLoading
-                  ? null
-                  : () => ctrl.continueSession(session),
+              onPressed:
+                  ctrl.isLoading ? null : () => ctrl.continueSession(session),
             ),
           ),
         ),

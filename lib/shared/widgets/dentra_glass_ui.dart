@@ -16,8 +16,50 @@ Duration dentraMotion(BuildContext context, [int ms = 220]) =>
         : Duration(milliseconds: ms);
 
 /// Dims the page behind sheets and dialogs. Navy, not black, so the
-/// backdrop keeps its teal cast.
-final Color _barrier = AppColors.navy.withValues(alpha: 0.32);
+/// backdrop keeps its teal cast; light, so the glass shows through.
+final Color _barrier = AppGlass.barrier;
+
+/// Frosted glass for anything that appears over the page (dialogs,
+/// sheets, snackbars): blur, a translucent fill like Home's cards and a
+/// bright rim. No drop shadow, like Home: under see-through glass it would
+/// show through as a grey band.
+class GlassSurface extends StatelessWidget {
+  const GlassSurface({
+    super.key,
+    required this.child,
+    required this.borderRadius,
+    this.border,
+    this.tint,
+  });
+
+  final Widget child;
+  final BorderRadius borderRadius;
+  final Border? border;
+
+  /// A faint wash of colour over the glass, e.g. for an error.
+  final Color? tint;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: GlassBlur(
+        strong: true,
+        child: DecoratedBox(
+          decoration:
+              AppGlass.floating(borderRadius: borderRadius, border: border),
+          child: tint == null
+              ? child
+              : DecoratedBox(
+                  decoration:
+                      BoxDecoration(color: tint, borderRadius: borderRadius),
+                  child: child,
+                ),
+        ),
+      ),
+    );
+  }
+}
 
 // ── Bottom sheets ─────────────────────────────────────────────────────────────
 
@@ -68,108 +110,91 @@ class _GlassSheet extends StatelessWidget {
             maxWidth: 640,
             maxHeight: media.size.height * 0.9,
           ),
-          child: ClipRRect(
+          child: GlassSurface(
             borderRadius: _radius,
-            child: GlassBlur(
-              child: DecoratedBox(
-                // Denser than page cards: the sheet floats over a dimmed
-                // page, where a thin fill would read as grey.
-                decoration: BoxDecoration(
-                  borderRadius: _radius,
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.white.withValues(alpha: 0.96),
-                      AppColors.lightLavender.withValues(alpha: 0.94),
+            border: const Border(
+              top: BorderSide(color: AppGlass.border, width: 1.2),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 10),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.navy.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 12, 0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Semantics(
+                                header: true,
+                                child: Text(
+                                  title,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.navy,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                              if (subtitle != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  subtitle!,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    color: AppColors.secondaryText,
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        tooltip: 'Close',
+                        style: IconButton.styleFrom(
+                          backgroundColor:
+                              AppColors.white.withValues(alpha: 0.7),
+                          foregroundColor: AppColors.navy,
+                          fixedSize: const Size(44, 44),
+                        ),
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                      ),
                     ],
                   ),
-                  border: const Border(
-                    top: BorderSide(color: AppGlass.border, width: 1.2),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      20,
+                      24,
+                      24 + media.padding.bottom,
+                    ),
+                    child: child,
                   ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Drag handle
-                    Center(
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 10),
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.navy.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 12, 12, 0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Semantics(
-                                    header: true,
-                                    child: Text(
-                                      title,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.navy,
-                                        letterSpacing: -0.3,
-                                      ),
-                                    ),
-                                  ),
-                                  if (subtitle != null) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      subtitle!,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 14,
-                                        color: AppColors.secondaryText,
-                                        height: 1.45,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.of(context).maybePop(),
-                            tooltip: 'Close',
-                            style: IconButton.styleFrom(
-                              backgroundColor:
-                                  AppColors.white.withValues(alpha: 0.7),
-                              foregroundColor: AppColors.navy,
-                              fixedSize: const Size(44, 44),
-                            ),
-                            icon: const Icon(Icons.close_rounded, size: 20),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.fromLTRB(
-                          24,
-                          20,
-                          24,
-                          24 + media.padding.bottom,
-                        ),
-                        child: child,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
           ),
         ),
@@ -228,7 +253,7 @@ class GlassDialogFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = destructive ? AppColors.danger : AppColors.primary;
+    final accent = destructive ? AppColors.dangerInk : AppColors.primary;
     final media = MediaQuery.of(context);
 
     return Center(
@@ -238,57 +263,50 @@ class GlassDialogFrame extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 400),
           child: Material(
             type: MaterialType.transparency,
-            child: GlassCard(
+            child: GlassSurface(
               borderRadius: BorderRadius.circular(24),
-              tint: AppColors.white,
-              child: DecoratedBox(
-                // Extra white wash: dialogs sit over a dimmed page.
-                decoration: BoxDecoration(
-                  color: AppColors.white.withValues(alpha: 0.82),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: accent.withValues(alpha: 0.12),
-                            borderRadius: AppRadius.lgAll,
-                          ),
-                          child: Icon(icon, color: accent, size: 24),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.12),
+                          borderRadius: AppRadius.lgAll,
                         ),
+                        child: Icon(icon, color: accent, size: 24),
                       ),
-                      const SizedBox(height: 16),
-                      Semantics(
-                        header: true,
-                        child: Text(
-                          title,
-                          style: GoogleFonts.outfit(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.navy,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        message,
+                    ),
+                    const SizedBox(height: 16),
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        title,
                         style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          color: AppColors.secondaryText,
-                          height: 1.5,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
                         ),
                       ),
-                      const SizedBox(height: 22),
-                      ...children,
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      message,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: AppColors.secondaryText,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    ...children,
+                  ],
                 ),
               ),
             ),
@@ -371,6 +389,7 @@ class DentraPillButton extends StatelessWidget {
     final filled = variant != DentraButtonVariant.outline;
     final foreground = switch (variant) {
       DentraButtonVariant.outline => AppColors.navy,
+      DentraButtonVariant.danger => AppColors.dangerInk,
       _ => AppColors.white,
     };
     final textStyle = GoogleFonts.outfit(
@@ -432,20 +451,21 @@ class DentraPillButton extends StatelessWidget {
         _ => null,
       },
       color: switch (variant) {
-        DentraButtonVariant.danger => AppColors.danger,
+        // Pale red, never solid.
+        DentraButtonVariant.danger => AppColors.dangerTint,
         DentraButtonVariant.outline => AppColors.white.withValues(alpha: 0.6),
         _ => null,
       },
-      border: variant == DentraButtonVariant.outline
-          ? Border.all(color: AppColors.g2.withValues(alpha: 0.28))
-          : null,
-      boxShadow: filled && enabled
+      border: switch (variant) {
+        DentraButtonVariant.outline =>
+          Border.all(color: AppColors.g2.withValues(alpha: 0.28)),
+        DentraButtonVariant.danger => Border.all(color: AppColors.dangerBorder),
+        _ => null,
+      },
+      boxShadow: filled && enabled && variant != DentraButtonVariant.danger
           ? [
               BoxShadow(
-                color: (variant == DentraButtonVariant.danger
-                        ? AppColors.danger
-                        : AppColors.g2)
-                    .withValues(alpha: 0.24),
+                color: AppColors.g2.withValues(alpha: 0.24),
                 blurRadius: 14,
                 offset: const Offset(0, 5),
               ),
@@ -562,39 +582,68 @@ SnackBar dentraSnackBar(
         AppColors.successGreen,
         Icons.check_circle_rounded
       ),
-    DentraFeedbackTone.error => (AppColors.danger, Icons.error_rounded),
+    DentraFeedbackTone.error => (AppColors.dangerInk, Icons.error_rounded),
     DentraFeedbackTone.info => (AppColors.g2, Icons.info_rounded),
   };
+  const radius = AppRadius.lgAll;
 
+  // Glass like the rest of the app: navy text, the tone only in the icon,
+  // a faint wash and the rim. Red is pale, never a solid bar.
   return SnackBar(
-    content: Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.white),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            message,
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.white,
-            ),
-          ),
-        ),
-      ],
-    ),
-    backgroundColor: color,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    padding: EdgeInsets.zero,
     behavior: SnackBarBehavior.floating,
     margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-    shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+    shape: const RoundedRectangleBorder(borderRadius: radius),
     duration: Duration(seconds: onRetry != null ? 5 : 3),
-    action: onRetry == null
-        ? null
-        : SnackBarAction(
-            label: retryLabel,
-            textColor: AppColors.white,
-            onPressed: onRetry,
-          ),
+    content: GlassSurface(
+      borderRadius: radius,
+      tint: (tone == DentraFeedbackTone.error ? AppColors.danger : color)
+          .withValues(alpha: 0.08),
+      border: Border.all(
+        color: tone == DentraFeedbackTone.error
+            ? AppColors.dangerBorder
+            : color.withValues(alpha: 0.28),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, onRetry == null ? 16 : 4, 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
+            if (onRetry != null)
+              Builder(
+                builder: (context) => TextButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    onRetry();
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.g2,
+                    minimumSize: const Size(44, 44),
+                  ),
+                  child: Text(
+                    retryLabel,
+                    style: GoogleFonts.outfit(
+                        fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
@@ -614,7 +663,7 @@ class DentraInlineNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = switch (tone) {
       DentraFeedbackTone.success => AppColors.successGreen,
-      DentraFeedbackTone.error => AppColors.danger,
+      DentraFeedbackTone.error => AppColors.dangerInk,
       DentraFeedbackTone.info => AppColors.g2,
     };
     final icon = switch (tone) {
@@ -634,7 +683,8 @@ class DentraInlineNotice extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 margin: const EdgeInsets.only(top: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.08),
                   borderRadius: AppRadius.mdAll,
@@ -707,7 +757,8 @@ class DentraChoiceChip extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (selected) ...[
-                  const Icon(Icons.check_rounded, size: 16, color: AppColors.white),
+                  const Icon(Icons.check_rounded,
+                      size: 16, color: AppColors.white),
                   const SizedBox(width: 6),
                 ],
                 Flexible(

@@ -367,4 +367,33 @@ void main() {
       expect(tester.takeException(), isNull, reason: '${screen.runtimeType}');
     }
   });
+
+  testWidgets('full-screen calendar shows months and picks a day', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    final day = today.subtract(const Duration(days: 40));
+    await tester.pumpWidget(_app(
+      const HistoryScreen(),
+      screenings: FakeScreeningRepository([screening('old', day.add(const Duration(hours: 9)))]),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Full-screen calendar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Calendar'), findsOneWidget);
+    expect(find.text(DentraDates.monthYear(DentraDates.monthOf(day))), findsOneWidget);
+    expect(find.text('1 day'), findsOneWidget);
+
+    final cell = find.bySemanticsLabel(RegExp('^${DentraDates.full(day)}, has history'));
+    await tester.ensureVisible(cell);
+    await tester.tap(cell);
+    await tester.pumpAndSettle();
+
+    // Back on History, showing that day.
+    expect(find.text('Calendar'), findsNothing);
+    expect(find.text(DentraDates.long(day)), findsWidgets);
+    expect(find.text('1 item'), findsOneWidget);
+  });
 }

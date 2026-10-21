@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/constants/app_colors.dart';
+import '../core/constants/app_glass.dart';
 
 class AppTheme {
   static ThemeData get theme => ThemeData(
@@ -21,6 +22,17 @@ class AppTheme {
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.navy,
+          ),
+        ),
+        // Material's own dialogs (date pickers) can't blur what's behind
+        // them, so they get a near-glass fill and the bright rim instead.
+        datePickerTheme: DatePickerThemeData(
+          backgroundColor: AppColors.white.withValues(alpha: 0.97),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(24)),
+            side: BorderSide(color: AppGlass.border, width: 1.2),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(

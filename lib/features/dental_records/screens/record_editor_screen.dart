@@ -226,6 +226,7 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
       firstDate: first,
       lastDate: last,
       initialEntryMode: DatePickerEntryMode.calendarOnly,
+      barrierColor: AppGlass.barrier,
       helpText: help,
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(

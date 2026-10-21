@@ -154,17 +154,11 @@ class _Badge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 5),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        // Danger red keeps white digits at 4.5:1 contrast.
-        color: AppColors.danger,
+        // Pale red over white, so it reads as a badge on any backdrop;
+        // the deep red digits keep 4.5:1 contrast.
+        color: Color.alphaBlend(AppColors.dangerTint, AppColors.white),
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: AppColors.white, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.danger.withValues(alpha: 0.3),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.dangerBorder),
       ),
       child: Text(
         count > 9 ? '9+' : '$count',
@@ -172,7 +166,7 @@ class _Badge extends StatelessWidget {
         style: GoogleFonts.outfit(
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: AppColors.white,
+          color: AppColors.dangerInk,
           height: 1,
         ),
       ),

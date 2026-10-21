@@ -108,13 +108,19 @@ enum GlassBarEdge { top, bottom }
 /// them (ghosted, duplicated content). The page backdrop is already soft,
 /// so the translucent fill alone looks nearly identical.
 class GlassBlur extends StatelessWidget {
-  const GlassBlur({super.key, required this.child});
+  const GlassBlur({super.key, required this.child, this.strong = false});
 
   final Widget child;
+
+  /// The heavier blur used by surfaces that appear over content.
+  final bool strong;
 
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) return child;
-    return BackdropFilter.grouped(filter: AppGlass.blur, child: child);
+    return BackdropFilter.grouped(
+      filter: strong ? AppGlass.floatBlur : AppGlass.blur,
+      child: child,
+    );
   }
 }

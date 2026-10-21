@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/dentra_dates.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../data/models/app_notification.dart';
+import '../../../core/constants/app_glass.dart';
 import 'notification_style.dart';
 
 /// What the user chose in the detail sheet. The screen carries it out
@@ -83,10 +82,7 @@ class _GlassNotificationCard extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.white.withValues(alpha: 0.78),
-                          AppColors.white.withValues(alpha: 0.58),
-                        ],
+                        colors: [AppGlass.floatHigh, AppGlass.floatLow],
                       ),
                     ),
                     child: DecoratedBox(
@@ -255,7 +251,7 @@ class _Frost extends StatelessWidget {
 
   final Widget child;
 
-  static final _blur = ImageFilter.blur(sigmaX: 28, sigmaY: 28);
+  static final _blur = AppGlass.floatBlur;
 
   @override
   Widget build(BuildContext context) {

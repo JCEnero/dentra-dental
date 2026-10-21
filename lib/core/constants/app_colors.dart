@@ -32,6 +32,14 @@ abstract class AppColors {
   /// contrast on white and glass surfaces.
   static const Color danger        = Color(0xFFCF4141);
 
+  /// Pale red for anything filled: destructive buttons, error notices,
+  /// badges. Red never appears as a solid block.
+  static const Color dangerTint    = Color(0x1FCF4141); // 12%
+  static const Color dangerBorder  = Color(0x47CF4141); // 28%
+
+  /// Text and icons placed on [dangerTint], kept above 4.5:1 contrast.
+  static const Color dangerInk     = Color(0xFFA83232);
+
   // ── Aliases ───────────────────────────────────────────────────
   static const Color primary = g2; // use medium teal as primary for text/icons
 

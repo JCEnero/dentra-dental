@@ -252,11 +252,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         .popUntil((route) => route.isFirst);
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(message, style: GoogleFonts.outfit(fontSize: 14)),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.g2,
-      ));
+      ..showSnackBar(dentraSnackBar(message, tone: DentraFeedbackTone.info));
   }
 
   // ── Build ─────────────────────────────────────────────────────

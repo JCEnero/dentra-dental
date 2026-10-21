@@ -172,6 +172,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             selectedDay: view.usesCalendar ? view.day : null,
                             markedDays: {for (final e in all) e.day},
                             dimmed: !view.usesCalendar,
+                            earliestMonth: earliest,
                             canGoBack: view.month.isAfter(earliest),
                             canGoForward: view.month.isBefore(thisMonth),
                             onShiftMonth: (d) =>

@@ -384,12 +384,15 @@ class _HeaderActions extends StatelessWidget {
           tooltip: 'More options',
           enabled: hasItems,
           position: PopupMenuPosition.under,
-          color: AppColors.white.withValues(alpha: 0.97),
-          elevation: 6,
-          shadowColor: AppColors.navy.withValues(alpha: 0.2),
+          // Menus can't blur what's behind them, so this stays nearly
+          // opaque; the rim keeps the glass look.
+          color: AppColors.white.withValues(alpha: 0.96),
+          surfaceTintColor: Colors.transparent,
+          elevation: 4,
+          shadowColor: AppColors.navy.withValues(alpha: 0.14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: AppGlass.divider),
+            side: const BorderSide(color: AppGlass.border, width: 1.2),
           ),
           onSelected: (_) => onClearAll(),
           itemBuilder: (_) => [

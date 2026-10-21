@@ -71,8 +71,8 @@ class _ToothInfoPanelState extends State<ToothInfoPanel> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                AppColors.white.withValues(alpha: 0.94),
-                AppColors.lightLavender.withValues(alpha: 0.92),
+                AppGlass.floatHigh,
+                AppColors.lightLavender.withValues(alpha: AppGlass.floatLow.a),
               ],
             ),
             border: Border.all(color: AppGlass.border, width: 1.2),

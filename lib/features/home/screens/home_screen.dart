@@ -9,16 +9,14 @@ import '../../../shared/widgets/avatar_widget.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/gradient_divider.dart';
 import '../../../shared/widgets/primary_button.dart';
-import '../../../core/services/mock_data.dart';
-import '../../../shared/widgets/section_label.dart';
 import '../../ai_assistant/ai_chat_controller.dart';
 import '../../comparison/screens/comparison_screen.dart';
 import '../../history/screens/tooth_history_explorer.dart';
 import '../../treatment/screens/treatment_screen.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../profile/providers/profile_provider.dart';
-import '../../screening/providers/screening_sessions_provider.dart';
-import '../../../core/utils/dentra_dates.dart';
+import '../data/daily_tip_repository.dart';
+import '../providers/daily_tip_provider.dart';
 import '../widgets/screening_activity_card.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -30,8 +28,9 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider).valueOrNull;
     final firstName = profile?.firstName ?? '';
-    final last = ref.watch(screeningSessionsProvider).valueOrNull?.firstOrNull;
-    final tip = MockData.dailyTips.first;
+    final tip = ref
+        .watch(dailyTipProvider(ref.watch(currentDayProvider)))
+        .valueOrNull;
 
     return SafeArea(
       bottom: false,
@@ -205,62 +204,7 @@ class HomeScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
                   AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: _DailyTipCard(
-                headline: tip['headline']!,
-                body: tip['body']!,
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-            const GradientDivider(),
-
-            // ── YOUR SCREENING ────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionLabel('Your screening',
-                      color: AppColors.secondaryText),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Last screening',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    last == null
-                        ? 'No screenings yet'
-                        : DentraDates.long(last.completedAt),
-                    style: GoogleFonts.outfit(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    last == null
-                        ? 'Start a scan to see it here.'
-                        : '${last.capturedRegions.length} images captured · '
-                            '${last.capturedRegions.length} of '
-                            '${last.totalRegions} regions',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  _LinkButton(
-                    label: 'View results',
-                    onTap: () => onNavigate(2),
-                  ),
-                ],
-              ),
+              child: _DailyTipCard(tip: tip),
             ),
 
             const SizedBox(height: AppSpacing.sectionGap),
@@ -789,12 +733,22 @@ class _ServiceGlyphPainter extends CustomPainter {
 // ── Daily tip card ────────────────────────────────────────────────
 
 class _DailyTipCard extends StatelessWidget {
-  final String headline;
-  final String body;
-  const _DailyTipCard({required this.headline, required this.body});
+  /// Null while today's tip loads.
+  final DailyTip? tip;
+  const _DailyTipCard({required this.tip});
 
   @override
   Widget build(BuildContext context) {
+    final t = tip;
+    Widget bar(double width, double height) => Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: AppColors.g2.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+        );
+
     return GlassCard(
       tint: AppColors.lightLavender,
       width: double.infinity,
@@ -819,22 +773,55 @@ class _DailyTipCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            headline,
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.navy,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            body,
-            style: GoogleFonts.outfit(
-              fontSize: 13,
-              color: AppColors.secondaryText,
-              height: 1.6,
-            ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: t == null
+                ? ExcludeSemantics(
+                    key: const ValueKey('loading'),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        bar(180, 14),
+                        const SizedBox(height: 12),
+                        bar(double.infinity, 10),
+                        const SizedBox(height: 8),
+                        bar(200, 10),
+                      ],
+                    ),
+                  )
+                : Column(
+                    key: ValueKey(t.date),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t.headline,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        t.body,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: AppColors.secondaryText,
+                          height: 1.6,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        t.aiGenerated
+                            ? 'AI-written general tip · not personal advice'
+                            : 'General tip · not personal advice',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: AppColors.secondaryText.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),

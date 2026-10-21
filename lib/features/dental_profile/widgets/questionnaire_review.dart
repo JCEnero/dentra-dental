@@ -38,7 +38,7 @@ class QuestionnaireReview extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.82),
+        color: AppGlass.fillLow,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.g2.withValues(alpha: 0.10)),
       ),
