@@ -577,7 +577,7 @@ class _Welcome extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
       children: [
-        const Center(child: _RabiAvatar(size: 64)),
+        const Center(child: _RabiAvatar(size: 96)),
         const SizedBox(height: 18),
         Text(
           firstName.isEmpty ? "Hi, I'm Rabi" : "Hi $firstName, I'm Rabi",

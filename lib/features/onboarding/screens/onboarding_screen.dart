@@ -187,14 +187,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
               // Overlaid chrome. Empty areas let swipes reach the PageView.
-              Positioned(
+              const Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
                 child: SafeArea(
                   bottom: false,
-                  child: _Centered(
-                    child: _Header(action: headerAction, enabled: !_isBusy),
+                  child: _Centered(child: _Header()),
+                ),
+              ),
+              // The action sits in the screen's own top-right corner, not
+              // the centred content column, at any width.
+              Positioned(
+                top: 0,
+                right: 0,
+                child: SafeArea(
+                  bottom: false,
+                  left: false,
+                  child: _HeaderActionButton(
+                    action: headerAction,
+                    enabled: !_isBusy,
                   ),
                 ),
               ),
@@ -266,8 +278,41 @@ class _HeaderAction {
   final bool outlined;
 }
 
+/// The logo, aligned with the content column.
 class _Header extends StatelessWidget {
-  const _Header({required this.action, required this.enabled});
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) {
+    // Fixed-height bar: the logo scales down rather than crowd the action
+    // in the corner on narrow screens.
+    final width = MediaQuery.sizeOf(context).width;
+    return SizedBox(
+      height: kOnboardingHeaderExtent,
+      child: Padding(
+        padding:
+            EdgeInsets.only(left: AppSpacing.lg, right: width < 360 ? 96 : 120),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Semantics(
+              label: 'DENTRA',
+              excludeSemantics: true,
+              child: const DentraLogo(onDark: true, size: 0.72),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Skip / Log In / Close, pinned to the top-right corner. The inset and
+/// pill size follow the screen width.
+class _HeaderActionButton extends StatelessWidget {
+  const _HeaderActionButton({required this.action, required this.enabled});
 
   final _HeaderAction action;
   final bool enabled;
@@ -277,74 +322,57 @@ class _Header extends StatelessWidget {
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 220);
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 360;
+    final inset = compact ? 10.0 : (width >= 600 ? 24.0 : 14.0);
 
-    // Chrome in a fixed-height bar: cap text growth so the logo and action
-    // always fit side by side; the logo shrinks if space is still short.
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
       child: SizedBox(
         height: kOnboardingHeaderExtent,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            0,
-            AppSpacing.md,
-            0,
-          ),
-          child: Row(
-            children: [
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Semantics(
-                    label: 'DENTRA',
-                    excludeSemantics: true,
-                    child: const DentraLogo(onDark: true, size: 0.72),
-                  ),
-                ),
-              ),
-              const Spacer(),
-              AnimatedSwitcher(
-                duration: duration,
-                child: Semantics(
-                  key: ValueKey(action.label),
-                  label: action.semanticLabel,
-                  button: true,
-                  excludeSemantics: true,
-                  child: TextButton(
-                    onPressed: enabled ? action.onTap : null,
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(48, 40),
-                      tapTargetSize: MaterialTapTargetSize.padded,
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      foregroundColor: AppColors.white,
-                      // Outlined for Log In; a soft frosted pill otherwise.
-                      backgroundColor: action.outlined
-                          ? Colors.transparent
-                          : AppColors.white.withValues(alpha: 0.16),
-                      shape: StadiumBorder(
-                        side: BorderSide(
-                          color: AppColors.white.withValues(
-                            alpha: action.outlined ? 0.75 : 0.32,
-                          ),
-                          width: action.outlined ? 1.2 : 1,
+          padding: EdgeInsets.only(right: inset),
+          child: Center(
+            child: AnimatedSwitcher(
+              duration: duration,
+              child: Semantics(
+                key: ValueKey(action.label),
+                label: action.semanticLabel,
+                button: true,
+                excludeSemantics: true,
+                child: TextButton(
+                  onPressed: enabled ? action.onTap : null,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(48, 40),
+                    tapTargetSize: MaterialTapTargetSize.padded,
+                    padding:
+                        EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
+                    foregroundColor: AppColors.white,
+                    // Outlined for Log In; a soft frosted pill otherwise.
+                    backgroundColor: action.outlined
+                        ? Colors.transparent
+                        : AppColors.white.withValues(alpha: 0.16),
+                    shape: StadiumBorder(
+                      side: BorderSide(
+                        color: AppColors.white.withValues(
+                          alpha: action.outlined ? 0.75 : 0.32,
                         ),
+                        width: action.outlined ? 1.2 : 1,
                       ),
                     ),
-                    child: Text(
-                      action.label,
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight:
-                            action.outlined ? FontWeight.w700 : FontWeight.w600,
-                        color: AppColors.white,
-                      ),
+                  ),
+                  child: Text(
+                    action.label,
+                    style: GoogleFonts.outfit(
+                      fontSize: compact ? 13 : 14,
+                      fontWeight:
+                          action.outlined ? FontWeight.w700 : FontWeight.w600,
+                      color: AppColors.white,
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

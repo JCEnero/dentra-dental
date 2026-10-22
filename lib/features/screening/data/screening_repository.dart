@@ -21,14 +21,16 @@ abstract class ScreeningRepository {
 
   Future<void> deleteAll(String userId);
 
-  /// Stores the photo for one captured region and returns the updated
-  /// session, or null where images aren't persisted (on-device store).
+  /// Stores the photo (or, with [modality] 'nir', the device's paired NIR
+  /// frame) for one captured region and returns the updated session, or
+  /// null where images aren't persisted (on-device store).
   Future<ScreeningSession?> uploadCaptureImage(
     String userId,
     String sessionId,
     String regionId,
-    Uint8List bytes,
-  );
+    Uint8List bytes, {
+    String modality = 'rgb',
+  });
 }
 
 /// Device-local [ScreeningRepository] backed by SharedPreferences.
@@ -102,8 +104,9 @@ class LocalScreeningRepository implements ScreeningRepository {
     String userId,
     String sessionId,
     String regionId,
-    Uint8List bytes,
-  ) async =>
+    Uint8List bytes, {
+    String modality = 'rgb',
+  }) async =>
       null;
 
   Future<void> _write(String userId, List<ScreeningSession> sessions) async {

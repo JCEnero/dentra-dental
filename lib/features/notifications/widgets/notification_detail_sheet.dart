@@ -98,7 +98,7 @@ class _GlassNotificationCard extends StatelessWidget {
                         ),
                       ),
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(22, 10, 22, 22),
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
                         child: _Content(notification: notification),
                       ),
                     ),
@@ -139,12 +139,12 @@ class _Content extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Row(
           children: [
             _GlassCircle(
-              size: 48,
-              child: Icon(category.icon, size: 22, color: category.accent),
+              size: 38,
+              child: Icon(category.icon, size: 17, color: category.accent),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -155,7 +155,7 @@ class _Content extends StatelessWidget {
                     Text(
                       category.label.toUpperCase(),
                       style: GoogleFonts.outfit(
-                        fontSize: 11.5,
+                        fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.9,
                         color: category.accent == AppColors.navy
@@ -168,7 +168,7 @@ class _Content extends StatelessWidget {
                       '${DentraDates.medium(n.createdAt)} · '
                       '${DentraDates.time(n.createdAt)}',
                       style: GoogleFonts.outfit(
-                        fontSize: 13,
+                        fontSize: 11.5,
                         color: AppColors.secondaryText,
                       ),
                     ),
@@ -177,42 +177,51 @@ class _Content extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            _GlassCircle(
-              size: 44,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                tooltip: 'Close',
-                padding: EdgeInsets.zero,
-                color: AppColors.navy,
-                icon: const Icon(Icons.close_rounded, size: 20),
+            // A small circle, with a full 44px touch area around it.
+            SizedBox.square(
+              dimension: 44,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const _GlassCircle(size: 34, child: SizedBox.shrink()),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    tooltip: 'Close',
+                    padding: EdgeInsets.zero,
+                    color: AppColors.navy,
+                    constraints:
+                        const BoxConstraints.tightFor(width: 44, height: 44),
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         Semantics(
           header: true,
           child: Text(
             n.title,
             style: GoogleFonts.outfit(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
               color: AppColors.navy,
-              letterSpacing: -0.4,
-              height: 1.25,
+              letterSpacing: -0.2,
+              height: 1.3,
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           n.body,
           style: GoogleFonts.outfit(
-            fontSize: 15,
-            color: AppColors.navy.withValues(alpha: 0.82),
-            height: 1.55,
+            fontSize: 13.5,
+            color: AppColors.secondaryText,
+            height: 1.5,
           ),
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 20),
         if (actionLabel != null) ...[
           DentraPillButton(
             label: actionLabel,
@@ -232,7 +241,7 @@ class _Content extends StatelessWidget {
           primary: _GlassButton(
             label: 'Delete',
             icon: Icons.delete_outline_rounded,
-            color: AppColors.danger,
+            color: AppColors.dangerInk,
             onPressed: () => choose(NotificationDetailAction.delete),
           ),
         ),
@@ -377,22 +386,22 @@ class _GlassButton extends StatelessWidget {
             splashColor: color.withValues(alpha: 0.10),
             highlightColor: color.withValues(alpha: 0.05),
             child: SizedBox(
-              height: DentraPillButton.height,
+              height: 44,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, size: 19, color: color),
-                    const SizedBox(width: 8),
+                    Icon(icon, size: 16, color: color),
+                    const SizedBox(width: 6),
                     Flexible(
                       child: Text(
                         label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                           color: color,
                         ),
                       ),

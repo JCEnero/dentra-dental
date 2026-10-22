@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'glass_card.dart';
 import '../../core/constants/app_colors.dart';
@@ -46,8 +48,8 @@ class AppBottomNav extends StatelessWidget {
       label: 'History',
     ),
     _NavItem(
-      activeIcon: Icons.local_hospital_rounded,
-      inactiveIcon: Icons.local_hospital_outlined,
+      activeIcon: Icons.location_on_rounded,
+      inactiveIcon: Icons.location_on_outlined,
       label: 'Clinics',
     ),
     _NavItem(
@@ -91,6 +93,7 @@ class AppBottomNav extends StatelessWidget {
                         return _DockButton(
                           item: _items[i],
                           active: i == activeIndex,
+                          reduceMotion: reduceMotion,
                           duration: duration,
                           onTap: () => onTap(i),
                         );
@@ -113,16 +116,18 @@ class _DockButton extends StatelessWidget {
   const _DockButton({
     required this.item,
     required this.active,
+    required this.reduceMotion,
     required this.duration,
     required this.onTap,
   });
 
   final _NavItem item;
   final bool active;
+  final bool reduceMotion;
   final Duration duration;
   final VoidCallback onTap;
 
-  static const double _size = 52;
+  static const double size = 52;
 
   @override
   Widget build(BuildContext context) {
@@ -135,40 +140,33 @@ class _DockButton extends StatelessWidget {
         message: item.label,
         child: InkResponse(
           onTap: onTap,
-          radius: _size / 2,
+          radius: size / 2,
           customBorder: const CircleBorder(),
           splashColor: AppColors.lightLavender.withValues(alpha: 0.7),
           highlightColor: Colors.transparent,
           child: SizedBox(
-            width: _size,
-            height: _size,
+            width: size,
+            height: size,
             child: Stack(
               alignment: Alignment.center,
               children: [
+                // Glass bubble: inflates when chosen, deflates when left.
+                AnimatedScale(
+                  duration: reduceMotion
+                      ? Duration.zero
+                      : Duration(milliseconds: active ? 520 : 260),
+                  curve: active ? Curves.elasticOut : Curves.easeInBack,
+                  scale: active ? 1 : 0,
+                  child: const _GlassBubble(),
+                ),
                 AnimatedScale(
                   duration: duration,
                   curve: Curves.easeOutBack,
-                  scale: active ? 1 : 0.86,
-                  child: AnimatedContainer(
-                    duration: duration,
-                    curve: Curves.easeOut,
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: active ? AppColors.cardGradient : null,
-                      color: active ? null : Colors.transparent,
-                      border: Border.all(
-                        color: active
-                            ? AppColors.white.withValues(alpha: 0.6)
-                            : Colors.transparent,
-                      ),
-                    ),
-                    child: Icon(
-                      active ? item.activeIcon : item.inactiveIcon,
-                      size: 22,
-                      color: active ? AppColors.white : AppColors.secondaryText,
-                    ),
+                  scale: active ? 1.08 : 0.9,
+                  child: Icon(
+                    active ? item.activeIcon : item.inactiveIcon,
+                    size: 22,
+                    color: active ? AppColors.white : AppColors.secondaryText,
                   ),
                 ),
                 // Dock indicator dot under the active app.
@@ -188,6 +186,60 @@ class _DockButton extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Frosted glass disc with a light teal tint and a glossy top highlight.
+class _GlassBubble extends StatelessWidget {
+  const _GlassBubble();
+
+  static const double _disc = 44;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipOval(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          width: _disc,
+          height: _disc,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.g1.withValues(alpha: 0.55),
+                AppColors.g2.withValues(alpha: 0.8),
+              ],
+            ),
+            border: Border.all(
+              color: AppColors.white.withValues(alpha: 0.7),
+              width: 1.2,
+            ),
+          ),
+          // Soft shine across the top, like light on a bubble.
+          child: Align(
+            alignment: const Alignment(-0.35, -0.6),
+            child: Container(
+              width: 18,
+              height: 9,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(9),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.white.withValues(alpha: 0.55),
+                    AppColors.white.withValues(alpha: 0),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

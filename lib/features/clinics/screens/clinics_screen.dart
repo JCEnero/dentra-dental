@@ -1,38 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
-import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/constants/map_style.dart';
-import '../../../core/services/maps_loader.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../clinic_finder/data/models/clinic_model.dart';
 import '../../clinic_finder/providers/clinic_provider.dart';
+import '../widgets/clinic_map.dart';
 import '../widgets/clinic_ui.dart';
 import 'clinic_detail_screen.dart';
-
-/// The map is switched off for now: on web it renders glitches over the
-/// glass UI. Set to true to bring it back.
-const bool _kShowMap = false;
 
 /// Default search radius, matching [ClinicFilterState.radiusKm].
 const double _kDefaultRadiusKm = 5.0;
 
-enum _ClinicSort {
-  nearest('Nearest', Icons.near_me_rounded),
-  topRated('Top rated', Icons.star_rounded);
-
-  const _ClinicSort(this.label, this.icon);
-  final String label;
-  final IconData icon;
-}
+/// Below this body height (e.g. keyboard open) the map folds away so
+/// the list keeps enough room.
+const double _kMinHeightForMap = 420;
 
 /// Number of filters that differ from their defaults.
 int _activeFilterCount(ClinicFilterState f) =>
@@ -69,13 +56,18 @@ class ClinicsScreen extends ConsumerStatefulWidget {
 }
 
 class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
-  Position? _userPosition;
-  final GlobalKey<_MapPlaceholderState> _mapKey =
-      GlobalKey<_MapPlaceholderState>();
   final TextEditingController _searchController = TextEditingController();
 
-  _ClinicSort _sort = _ClinicSort.nearest;
+  /// Lets a pin tap scroll its card into view.
+  final Map<String, GlobalKey> _cardKeys = {};
+
   bool _locating = false;
+
+  /// True once the device location is known.
+  bool _precise = false;
+
+  /// Clinic picked on the map; its pin and card are highlighted.
+  String? _selectedId;
 
   @override
   void initState() {
@@ -116,15 +108,13 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
 
       final position = await Geolocator.getCurrentPosition();
       if (!mounted) return;
-      setState(() => _userPosition = position);
+      setState(() => _precise = true);
 
-      // Update the logic layer's location; the clinic list reloads.
+      // Update the logic layer's location; the clinic list and map follow.
       ref.read(userLocationProvider.notifier).setLocation(
             latitude: position.latitude,
             longitude: position.longitude,
           );
-
-      _mapKey.currentState?._animateToUserLocation(position);
     } catch (_) {
       problem = 'Could not get your location. Try again in a moment.';
     } finally {
@@ -158,22 +148,37 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
     );
   }
 
-  List<ClinicModel> _sorted(List<ClinicModel> clinics, UserLocation from) {
-    final list = [...clinics];
-    switch (_sort) {
-      case _ClinicSort.nearest:
-        list.sort(
-            (a, b) => _distanceKm(from, a).compareTo(_distanceKm(from, b)));
-      case _ClinicSort.topRated:
-        list.sort((a, b) {
-          final byRating = b.rating.compareTo(a.rating);
-          return byRating != 0
-              ? byRating
-              : b.reviewCount.compareTo(a.reviewCount);
-        });
-    }
-    return list;
+  /// Highlights a clinic picked on the map and brings its card into view.
+  void _selectFromMap(ClinicModel clinic) {
+    setState(() => _selectedId = clinic.id);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cardContext = _cardKeys[clinic.id]?.currentContext;
+      if (cardContext == null || !cardContext.mounted) return;
+      Scrollable.ensureVisible(
+        cardContext,
+        alignment: 0.1,
+        duration: dentraMotion(cardContext, 320),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
+
+  void _openClinic(ClinicModel clinic, double distanceKm) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ClinicDetailScreen(
+          clinic: clinic,
+          distanceKm: distanceKm,
+        ),
+      ),
+    );
+  }
+
+  /// Nearest first.
+  List<ClinicModel> _sorted(List<ClinicModel> clinics, UserLocation from) =>
+      [...clinics]..sort(
+          (a, b) => _distanceKm(from, a).compareTo(_distanceKm(from, b)));
 
   @override
   Widget build(BuildContext context) {
@@ -181,6 +186,15 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
     final location = ref.watch(userLocationProvider);
     final clinicsAsync = ref.watch(filteredClinicsProvider);
     final filterCount = _activeFilterCount(filters);
+
+    // One sorted list drives both the pins and the cards.
+    final clinics = clinicsAsync.valueOrNull;
+    final sorted =
+        clinics == null ? const <ClinicModel>[] : _sorted(clinics, location);
+
+    // The app shell keeps hidden tabs built. Only mount the map while
+    // this tab shows, so it never lingers behind other tabs on web.
+    final tabVisible = Visibility.of(context);
 
     return Column(
       children: [
@@ -190,12 +204,6 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
           child: DentraPageHeader(
             title: 'Clinics Nearby',
             onBack: widget.onBack,
-            trailing: ClinicGlassIconButton(
-              icon: Icons.my_location_rounded,
-              tooltip: 'Use my current location',
-              busy: _locating,
-              onPressed: () => _getUserLocation(manual: true),
-            ),
             bottom: Row(
               children: [
                 Expanded(
@@ -219,112 +227,138 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
             ),
           ),
         ),
-        Divider(height: 1, thickness: 1, color: AppGlass.divider),
 
         // ── BODY ───────────────────────────────────────────────
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: _refresh,
-            color: AppColors.g2,
-            backgroundColor: AppColors.white,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              slivers: clinicsAsync.when(
-                loading: () => [
-                  _toolbar(count: null, filters: filters),
-                  const _SkeletonList(),
-                ],
-                error: (_, __) => [
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _StatusView(
-                      icon: Icons.wifi_off_rounded,
-                      title: 'Could not load clinics',
-                      message: 'Check your connection, then try again.',
-                      actionLabel: 'Try again',
-                      actionIcon: Icons.refresh_rounded,
-                      onAction: _refresh,
-                    ),
-                  ),
-                ],
-                data: (clinics) {
-                  if (clinics.isEmpty) {
-                    return [
-                      _toolbar(count: 0, filters: filters),
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: _emptyState(filters, filterCount),
-                      ),
-                    ];
-                  }
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final mapHeight = constraints.maxHeight < _kMinHeightForMap
+                  ? 0.0
+                  : (constraints.maxHeight * 0.4).clamp(200.0, 320.0);
 
-                  final sorted = _sorted(clinics, location);
-                  final showBadges = filters.searchQuery.isEmpty;
-                  return [
-                    if (_kShowMap && filters.searchQuery.isEmpty)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.screenH, 20, AppSpacing.screenH, 0),
-                          child: Container(
-                            foregroundDecoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppGlass.border),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: _MapPlaceholder(
-                                key: _mapKey,
-                                userPosition: _userPosition,
-                                clinics: clinics,
-                              ),
-                            ),
+              return Column(
+                children: [
+                  if (tabVisible)
+                    // Sized rather than removed when folded, so the map
+                    // isn't reloaded each time the keyboard opens.
+                    AnimatedContainer(
+                      duration: dentraMotion(context, 240),
+                      curve: Curves.easeOutCubic,
+                      height: mapHeight,
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.screenH),
+                      foregroundDecoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppGlass.divider),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: ClinicMap(
+                          clinics: sorted,
+                          center: location,
+                          radiusKm: filters.radiusKm,
+                          showUser: _precise,
+                          selectedId: _selectedId,
+                          onClinicTap: _selectFromMap,
+                          onMapTap: () => setState(() => _selectedId = null),
+                          overlay: ClinicGlassIconButton(
+                            icon: Icons.my_location_rounded,
+                            tooltip: 'Use my current location',
+                            busy: _locating,
+                            onPressed: () => _getUserLocation(manual: true),
                           ),
                         ),
                       ),
-                    _toolbar(count: sorted.length, filters: filters),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.screenH),
-                      sliver: SliverList.separated(
-                        itemCount: sorted.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final clinic = sorted[index];
-                          return _ClinicCard(
-                            clinic: clinic,
-                            distanceKm: _distanceKm(location, clinic),
-                            index: index,
-                            badge: showBadges && index == 0
-                                ? switch (_sort) {
-                                    _ClinicSort.nearest => 'Closest to you',
-                                    _ClinicSort.topRated => 'Highest rated',
-                                  }
-                                : null,
-                          );
-                        },
+                    ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _refresh,
+                      color: AppColors.g2,
+                      backgroundColor: AppColors.white,
+                      child: CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        slivers: clinicsAsync.when(
+                          loading: () => [
+                            _toolbar(count: null, filters: filters),
+                            const _SkeletonList(),
+                          ],
+                          error: (_, __) => [
+                            SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: _StatusView(
+                                icon: Icons.wifi_off_rounded,
+                                title: 'Could not load clinics',
+                                message:
+                                    'Check your connection, then try again.',
+                                actionLabel: 'Try again',
+                                onAction: _refresh,
+                              ),
+                            ),
+                          ],
+                          data: (_) => sorted.isEmpty
+                              ? [
+                                  _toolbar(count: 0, filters: filters),
+                                  SliverFillRemaining(
+                                    hasScrollBody: false,
+                                    child: _emptyState(filters, filterCount),
+                                  ),
+                                ]
+                              : [
+                                  _toolbar(
+                                      count: sorted.length, filters: filters),
+                                  _clinicList(sorted, location),
+                                  const SliverToBoxAdapter(
+                                      child: SizedBox(height: 24)),
+                                ],
+                        ),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
-                  ];
-                },
-              ),
-            ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
     );
   }
 
-  /// Location status, result count and sort chips above the list.
+  /// Cards in a plain column: Places returns at most 10 clinics, and
+  /// building them all lets a pin tap scroll to any card.
+  Widget _clinicList(List<ClinicModel> sorted, UserLocation location) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+      sliver: SliverToBoxAdapter(
+        child: Column(
+          children: [
+            for (var i = 0; i < sorted.length; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              _ClinicCard(
+                key: _cardKeys.putIfAbsent(sorted[i].id, GlobalKey.new),
+                clinic: sorted[i],
+                index: i,
+                distanceKm: _distanceKm(location, sorted[i]),
+                selected: sorted[i].id == _selectedId,
+                onTap: () => _openClinic(
+                  sorted[i],
+                  _distanceKm(location, sorted[i]),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Result count above the list.
   Widget _toolbar({required int? count, required ClinicFilterState filters}) {
-    final searching = filters.searchQuery.isNotEmpty;
     final String summary;
     if (count == null) {
       summary = 'Finding clinics…';
-    } else if (searching) {
+    } else if (filters.searchQuery.isNotEmpty) {
       summary = '$count ${count == 1 ? 'result' : 'results'}';
     } else {
       summary = '$count ${count == 1 ? 'clinic' : 'clinics'} within '
@@ -333,52 +367,31 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
 
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.only(top: 18, bottom: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        summary,
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ),
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenH, 16, AppSpacing.screenH, 12),
+        child: Semantics(
+          liveRegion: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                summary,
+                style: GoogleFonts.outfit(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+              if (!_precise && !_locating)
+                Text(
+                  'Approximate distances',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    color: AppColors.secondaryText,
                   ),
-                  _LocationPill(precise: _userPosition != null),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 40,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                itemCount: _ClinicSort.values.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, i) {
-                  final sort = _ClinicSort.values[i];
-                  return DentraChoiceChip(
-                    label: sort.label,
-                    selected: _sort == sort,
-                    onSelected: () => setState(() => _sort = sort),
-                  );
-                },
-              ),
-            ),
-          ],
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -389,9 +402,8 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
       return _StatusView(
         icon: Icons.search_off_rounded,
         title: 'No results for "${filters.searchQuery}"',
-        message: 'Try a different name or area, or check the spelling.',
+        message: 'Try a different name or area.',
         actionLabel: 'Clear search',
-        actionIcon: Icons.close_rounded,
         onAction: _clearSearch,
       );
     }
@@ -401,17 +413,14 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
         title: 'No clinics match your filters',
         message: 'Widen the distance or relax the rating and budget.',
         actionLabel: 'Reset filters',
-        actionIcon: Icons.restart_alt_rounded,
         onAction: () => _resetFilters(ref.read(clinicFilterProvider.notifier)),
       );
     }
     return _StatusView(
       icon: Icons.location_off_rounded,
       title: 'No clinics found nearby',
-      message: 'We could not find dental clinics in this area. '
-          'Use your current location or try again later.',
+      message: 'Use your current location or try again later.',
       actionLabel: 'Use my location',
-      actionIcon: Icons.my_location_rounded,
       onAction: () => _getUserLocation(manual: true),
     );
   }
@@ -474,113 +483,64 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-// ── Location pill ─────────────────────────────────────────────────
-
-class _LocationPill extends StatelessWidget {
-  const _LocationPill({required this.precise});
-
-  /// True once the device location is known.
-  final bool precise;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = precise ? AppColors.successGreen : AppColors.secondaryText;
-    return Tooltip(
-      message: precise
-          ? 'Distances are measured from your current location'
-          : 'Location unavailable. Distances are approximate',
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
-        decoration: BoxDecoration(
-          color: AppColors.white.withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppGlass.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              precise
-                  ? Icons.my_location_rounded
-                  : Icons.location_searching_rounded,
-              size: 13,
-              color: color,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              precise ? 'Near you' : 'Approx. area',
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.navy,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ── Clinic card ───────────────────────────────────────────────────
 
 class _ClinicCard extends StatelessWidget {
   const _ClinicCard({
+    super.key,
     required this.clinic,
-    required this.distanceKm,
     required this.index,
-    this.badge,
+    required this.distanceKm,
+    required this.selected,
+    required this.onTap,
   });
 
   final ClinicModel clinic;
-  final double distanceKm;
-  final int index;
 
-  /// Optional highlight above the name, e.g. "Closest to you".
-  final String? badge;
+  /// Position in the list, used to stagger the entry animation.
+  final int index;
+  final double distanceKm;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final distance = formatClinicDistance(distanceKm);
+    final rated = clinic.reviewCount > 0;
+    final rating = clinic.rating.toStringAsFixed(1);
+    final meta = GoogleFonts.outfit(
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+      color: AppColors.secondaryText,
+    );
+
     // Cap stagger delay to the first 6 items.
     final animationIndex = index < 6 ? index : 5;
     return TweenAnimationBuilder<double>(
-      key: ValueKey(clinic.id),
       tween: Tween(begin: 0.0, end: 1.0),
       duration: dentraMotion(context, 260 + animationIndex * 45),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return Transform.translate(
-          offset: Offset(0, 18 * (1 - value)),
+          offset: Offset(0, 14 * (1 - value)),
           child: Opacity(opacity: value, child: child),
         );
       },
       child: GlassCard(
-        borderRadius: BorderRadius.circular(22),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ClinicDetailScreen(
-                clinic: clinic,
-                distanceKm: distanceKm,
-              ),
-            ),
-          );
-        },
+        borderRadius: BorderRadius.circular(18),
+        borderColor: selected ? AppColors.g2 : null,
+        borderWidth: selected ? 1.5 : 1,
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
           child: Row(
             children: [
-              ClinicAvatar(name: clinic.name, size: 46),
-              const SizedBox(width: 14),
+              _InitialsTile(name: clinic.name, selected: selected),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (badge != null) ...[
-                      _Badge(label: badge!),
-                      const SizedBox(height: 6),
-                    ],
                     Text(
                       clinic.name,
                       maxLines: 1,
@@ -592,40 +552,37 @@ class _ClinicCard extends StatelessWidget {
                         height: 1.25,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    // Distance and rating on one quiet line.
-                    Row(
-                      children: [
-                        _InlineStat(
-                          icon: Icons.near_me_rounded,
-                          iconColor: AppColors.g2,
-                          label: formatClinicDistance(distanceKm),
+                    const SizedBox(height: 3),
+                    Semantics(
+                      label: rated
+                          ? '$distance away, rated $rating from '
+                              '${clinic.reviewCount} reviews'
+                          : '$distance away, no reviews yet',
+                      excludeSemantics: true,
+                      child: Text.rich(
+                        TextSpan(
+                          style: meta,
+                          children: [
+                            TextSpan(text: '$distance   ·   '),
+                            const WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: Icon(
+                                Icons.star_rounded,
+                                size: 14,
+                                color: AppColors.warmOrange,
+                              ),
+                            ),
+                            TextSpan(
+                              text: rated
+                                  ? ' $rating (${clinic.reviewCount})'
+                                  : ' New',
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: _InlineStat(
-                            icon: Icons.star_rounded,
-                            iconColor: AppColors.warmOrange,
-                            label: clinic.reviewCount > 0
-                                ? '${clinic.rating.toStringAsFixed(1)} '
-                                    '(${clinic.reviewCount})'
-                                : 'New',
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (clinic.address.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        clinic.address,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          color: AppColors.secondaryText,
-                        ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -642,63 +599,48 @@ class _ClinicCard extends StatelessWidget {
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label});
+/// Soft mint tile with the clinic's initials, the same as its map pin.
+/// Turns teal when the clinic is picked on the map.
+class _InitialsTile extends StatelessWidget {
+  const _InitialsTile({required this.name, required this.selected});
 
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.g2.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.outfit(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AppColors.g2,
-          letterSpacing: 0.2,
-        ),
-      ),
-    );
-  }
-}
-
-class _InlineStat extends StatelessWidget {
-  const _InlineStat({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String label;
+  final String name;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 15, color: iconColor),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.outfit(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.navy,
-            ),
+    return ExcludeSemantics(
+      child: AnimatedContainer(
+        duration: dentraMotion(context, 200),
+        width: 42,
+        height: 42,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: selected
+              ? AppColors.cardGradient
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.white.withValues(alpha: 0.9),
+                    AppColors.mintGreen.withValues(alpha: 0.6),
+                  ],
+                ),
+          border: Border.all(
+            color: selected ? AppColors.g2 : AppGlass.border,
           ),
         ),
-      ],
+        child: Text(
+          clinicInitials(name),
+          style: GoogleFonts.outfit(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: selected ? AppColors.white : AppColors.g2,
+            letterSpacing: -0.4,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -751,7 +693,7 @@ class _SkeletonListState extends State<_SkeletonList>
               children: List.generate(
                 4,
                 (_) => const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
+                  padding: EdgeInsets.only(bottom: 10),
                   child: _SkeletonCard(),
                 ),
               ),
@@ -768,52 +710,33 @@ class _SkeletonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fill = AppColors.g2.withValues(alpha: 0.1);
     Widget bar(double width, double height) => Container(
           width: width,
           height: height,
           decoration: BoxDecoration(
-            color: AppColors.g2.withValues(alpha: 0.1),
+            color: fill,
             borderRadius: BorderRadius.circular(6),
           ),
         );
 
     return GlassCard(
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.g2.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    bar(180, 14),
-                    const SizedBox(height: 8),
-                    bar(120, 10),
-                  ],
-                ),
-              ),
-            ],
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
           ),
-          const SizedBox(height: 14),
-          Row(
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              bar(54, 12),
-              const SizedBox(width: 14),
-              bar(64, 12),
-              const Spacer(),
-              bar(70, 14),
+              bar(170, 13),
+              const SizedBox(height: 8),
+              bar(110, 10),
             ],
           ),
         ],
@@ -830,7 +753,6 @@ class _StatusView extends StatelessWidget {
     required this.title,
     required this.message,
     required this.actionLabel,
-    required this.actionIcon,
     required this.onAction,
   });
 
@@ -838,7 +760,6 @@ class _StatusView extends StatelessWidget {
   final String title;
   final String message;
   final String actionLabel;
-  final IconData actionIcon;
   final VoidCallback onAction;
 
   @override
@@ -846,61 +767,40 @@ class _StatusView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenH, 12, AppSpacing.screenH, 32),
+            AppSpacing.screenH, 8, AppSpacing.screenH, 24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: GlassCard(
-            borderRadius: BorderRadius.circular(24),
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.white.withValues(alpha: 0.9),
-                        AppColors.mintGreen.withValues(alpha: 0.7),
-                      ],
-                    ),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppGlass.border),
-                  ),
-                  child: Icon(icon, size: 28, color: AppColors.g2),
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 28, color: AppColors.g2),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 13.5,
+                  color: AppColors.secondaryText,
+                  height: 1.45,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: AppColors.secondaryText,
-                    height: 1.45,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                DentraPillButton(
-                  label: actionLabel,
-                  icon: actionIcon,
-                  variant: DentraButtonVariant.outline,
-                  onPressed: onAction,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              DentraPillButton(
+                label: actionLabel,
+                variant: DentraButtonVariant.outline,
+                onPressed: onAction,
+              ),
+            ],
           ),
         ),
       ),
@@ -1018,178 +918,5 @@ class _SheetLabel extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-// ── Map widget ────────────────────────────────────────────────────
-
-class _MapPlaceholder extends StatefulWidget {
-  final Position? userPosition;
-  final List<ClinicModel> clinics;
-
-  const _MapPlaceholder({
-    super.key,
-    this.userPosition,
-    required this.clinics,
-  });
-
-  @override
-  State<_MapPlaceholder> createState() => _MapPlaceholderState();
-}
-
-class _MapPlaceholderState extends State<_MapPlaceholder> {
-  GoogleMapController? _mapController;
-  late Set<Marker> _markers;
-  bool _hasAnimatedToUserLocation = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _markers = _createMarkers();
-  }
-
-  @override
-  void didUpdateWidget(covariant _MapPlaceholder oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.userPosition != widget.userPosition ||
-        oldWidget.clinics != widget.clinics) {
-      setState(() {
-        _markers = _createMarkers();
-      });
-    }
-  }
-
-  /// Animate camera to user's location when position first resolves
-  void _animateToUserLocation(Position position) {
-    // Only animate once when position first arrives
-    if (!_hasAnimatedToUserLocation && _mapController != null) {
-      _hasAnimatedToUserLocation = true;
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(position.latitude, position.longitude),
-          14.5,
-        ),
-      );
-    }
-  }
-
-  Set<Marker> _createMarkers() {
-    final markers = <Marker>{};
-
-    // Add clinic markers
-    markers.addAll(
-      widget.clinics.map((clinic) {
-        return Marker(
-          markerId: MarkerId('clinic_${clinic.id}'),
-          position: LatLng(clinic.latitude, clinic.longitude),
-          infoWindow: InfoWindow(
-            title: clinic.name,
-            snippet: _formatDistance(clinic),
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
-        );
-      }),
-    );
-
-    // Add user location marker if available
-    if (widget.userPosition != null) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('user_location'),
-          position: LatLng(
-            widget.userPosition!.latitude,
-            widget.userPosition!.longitude,
-          ),
-          infoWindow: const InfoWindow(
-            title: 'Your Location',
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-        ),
-      );
-    }
-
-    return markers;
-  }
-
-  String _formatDistance(ClinicModel clinic) {
-    if (widget.userPosition == null) {
-      return '-- km';
-    }
-    final distanceMeters = Geolocator.distanceBetween(
-      widget.userPosition!.latitude,
-      widget.userPosition!.longitude,
-      clinic.latitude,
-      clinic.longitude,
-    );
-    final distanceKm = distanceMeters / 1000;
-    return '${distanceKm.toStringAsFixed(1)} km';
-  }
-
-  LatLng _calculateCenter() {
-    // If we have user position, use it
-    if (widget.userPosition != null) {
-      return LatLng(
-        widget.userPosition!.latitude,
-        widget.userPosition!.longitude,
-      );
-    }
-
-    // Otherwise, calculate center of clinics
-    if (widget.clinics.isEmpty) {
-      // Default fallback if no clinics
-      return const LatLng(14.5995, 120.9842); // Manila City Hall
-    }
-
-    final avgLat =
-        widget.clinics.map((c) => c.latitude).reduce((a, b) => a + b) /
-            widget.clinics.length;
-    final avgLng =
-        widget.clinics.map((c) => c.longitude).reduce((a, b) => a + b) /
-            widget.clinics.length;
-    return LatLng(avgLat, avgLng);
-  }
-
-  // On web the Maps JavaScript API has to be loaded before the map builds.
-  late final Future<void> _mapsReady = ensureMapsLoaded();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 220,
-      child: FutureBuilder<void>(
-        future: _mapsReady,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done ||
-              snapshot.hasError) {
-            return const ColoredBox(color: AppColors.lightLavender);
-          }
-          return GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _calculateCenter(),
-              zoom: 14.5,
-            ),
-            markers: _markers,
-            style: mapStyle,
-            onMapCreated: (controller) {
-              _mapController = controller;
-            },
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            compassEnabled: false,
-            gestureRecognizers: {
-              Factory<OneSequenceGestureRecognizer>(
-                  () => EagerGestureRecognizer()),
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _mapController?.dispose();
-    super.dispose();
   }
 }

@@ -48,24 +48,35 @@ class ApiScreeningRepository implements ScreeningRepository {
     String userId,
     String sessionId,
     String regionId,
-    Uint8List bytes,
-  ) async {
+    Uint8List bytes, {
+    String modality = 'rgb',
+  }) async {
     final body = await _api.send(
       'PUT',
       '/api/screenings/${Uri.encodeComponent(sessionId)}/captures/$regionId/image',
+      query: modality == 'rgb' ? null : {'modality': modality},
       bytes: bytes,
       contentType: imageContentType(bytes),
     );
-    return _sessionFrom(body['session'] as Map<String, dynamic>);
+    return screeningSessionFromApi(_api, body['session'] as Map<String, dynamic>);
   }
 
-  /// Image URLs come back relative to the API in development storage.
-  ScreeningSession _sessionFrom(Map<String, dynamic> json) {
-    final captures = json['captures'] as List<dynamic>? ?? const [];
-    for (final c in captures.cast<Map<String, dynamic>>()) {
-      final url = c['image_url'] as String?;
-      if (url != null) c['image_url'] = _api.resolve(url);
+  ScreeningSession _sessionFrom(Map<String, dynamic> json) =>
+      screeningSessionFromApi(_api, json);
+}
+
+/// Parses a session from the API. Image URLs come back relative to the
+/// API in development storage.
+ScreeningSession screeningSessionFromApi(
+  ApiClient api,
+  Map<String, dynamic> json,
+) {
+  final captures = json['captures'] as List<dynamic>? ?? const [];
+  for (final c in captures.cast<Map<String, dynamic>>()) {
+    for (final key in const ['image_url', 'nir_image_url']) {
+      final url = c[key] as String?;
+      if (url != null) c[key] = api.resolve(url);
     }
-    return ScreeningSession.fromJson(json);
   }
+  return ScreeningSession.fromJson(json);
 }

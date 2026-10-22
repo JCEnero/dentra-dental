@@ -14,10 +14,10 @@ import '../widgets/clinic_ui.dart';
 
 /// Detail page for one clinic.
 ///
-/// Light glass header (initials tile, name, address, rating), a facts
-/// strip, the service price list and contact details. The top bar starts
-/// clear and frosts over, showing the name, once the title scrolls away.
-/// Call and Directions stay docked at the bottom.
+/// Name with a single rating and distance line, the service price list
+/// and contact details. The top bar starts clear and frosts over, showing
+/// the name, once the title scrolls away. Call and Directions stay docked
+/// at the bottom.
 class ClinicDetailScreen extends StatefulWidget {
   final ClinicModel clinic;
 
@@ -53,8 +53,8 @@ class _ClinicDetailScreenState extends State<ClinicDetailScreen> {
   void initState() {
     super.initState();
     _scroll.addListener(() {
-      // The title sits ~100px down; fade the bar in over the next 60px.
-      final t = ((_scroll.offset - 70) / 60).clamp(0.0, 1.0);
+      // The title sits just under the bar; fade the bar in as it passes.
+      final t = ((_scroll.offset - 20) / 48).clamp(0.0, 1.0);
       if (t != _collapse.value) _collapse.value = t;
     });
   }
@@ -120,40 +120,37 @@ class _ClinicDetailScreenState extends State<ClinicDetailScreen> {
                       AppSpacing.screenH,
                       0,
                     ),
-                    child: _Header(clinic: _clinic),
+                    child: _Header(
+                      clinic: _clinic,
+                      distanceKm: widget.distanceKm,
+                    ),
                   ),
                 ),
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(
                     AppSpacing.screenH,
-                    24,
+                    32,
                     AppSpacing.screenH,
                     112 + media.padding.bottom,
                   ),
                   sliver: SliverList.list(
                     children: [
-                      _FactsStrip(
-                        clinic: _clinic,
-                        distanceKm: widget.distanceKm,
-                      ),
-                      const SizedBox(height: 32),
                       // Prices come from public listings, so label them
                       // quietly as estimates rather than with a banner.
                       const _SectionTitle(
                         'Services',
                         trailing: 'Est. public rates',
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       _ServicesCard(services: services),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 28),
                       const _SectionTitle('Contact'),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       GlassCard(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(18),
                         child: Column(
                           children: [
                             _ContactRow(
-                              icon: Icons.call_rounded,
                               label: 'Phone',
                               value: _hasPhone
                                   ? _clinic.phoneNumber
@@ -164,9 +161,8 @@ class _ClinicDetailScreenState extends State<ClinicDetailScreen> {
                                   : null,
                             ),
                             if (_clinic.address.isNotEmpty) ...[
-                              const _Hairline(indent: 66),
+                              const _Hairline(),
                               _ContactRow(
-                                icon: Icons.location_on_rounded,
                                 label: 'Address',
                                 value: _clinic.address,
                                 onTap: _directions,
@@ -310,32 +306,26 @@ class _TopBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Header: initials tile, tag, name, address, rating
+// Header: name, then rating and distance on one quiet line
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
-  const _Header({required this.clinic});
+  const _Header({required this.clinic, required this.distanceKm});
 
   final ClinicModel clinic;
+  final double? distanceKm;
 
   @override
   Widget build(BuildContext context) {
+    final rated = clinic.reviewCount > 0;
+    final rating = clinic.rating.toStringAsFixed(1);
+    final reviews =
+        '${clinic.reviewCount} ${clinic.reviewCount == 1 ? 'review' : 'reviews'}';
+    final distance = distanceKm != null ? formatClinicDistance(distanceKm) : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            ClinicAvatar(name: clinic.name, size: 64),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: _Tag(label: 'Dental clinic'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
         Semantics(
           header: true,
           child: Text(
@@ -349,201 +339,46 @@ class _Header extends StatelessWidget {
             ),
           ),
         ),
-        if (clinic.address.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: AppColors.secondaryText,
-                ),
+        const SizedBox(height: 10),
+        Semantics(
+          label: [
+            rated ? 'Rated $rating from $reviews' : 'No reviews yet',
+            if (distance != null) '$distance away',
+          ].join(', '),
+          excludeSemantics: true,
+          child: Text.rich(
+            TextSpan(
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.secondaryText,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  clinic.address,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: AppColors.secondaryText,
-                    height: 1.45,
+              children: [
+                const WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Icon(
+                    Icons.star_rounded,
+                    size: 16,
+                    color: AppColors.warmOrange,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 12),
-        MergeSemantics(
-          child: Row(
-            children: [
-              ClinicStars(rating: clinic.rating, size: 16),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  clinic.reviewCount > 0
-                      ? '${clinic.rating.toStringAsFixed(1)} · '
-                          '${clinic.reviewCount} '
-                          '${clinic.reviewCount == 1 ? 'review' : 'reviews'}'
-                      : 'No reviews yet',
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                if (rated) ...[
+                  TextSpan(
+                    text: ' $rating',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  TextSpan(text: ' ($reviews)'),
+                ] else
+                  const TextSpan(text: ' No reviews yet'),
+                if (distance != null) TextSpan(text: '   ·   $distance away'),
+              ],
+            ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
-      decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppGlass.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-              color: AppColors.g2,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.navy,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Facts strip: one glass card, segments split by hairlines
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _FactsStrip extends StatelessWidget {
-  const _FactsStrip({required this.clinic, required this.distanceKm});
-
-  final ClinicModel clinic;
-  final double? distanceKm;
-
-  @override
-  Widget build(BuildContext context) {
-    final facts = [
-      (Icons.near_me_rounded, 'Distance', formatClinicDistance(distanceKm)),
-      (
-        Icons.star_rounded,
-        'Rating',
-        clinic.reviewCount > 0 ? clinic.rating.toStringAsFixed(1) : '--',
-      ),
-    ];
-
-    return GlassCard(
-      borderRadius: BorderRadius.circular(20),
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < facts.length; i++) ...[
-              if (i > 0)
-                VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: AppColors.g2.withValues(alpha: 0.14),
-                ),
-              Expanded(
-                child: _Fact(
-                  icon: facts[i].$1,
-                  label: facts[i].$2,
-                  value: facts[i].$3,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Fact extends StatelessWidget {
-  const _Fact({required this.icon, required this.label, required this.value});
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return MergeSemantics(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 15, color: AppColors.g2),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-                height: 1.2,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -570,7 +405,7 @@ class _SectionTitle extends StatelessWidget {
             child: Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: AppColors.navy,
                 letterSpacing: -0.2,
@@ -582,7 +417,7 @@ class _SectionTitle extends StatelessWidget {
           Text(
             trailing!,
             style: GoogleFonts.outfit(
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: FontWeight.w500,
               color: AppColors.secondaryText,
             ),
@@ -593,39 +428,16 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _Hairline extends StatelessWidget {
-  const _Hairline({this.indent = 16});
-
-  final double indent;
+  const _Hairline();
 
   @override
   Widget build(BuildContext context) {
     return Divider(
       height: 1,
       thickness: 1,
-      indent: indent,
+      indent: 16,
       endIndent: 16,
       color: AppGlass.divider,
-    );
-  }
-}
-
-/// Small frosted tile holding a row's icon.
-class _IconTile extends StatelessWidget {
-  const _IconTile({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: AppColors.lightLavender.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppGlass.border),
-      ),
-      child: Icon(icon, size: 19, color: AppColors.g2),
     );
   }
 }
@@ -651,7 +463,7 @@ class _ServicesCardState extends State<_ServicesCard> {
     if (services.isEmpty) {
       return GlassCard(
         width: double.infinity,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         padding: const EdgeInsets.all(16),
         child: Text(
           'No listed rates yet. Call the clinic to ask what they offer.',
@@ -669,24 +481,23 @@ class _ServicesCardState extends State<_ServicesCard> {
         _expanded || !canExpand ? services : services.take(_previewCount);
 
     return GlassCard(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(18),
       child: Column(
         children: [
           for (final (i, service) in shown.indexed) ...[
-            if (i > 0) const _Hairline(indent: 66),
+            if (i > 0) const _Hairline(),
             MergeSemantics(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 15),
                 child: Row(
                   children: [
-                    _IconTile(icon: serviceIcon(service.name)),
-                    const SizedBox(width: 14),
                     Expanded(
                       child: Text(
                         service.name,
                         style: GoogleFonts.outfit(
                           fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                           color: AppColors.navy,
                         ),
                       ),
@@ -711,11 +522,11 @@ class _ServicesCardState extends State<_ServicesCard> {
             ),
           ],
           if (canExpand) ...[
-            const _Hairline(indent: 16),
+            const _Hairline(),
             InkWell(
               onTap: () => setState(() => _expanded = !_expanded),
               borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(20)),
+                  const BorderRadius.vertical(bottom: Radius.circular(18)),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 child: Row(
@@ -748,17 +559,15 @@ class _ServicesCardState extends State<_ServicesCard> {
   }
 }
 
-/// Contact line: icon, label and value, tappable, with a copy button.
+/// Contact line: label and value, tappable, with a copy button.
 class _ContactRow extends StatelessWidget {
   const _ContactRow({
-    required this.icon,
     required this.label,
     required this.value,
     required this.onTap,
     required this.onCopy,
   });
 
-  final IconData icon;
   final String label;
   final String value;
   final VoidCallback? onTap;
@@ -771,11 +580,9 @@ class _ContactRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+          padding: const EdgeInsets.fromLTRB(16, 12, 6, 12),
           child: Row(
             children: [
-              _IconTile(icon: icon),
-              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

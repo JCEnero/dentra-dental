@@ -58,6 +58,9 @@
 	<string>DENTRA needs access to your photo library so you can set a profile picture or choose dental photos for a scan.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>DENTRA needs access to your camera so you can take a profile photo and capture dental images during a scan.</string>
+	<!-- geolocator: location access for Clinic Finder -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>DENTRA uses your location to show dental clinics near you and how far away they are.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Microphone access is not used but required by the camera plugin.</string>
 	<key>UISupportedInterfaceOrientations</key>

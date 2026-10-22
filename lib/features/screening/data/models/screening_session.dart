@@ -147,11 +147,19 @@ class ScreeningCapture {
   /// Set once the backend stores the image. Null for local-only records.
   final String? imageUrl;
 
+  /// The device's paired NIR frame, once stored. Null for phone photos.
+  final String? nirImageUrl;
+
+  /// Readings the device reported with the capture.
+  final Map<String, Object>? deviceMeta;
+
   const ScreeningCapture({
     required this.regionId,
     required this.source,
     required this.capturedAt,
     this.imageUrl,
+    this.nirImageUrl,
+    this.deviceMeta,
   });
 
   Map<String, dynamic> toJson() => {
@@ -159,6 +167,8 @@ class ScreeningCapture {
         'source': source,
         'captured_at': capturedAt.toUtc().toIso8601String(),
         'image_url': imageUrl,
+        'nir_image_url': nirImageUrl,
+        'device_meta': deviceMeta,
       };
 
   factory ScreeningCapture.fromJson(Map<String, dynamic> json) =>
@@ -167,8 +177,14 @@ class ScreeningCapture {
         source: json['source'] as String? ?? 'phoneCamera',
         capturedAt: DateTime.parse(json['captured_at'] as String).toLocal(),
         imageUrl: json['image_url'] as String?,
+        nirImageUrl: json['nir_image_url'] as String?,
+        deviceMeta: (json['device_meta'] as Map<String, dynamic>?)
+            ?.cast<String, Object>(),
       );
 }
+
+/// Server-side analysis progress. Analyses without one are [complete].
+enum AnalysisStatus { pending, complete, retake, failed }
 
 /// AI-assisted analysis of a session. Never a diagnosis.
 class ScreeningAnalysis {
@@ -182,28 +198,129 @@ class ScreeningAnalysis {
   /// Identifies the model/version that produced the result, for audit.
   final String? model;
 
+  final AnalysisStatus status;
+
+  /// 'primary', 'mixed', 'permanent' or 'unknown', when the service says.
+  final String? dentitionType;
+
+  /// What to do next, most urgent first.
+  final List<ScreeningRecommendation> recommendations;
+
+  /// Photos that couldn't be analyzed and should be taken again.
+  final List<ScreeningQualityIssue> qualityIssues;
+
   const ScreeningAnalysis({
     required this.summary,
     required this.analyzedAt,
     this.findings = const [],
     this.model,
+    this.status = AnalysisStatus.complete,
+    this.dentitionType,
+    this.recommendations = const [],
+    this.qualityIssues = const [],
   });
 
   Map<String, dynamic> toJson() => {
         'summary': summary,
         'analyzed_at': analyzedAt.toUtc().toIso8601String(),
         'model': model,
+        'status': status.name,
+        'dentition_type': dentitionType,
         'findings': findings.map((f) => f.toJson()).toList(),
+        'recommendations': recommendations.map((r) => r.toJson()).toList(),
+        'quality_issues': qualityIssues.map((q) => q.toJson()).toList(),
       };
 
-  factory ScreeningAnalysis.fromJson(Map<String, dynamic> json) =>
-      ScreeningAnalysis(
-        summary: json['summary'] as String? ?? '',
-        analyzedAt: DateTime.parse(json['analyzed_at'] as String).toLocal(),
-        model: json['model'] as String?,
-        findings: ((json['findings'] as List<dynamic>?) ?? const [])
-            .map((e) => ScreeningFinding.fromJson(e as Map<String, dynamic>))
-            .toList(),
+  factory ScreeningAnalysis.fromJson(Map<String, dynamic> json) {
+    List<T> list<T>(String key, T Function(Map<String, dynamic>) from) =>
+        ((json[key] as List<dynamic>?) ?? const [])
+            .map((e) => from(e as Map<String, dynamic>))
+            .toList();
+    return ScreeningAnalysis(
+      summary: json['summary'] as String? ?? '',
+      analyzedAt: DateTime.parse(json['analyzed_at'] as String).toLocal(),
+      model: json['model'] as String?,
+      status: AnalysisStatus.values.asNameMap()[json['status']] ??
+          AnalysisStatus.complete,
+      dentitionType: json['dentition_type'] as String?,
+      findings: list('findings', ScreeningFinding.fromJson),
+      recommendations:
+          list('recommendations', ScreeningRecommendation.fromJson),
+      qualityIssues: list('quality_issues', ScreeningQualityIssue.fromJson),
+    );
+  }
+}
+
+/// A next step from the analysis rules, e.g. "Possible cavity: see a
+/// dentist". Screening advice, never a diagnosis.
+class ScreeningRecommendation {
+  /// Stable id, e.g. 'possible_filling', 'brushing_back_teeth'.
+  final String code;
+  final String title;
+  final String detail;
+
+  /// 'routine', 'soon' or 'prompt'.
+  final String urgency;
+  final List<String> regionIds;
+
+  const ScreeningRecommendation({
+    required this.code,
+    required this.title,
+    required this.detail,
+    required this.urgency,
+    this.regionIds = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+        'code': code,
+        'title': title,
+        'detail': detail,
+        'urgency': urgency,
+        'region_ids': regionIds,
+      };
+
+  factory ScreeningRecommendation.fromJson(Map<String, dynamic> json) =>
+      ScreeningRecommendation(
+        code: json['code'] as String,
+        title: json['title'] as String,
+        detail: json['detail'] as String? ?? '',
+        urgency: json['urgency'] as String? ?? 'routine',
+        regionIds:
+            ((json['region_ids'] as List<dynamic>?) ?? const []).cast<String>(),
+      );
+}
+
+/// A photo the quality check rejected (blurry, too dark, glare...).
+class ScreeningQualityIssue {
+  final String regionId;
+
+  /// 'rgb' (the photo) or 'nir' (the device's light-scan frame).
+  final String modality;
+  final String reason;
+
+  /// User-facing advice for the retake.
+  final String message;
+
+  const ScreeningQualityIssue({
+    required this.regionId,
+    required this.modality,
+    required this.reason,
+    required this.message,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'region_id': regionId,
+        'modality': modality,
+        'reason': reason,
+        'message': message,
+      };
+
+  factory ScreeningQualityIssue.fromJson(Map<String, dynamic> json) =>
+      ScreeningQualityIssue(
+        regionId: json['region_id'] as String,
+        modality: json['modality'] as String? ?? 'rgb',
+        reason: json['reason'] as String? ?? '',
+        message: json['message'] as String? ?? '',
       );
 }
 
@@ -219,12 +336,26 @@ class ScreeningFinding {
   /// 0–1, only when the service reports it. Never estimated by the app.
   final double? confidence;
 
+  /// Model category, e.g. 'enamel_caries', 'plaque'.
+  final String? category;
+  final String? severity;
+
+  /// 'occlusal', 'buccal', 'lingual' or 'interproximal'.
+  final String? surface;
+
+  /// 'rgb' or 'nir': which image showed it.
+  final String? modality;
+
   const ScreeningFinding({
     required this.label,
     this.detail,
     this.regionId,
     this.tooth,
     this.confidence,
+    this.category,
+    this.severity,
+    this.surface,
+    this.modality,
   });
 
   Map<String, dynamic> toJson() => {
@@ -233,6 +364,10 @@ class ScreeningFinding {
         'region_id': regionId,
         'tooth': tooth,
         'confidence': confidence,
+        'category': category,
+        'severity': severity,
+        'surface': surface,
+        'modality': modality,
       };
 
   factory ScreeningFinding.fromJson(Map<String, dynamic> json) =>
@@ -242,6 +377,10 @@ class ScreeningFinding {
         regionId: json['region_id'] as String?,
         tooth: json['tooth'] as String?,
         confidence: (json['confidence'] as num?)?.toDouble(),
+        category: json['category'] as String?,
+        severity: json['severity'] as String?,
+        surface: json['surface'] as String?,
+        modality: json['modality'] as String?,
       );
 }
 

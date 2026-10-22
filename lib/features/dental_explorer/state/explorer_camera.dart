@@ -67,8 +67,49 @@ class ExplorerCamera extends ChangeNotifier {
         yaw: _homeYaw,
         pitch: _homePitch,
         distance: _fit,
-        target: _model?.center ?? Vec3.zero,
+        target: _framedTarget(_homeYaw, _homePitch, _fit),
       );
+
+  /// Target that centers the on-screen outline of the crowns and gums
+  /// for a view. Aiming at the crown centroid alone leaves angled views
+  /// lopsided, because the arch is U-shaped and seen in perspective.
+  Vec3 _framedTarget(double yaw, double pitch, double distance) {
+    final model = _model;
+    if (model == null) return Vec3.zero;
+    final mesh = model.mesh;
+    final pos = mesh.positions, flags = mesh.flags;
+    var target = model.center;
+    // A second pass corrects the small perspective change from the shift.
+    for (var pass = 0; pass < 2; pass++) {
+      final pose = CameraPose(
+          yaw: yaw, pitch: pitch, distance: distance, target: target);
+      final r = pose.rotation;
+      var minX = double.infinity, maxX = double.negativeInfinity;
+      var minY = double.infinity, maxY = double.negativeInfinity;
+      for (var v = 0; v < mesh.vertexCount; v++) {
+        if (flags[v] & kFlagRoot != 0) continue;
+        final i = v * 3;
+        final px = pos[i] - target.x,
+            py = pos[i + 1] - target.y,
+            pz = pos[i + 2] - target.z;
+        final d = distance - (r[6] * px + r[7] * py + r[8] * pz);
+        if (d <= 1e-3) continue;
+        final sx = (r[0] * px + r[1] * py + r[2] * pz) / d;
+        final sy = (r[3] * px + r[4] * py + r[5] * pz) / d;
+        minX = math.min(minX, sx);
+        maxX = math.max(maxX, sx);
+        minY = math.min(minY, sy);
+        maxY = math.max(maxY, sy);
+      }
+      if (minX > maxX) break;
+      // Screen offsets are in units of distance, so scale back to mm.
+      final (right, up) = pose.screenAxes;
+      target = target +
+          right * ((minX + maxX) / 2 * distance) +
+          up * ((minY + maxY) / 2 * distance);
+    }
+    return target;
+  }
 
   void _setGoal(CameraPose goal) {
     _spinYaw = _spinPitch = 0;
@@ -88,7 +129,7 @@ class ExplorerCamera extends ChangeNotifier {
         yaw: view.yaw,
         pitch: view.pitch,
         distance: _fit,
-        target: _model?.center ?? Vec3.zero,
+        target: _framedTarget(view.yaw, view.pitch, _fit),
       ));
 
   /// Frames a quick-view region.

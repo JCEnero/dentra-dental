@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_client.dart';
 import '../../notifications/data/notification_events.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../screening/data/models/screening_session.dart';
@@ -162,6 +163,12 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
   /// The history record of the finished session, updated with analysis.
   ScreeningSession? _recorded;
 
+  /// Whether [_recorded] reached the history store.
+  bool _saved = false;
+
+  /// Photo uploads for [_recorded]. Server-side analysis waits for them.
+  Future<void>? _upload;
+
   @override
   ScanSessionState build() =>
       ScanSessionState(selectedRegionId: scanRegions.first.id);
@@ -299,10 +306,13 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
             regionId: id,
             source: state.captures[id]!.source.name,
             capturedAt: state.captures[id]!.capturedAt,
+            deviceMeta: state.captures[id]!.deviceMeta,
           ),
       ],
     );
     _recorded = session;
+    _saved = false;
+    _upload = null;
     final images = {for (final id in captured) id: state.captures[id]!.bytes};
     // Shown from memory right away; the upload below makes them last.
     ref.read(screeningImageCacheProvider.notifier).put(session.id, images);
@@ -310,16 +320,16 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     var saveFailed = false;
     try {
       await ref.read(screeningSessionsProvider.notifier).record(session);
+      _saved = true;
     } catch (_) {
       saveFailed = true;
     }
     if (!saveFailed) {
-      // Best-effort, in the background: the record is already saved, and
-      // the photos stay visible for this app run if an upload fails.
-      unawaited(ref
-          .read(screeningSessionsProvider.notifier)
-          .uploadImages(session.id, images)
-          .catchError((_) {}));
+      // In the background: the record is already saved, and the photos
+      // stay visible for this app run if an upload fails. Server-side
+      // analysis awaits this before it starts.
+      final upload = _uploadImages();
+      unawaited(upload.catchError((_) {}));
       unawaited(ref.read(notificationsProvider.notifier).record(
             NotificationEvents.screeningSaved(
               sessionId: session.id,
@@ -356,49 +366,94 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
   void reset() {
     _token++;
     _recorded = null;
+    _saved = false;
+    _upload = null;
     state = ScanSessionState(selectedRegionId: scanRegions.first.id);
+  }
+
+  /// Uploads [_recorded]'s photos and NIR frames once; a failed upload is
+  /// tried again on the next call.
+  Future<void> _uploadImages() {
+    final recorded = _recorded!;
+    final captures = state.captures;
+    return _upload ??= () async {
+      try {
+        await ref.read(screeningSessionsProvider.notifier).uploadImages(
+          recorded.id,
+          {for (final id in recorded.capturedRegions) id: captures[id]!.bytes},
+          nirByRegion: {
+            for (final id in recorded.capturedRegions)
+              if (captures[id]!.nirBytes case final nir?) id: nir,
+          },
+        );
+      } catch (_) {
+        _upload = null;
+        rethrow;
+      }
+    }();
   }
 
   Future<void> _analyze() async {
     final service = ref.read(screeningAnalysisServiceProvider);
-    if (service == null) return;
+    final recorded = _recorded;
+    if (service == null || recorded == null) return;
     final token = _token;
     state = state.copyWith(
       finishPhase: FinishPhase.analyzing,
       analysisFailure: null,
     );
     try {
-      final result = await service.analyze({
-        for (final e in state.captures.entries) e.key: e.value.bytes,
-      }).timeout(analysisTimeout);
+      // The server analyzes what it has stored, so the session and its
+      // photos have to be there first.
+      final result = await () async {
+        if (!_saved) {
+          await ref.read(screeningSessionsProvider.notifier).record(recorded);
+          _saved = true;
+          if (token == _token) state = state.copyWith(historySaveFailed: false);
+        }
+        await _uploadImages();
+        return service.analyze(recorded.id);
+      }()
+          .timeout(analysisTimeout);
       if (token != _token) return;
       state = state.copyWith(finishPhase: FinishPhase.done, analysis: result);
-      final recorded = _recorded;
-      if (recorded != null) {
+      final sessions = ref.read(screeningSessionsProvider.notifier);
+      if (result.savedSession case final saved?) {
+        // Already stored with the analysis by the server.
+        sessions.showSaved(saved);
+      } else {
         // Best-effort: the result is already on screen; history keeps the
         // scan either way.
-        unawaited(ref
-            .read(screeningSessionsProvider.notifier)
+        unawaited(sessions
             .save(recorded.copyWith(
-              analysis: ScreeningAnalysis(
-                summary: result.summary,
-                analyzedAt: DateTime.now(),
-              ),
+              analysis: result.analysis ??
+                  ScreeningAnalysis(
+                    summary: result.summary,
+                    analyzedAt: DateTime.now(),
+                  ),
             ))
             .catchError((_) {}));
-        unawaited(ref
-            .read(notificationsProvider.notifier)
-            .record(NotificationEvents.analysisReady(sessionId: recorded.id)));
       }
+      unawaited(ref
+          .read(notificationsProvider.notifier)
+          .record(NotificationEvents.analysisReady(sessionId: recorded.id)));
     } catch (e) {
       if (token != _token) return;
+      final failure = switch (e) {
+        TimeoutException() => AnalysisFailure.timeout,
+        AnalysisException(:final failure) => failure,
+        // Saving or uploading first: the server answered with an error.
+        ApiException() => AnalysisFailure.service,
+        // Otherwise the request never got an answer.
+        _ => AnalysisFailure.offline,
+      };
       state = state.copyWith(
-        finishPhase: FinishPhase.analysisFailed,
-        analysisFailure: switch (e) {
-          TimeoutException() => AnalysisFailure.timeout,
-          AnalysisException(:final failure) => failure,
-          _ => AnalysisFailure.service,
-        },
+        // Nothing to retry when the backend has no analysis: finish as if
+        // none were configured.
+        finishPhase: failure == AnalysisFailure.unavailable
+            ? FinishPhase.done
+            : FinishPhase.analysisFailed,
+        analysisFailure: failure,
       );
     }
   }

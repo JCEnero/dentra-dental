@@ -10,6 +10,7 @@ import 'package:dentra_mobile/features/scan/widgets/region_selector.dart';
 import 'package:dentra_mobile/features/scan/services/phone_camera_service.dart';
 import 'package:dentra_mobile/features/scan/services/screening_analysis_service.dart';
 import 'package:dentra_mobile/features/screening/providers/screening_sessions_provider.dart';
+import 'package:dentra_mobile/features/screening/data/models/screening_session.dart';
 import 'package:dentra_mobile/shared/widgets/app_bottom_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,7 +84,7 @@ class FakeAnalysis implements ScreeningAnalysisService {
   int calls = 0;
 
   @override
-  Future<ScreeningAnalysisResult> analyze(Map<String, Uint8List> images) {
+  Future<ScreeningAnalysisResult> analyze(String sessionId) {
     calls++;
     pending = Completer<ScreeningAnalysisResult>();
     return pending!.future;
@@ -370,6 +371,59 @@ void main() {
     await settle(tester);
     expect(find.text('Scan complete'), findsOneWidget);
     expect(find.text('Summary from the service.'), findsOneWidget);
+  });
+
+  testWidgets('shows recommendations and photos to retake', (tester) async {
+    final camera = FakeCamera();
+    final analysis = FakeAnalysis();
+    await pumpScan(tester, camera: camera, analysis: analysis);
+    await captureCurrent(tester, camera, 'Upper Left');
+    await tapText(tester, 'Finish with 1 of 5');
+    analysis.pending!.complete(ScreeningAnalysisResult(
+      summary: 'Possible cavity: see a dentist.',
+      analysis: ScreeningAnalysis(
+        summary: 'Possible cavity: see a dentist.',
+        analyzedAt: DateTime(2026, 10, 22),
+        recommendations: const [
+          ScreeningRecommendation(
+            code: 'possible_filling',
+            title: 'Possible cavity: see a dentist',
+            detail: 'A dentist can check it.',
+            urgency: 'soon',
+            regionIds: ['ul'],
+          ),
+        ],
+        qualityIssues: const [
+          ScreeningQualityIssue(
+            regionId: 'ul',
+            modality: 'nir',
+            reason: 'blurry',
+            message: 'Hold the device still.',
+          ),
+        ],
+      ),
+    ));
+    await settle(tester);
+    expect(find.text('Possible cavity: see a dentist'), findsOneWidget);
+    expect(find.text('Book a visit soon'), findsOneWidget);
+    expect(find.text('Retake for a better check'), findsOneWidget);
+    expect(find.text('Upper Left (light scan): Hold the device still.'),
+        findsOneWidget);
+  });
+
+  testWidgets('a backend without analysis finishes without an error',
+      (tester) async {
+    final camera = FakeCamera();
+    final analysis = FakeAnalysis();
+    await pumpScan(tester, camera: camera, analysis: analysis);
+    await captureCurrent(tester, camera, 'Upper Left');
+    await tapText(tester, 'Finish with 1 of 5');
+    analysis.pending!
+        .completeError(const AnalysisException(AnalysisFailure.unavailable));
+    await settle(tester);
+    expect(find.text('Partial scan saved'), findsOneWidget);
+    expect(find.textContaining("AI analysis isn't connected"), findsOneWidget);
+    expect(find.text('Try again'), findsNothing);
   });
 
   testWidgets('analysis that never answers times out with recovery',

@@ -49,19 +49,25 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
   /// after the scan finished.
   Future<void> save(ScreeningSession session) => record(session);
 
-  /// Uploads the session's photos one region at a time, keeping the
-  /// history entry in step with the stored image URLs. Throws on the
-  /// first failure; earlier uploads are kept.
+  /// Uploads the session's photos one region at a time, then any paired
+  /// NIR frames, keeping the history entry in step with the stored image
+  /// URLs. Throws on the first failure; earlier uploads are kept.
   Future<void> uploadImages(
     String sessionId,
-    Map<String, Uint8List> imagesByRegion,
-  ) async {
-    for (final entry in imagesByRegion.entries) {
+    Map<String, Uint8List> imagesByRegion, {
+    Map<String, Uint8List> nirByRegion = const {},
+  }) async {
+    final uploads = [
+      for (final e in imagesByRegion.entries) (e.key, e.value, 'rgb'),
+      for (final e in nirByRegion.entries) (e.key, e.value, 'nir'),
+    ];
+    for (final (regionId, bytes, modality) in uploads) {
       final updated = await _repo.uploadCaptureImage(
         _userId,
         sessionId,
-        entry.key,
-        entry.value,
+        regionId,
+        bytes,
+        modality: modality,
       );
       if (updated == null) continue;
       // The analysis may have been saved while this upload was in flight;
@@ -73,6 +79,10 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
       );
     }
   }
+
+  /// Shows a copy the server already saved, e.g. after server-side
+  /// analysis, without writing it back.
+  void showSaved(ScreeningSession session) => _replaceLocal(session);
 
   /// Deletes one session. Restores it and rethrows if the delete fails.
   Future<void> delete(String sessionId) async {

@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../dental_profile/providers/dental_profile_providers.dart';
 import '../../dental_profile/widgets/prompt_care_note.dart';
+import '../../screening/data/models/screening_session.dart';
 import '../data/scan_regions.dart';
 import '../providers/scan_session_provider.dart';
 import '../services/screening_analysis_service.dart';
@@ -156,6 +157,9 @@ class _Done extends StatelessWidget {
     final total = scanRegions.length;
     final at = session.finishedAt ?? DateTime.now();
     final summary = session.analysis?.summary;
+    final details = session.analysis?.analysis;
+    final notConnected = !analysisAvailable ||
+        session.analysisFailure == AnalysisFailure.unavailable;
 
     return Column(
       children: [
@@ -194,7 +198,12 @@ class _Done extends StatelessWidget {
               Text('AI-assisted summary', style: _subtitle),
               const SizedBox(height: 4),
               Text(summary, style: _body.copyWith(color: AppColors.navy)),
-            ] else if (!analysisAvailable) ...[
+              if (details != null && details.qualityIssues.isNotEmpty)
+                _RetakeList(issues: details.qualityIssues),
+              if (details != null)
+                for (final r in details.recommendations)
+                  _RecommendationTile(recommendation: r),
+            ] else if (notConnected) ...[
               const SizedBox(height: 14),
               Text(
                 "AI analysis isn't connected in this version yet, so no "
@@ -285,6 +294,75 @@ class ScanDisclaimer extends StatelessWidget {
 }
 
 // ── Pieces ──────────────────────────────────────────────────────
+
+/// Photos the quality check couldn't use, with how to take them again.
+class _RetakeList extends StatelessWidget {
+  const _RetakeList({required this.issues});
+  final List<ScreeningQualityIssue> issues;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Retake for a better check', style: _subtitle),
+          for (final issue in issues)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '${scanRegionById(issue.regionId).label}'
+                '${issue.modality == 'nir' ? ' (light scan)' : ''}: '
+                '${issue.message}',
+                style: _body,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One next step from the analysis. Urgency is spelled out in words, not
+/// only shown by color.
+class _RecommendationTile extends StatelessWidget {
+  const _RecommendationTile({required this.recommendation});
+  final ScreeningRecommendation recommendation;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = recommendation;
+    final (label, color) = switch (r.urgency) {
+      'prompt' => ('See a dentist promptly', AppColors.dangerInk),
+      'soon' => ('Book a visit soon', AppColors.coral),
+      _ => ('At your next check-up', AppColors.primary),
+    };
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border(left: BorderSide(color: color, width: 4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(r.title, style: _subtitle),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: _body.copyWith(color: color, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(r.detail, style: _body),
+        ],
+      ),
+    );
+  }
+}
 
 class _Card extends StatelessWidget {
   const _Card({required this.children});

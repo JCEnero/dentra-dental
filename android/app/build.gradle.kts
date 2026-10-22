@@ -38,7 +38,21 @@ android {
                 localProperties.load(stream)
             }
         }
-        val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
+        // Fall back to the app's .env, the same key web and iOS read.
+        val envFile = rootProject.file("../.env")
+        val envMapsKey = if (envFile.exists()) {
+            envFile.readLines()
+                .map { it.trim() }
+                .firstOrNull { it.startsWith("MAPS_API_KEY=") }
+                ?.substringAfter("=")
+                ?.trim()
+                ?.trim('"', '\'')
+        } else {
+            null
+        }
+        val mapsApiKey = localProperties.getProperty("MAPS_API_KEY")
+            ?: envMapsKey
+            ?: ""
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 

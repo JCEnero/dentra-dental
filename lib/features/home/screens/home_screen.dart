@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -138,7 +137,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   _ServiceButton(
-                    glyph: _ServiceGlyph.capsule,
+                    glyph: _ServiceGlyph.clipboard,
                     label: 'Treatment',
                     onTap: () {
                       Navigator.of(context).push(
@@ -169,7 +168,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   _ServiceButton(
-                    glyph: _ServiceGlyph.scan,
+                    glyph: _ServiceGlyph.chat,
                     label: 'Rabi AI',
                     onTap: () => AiChatScope.read(context).open(),
                   ),
@@ -572,7 +571,7 @@ class _StatusPill extends StatelessWidget {
 
 // ── Service button ────────────────────────────────────────────────
 
-enum _ServiceGlyph { tooth, capsule, scan, compare }
+enum _ServiceGlyph { tooth, clipboard, chat, compare }
 
 class _ServiceButton extends StatelessWidget {
   final _ServiceGlyph glyph;
@@ -668,49 +667,42 @@ class _ServiceGlyphPainter extends CustomPainter {
         canvas.drawPath(tooth, tint);
         canvas.drawPath(tooth, stroke);
 
-      case _ServiceGlyph.capsule:
-        canvas.save();
-        canvas.translate(12, 12);
-        canvas.rotate(math.pi / 4);
-        final body =
-            RRect.fromLTRBR(-3.8, -8.5, 3.8, 8.5, const Radius.circular(3.8));
-        // Tint the lower half so it reads as a two-tone capsule.
-        canvas.save();
-        canvas.clipRect(const Rect.fromLTRB(-4, 0, 4, 9));
-        canvas.drawRRect(body, tint);
-        canvas.restore();
-        canvas.drawRRect(body, stroke);
-        canvas.drawLine(const Offset(-3.8, 0), const Offset(3.8, 0), stroke);
-        canvas.restore();
+      case _ServiceGlyph.clipboard:
+        // Treatment plan: tinted board, solid clip, medical plus.
+        final board =
+            RRect.fromLTRBR(5, 5, 19, 21, const Radius.circular(2.5));
+        canvas.drawRRect(board, tint);
+        canvas.drawRRect(board, stroke);
+        canvas.drawRRect(
+          RRect.fromLTRBR(9, 3, 15, 7, const Radius.circular(1.3)),
+          fill,
+        );
+        canvas.drawLine(const Offset(12, 10.5), const Offset(12, 17.5), stroke);
+        canvas.drawLine(const Offset(8.5, 14), const Offset(15.5, 14), stroke);
 
-      case _ServiceGlyph.scan:
-        // Viewfinder corners
-        const a = 4.0, b = 20.0, l = 4.5;
-        final corners = Path()
-          ..moveTo(a, a + l)
-          ..lineTo(a, a + 1.5)
-          ..quadraticBezierTo(a, a, a + 1.5, a)
-          ..lineTo(a + l, a)
-          ..moveTo(b - l, a)
-          ..lineTo(b - 1.5, a)
-          ..quadraticBezierTo(b, a, b, a + 1.5)
-          ..lineTo(b, a + l)
-          ..moveTo(b, b - l)
-          ..lineTo(b, b - 1.5)
-          ..quadraticBezierTo(b, b, b - 1.5, b)
-          ..lineTo(b - l, b)
-          ..moveTo(a + l, b)
-          ..lineTo(a + 1.5, b)
-          ..quadraticBezierTo(a, b, a, b - 1.5)
-          ..lineTo(a, b - l);
-        canvas.drawPath(corners, stroke);
-        // AI spark in the middle
+      case _ServiceGlyph.chat:
+        // Chat bubble with a tail, merged so the outline stays seamless.
+        final bubble = Path.combine(
+          PathOperation.union,
+          Path()
+            ..addRRect(
+              RRect.fromLTRBR(3.5, 4, 20.5, 17, const Radius.circular(4.5)),
+            ),
+          Path()
+            ..moveTo(7, 15)
+            ..lineTo(6.5, 20.5)
+            ..lineTo(12, 15.5)
+            ..close(),
+        );
+        canvas.drawPath(bubble, tint);
+        canvas.drawPath(bubble, stroke);
+        // AI spark inside the bubble
         final spark = Path()
-          ..moveTo(12, 7.8)
-          ..quadraticBezierTo(12.7, 11.3, 16.2, 12)
-          ..quadraticBezierTo(12.7, 12.7, 12, 16.2)
-          ..quadraticBezierTo(11.3, 12.7, 7.8, 12)
-          ..quadraticBezierTo(11.3, 11.3, 12, 7.8)
+          ..moveTo(12, 6.9)
+          ..quadraticBezierTo(12.65, 9.85, 15.6, 10.5)
+          ..quadraticBezierTo(12.65, 11.15, 12, 14.1)
+          ..quadraticBezierTo(11.35, 11.15, 8.4, 10.5)
+          ..quadraticBezierTo(11.35, 9.85, 12, 6.9)
           ..close();
         canvas.drawPath(spark, fill);
 

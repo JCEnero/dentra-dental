@@ -35,8 +35,9 @@
       /* Matches the splash backdrop, so reloads never flash another color. */
       background-color: #E2F5F3;
     }
-    /* Flutter canvas must fill the whole viewport */
-    flt-glass-pane, flt-scene-host, flt-scene, canvas {
+    /* Flutter's own layers fill the viewport. Kept off bare `canvas`,
+       which would also stretch the canvases Google Maps draws into. */
+    flt-glass-pane, flt-scene-host, flt-scene {
       display: block !important;
       width: 100% !important;
       height: 100% !important;

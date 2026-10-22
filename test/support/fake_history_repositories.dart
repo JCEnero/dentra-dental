@@ -44,7 +44,8 @@ class FakeScreeningRepository implements ScreeningRepository {
 
   @override
   Future<ScreeningSession?> uploadCaptureImage(
-          String userId, String sessionId, String regionId, Uint8List bytes) async =>
+          String userId, String sessionId, String regionId, Uint8List bytes,
+          {String modality = 'rgb'}) async =>
       null;
 }
 

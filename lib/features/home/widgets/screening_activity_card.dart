@@ -335,7 +335,7 @@ class _EmptyChart extends StatelessWidget {
             child: Text(
               text,
               style: GoogleFonts.outfit(
-                fontSize: 12.5,
+                fontSize: 11,
                 color: AppColors.secondaryText,
                 height: 1.45,
               ),
