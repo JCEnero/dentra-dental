@@ -220,11 +220,20 @@ class _HeroBanner extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(22),
                 ),
-                child: Icon(
-                  treatment.icon,
-                  size: 40,
-                  color: Colors.white,
-                ),
+                clipBehavior: Clip.antiAlias,
+                child: treatment.iconPath != null
+                    ? Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Image.asset(
+                          treatment.iconPath!,
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                    : Icon(
+                        treatment.icon,
+                        size: 40,
+                        color: Colors.white,
+                      ),
               ),
               const SizedBox(height: 12),
               Text(

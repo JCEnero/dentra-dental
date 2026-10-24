@@ -51,6 +51,12 @@ class TreatmentModel {
   /// When provided, the card renders this image instead of [icon].
   final String? imagePath;
 
+  /// Optional custom tooth-icon asset path
+  /// (e.g. 'assets/images/treatments/icons/tooth_cleaning.png').
+  /// When provided, both the list card and the detail hero render this
+  /// image instead of the Material [icon] or [imagePath].
+  final String? iconPath;
+
   final List<TreatmentStep> steps;
   final String duration;
   final bool requiresFollowUp;
@@ -65,6 +71,7 @@ class TreatmentModel {
     required this.iconColor,
     required this.iconBackground,
     this.imagePath,
+    this.iconPath,
     required this.steps,
     required this.duration,
     this.requiresFollowUp = false,

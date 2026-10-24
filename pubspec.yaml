@@ -31,4 +31,5 @@ flutter:
     - .env
     - assets/images/
     - assets/images/treatments/
+    - assets/images/treatments/icons/
     - assets/videos/
