@@ -284,7 +284,15 @@ class _Header extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(treatment.icon, size: 28, color: accent),
+                  child: treatment.iconPath != null
+                      ? Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Image.asset(
+                            treatment.iconPath!,
+                            fit: BoxFit.contain,
+                          ),
+                        )
+                      : Icon(treatment.icon, size: 28, color: accent),
                 ),
               ),
             ),
@@ -397,34 +405,13 @@ class _FactsStrip extends StatelessWidget {
                   thickness: 1,
                   color: AppColors.g2.withValues(alpha: 0.14),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: treatment.iconPath != null
-                    ? Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Image.asset(
-                          treatment.iconPath!,
-                          fit: BoxFit.contain,
-                        ),
-                      )
-                    : Icon(
-                        treatment.icon,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                treatment.name,
-                style: GoogleFonts.outfit(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 8,
-                    ),
-                  ],
+              Expanded(
+                // The duration is usually the longest value; give it room.
+                flex: i == 0 ? 5 : 4,
+                child: _Fact(
+                  icon: facts[i].$1,
+                  label: facts[i].$2,
+                  value: facts[i].$3,
                 ),
               ),
             ],

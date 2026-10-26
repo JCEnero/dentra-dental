@@ -307,41 +307,27 @@ class _TreatmentCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: treatment.imagePath != null
-                    ? Image.asset(
-                        treatment.imagePath!,
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                      )
-                    : Icon(
-                        treatment.icon,
-                        size: 28,
-                        color: treatment.iconColor,
-                      ),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: treatment.iconPath != null
-                  ? Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Image.asset(
-                        treatment.iconPath!,
-                        fit: BoxFit.contain,
-                      ),
-                    )
-                  : treatment.imagePath != null
-                      ? Image.asset(
-                          treatment.imagePath!,
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                        )
-                      : Icon(
-                          treatment.icon,
-                          size: 28,
-                          color: treatment.iconColor,
+                child: treatment.iconPath != null
+                    ? Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Image.asset(
+                          treatment.iconPath!,
+                          fit: BoxFit.contain,
                         ),
-            ),
+                      )
+                    : treatment.imagePath != null
+                        ? Image.asset(
+                            treatment.imagePath!,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          )
+                        : Icon(
+                            treatment.icon,
+                            size: 28,
+                            color: treatment.iconColor,
+                          ),
+              ),
 
               const SizedBox(width: 14),
 
