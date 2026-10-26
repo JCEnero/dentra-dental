@@ -65,7 +65,7 @@ class _DentraAppState extends ConsumerState<DentraApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DENTRA',
+      title: 'Dentra',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       navigatorKey: _navigatorKey,
