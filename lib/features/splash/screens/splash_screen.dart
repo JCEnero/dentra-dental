@@ -309,7 +309,7 @@ class _SplashScreenState extends State<SplashScreen>
     return Opacity(
       opacity: g,
       child: Text(
-        'AI-assisted dental care',
+        'A better way to manage your dental practice.',
         style: GoogleFonts.outfit(
           fontSize: 13,
           fontWeight: FontWeight.w400,
