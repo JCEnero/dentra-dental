@@ -372,8 +372,8 @@ class _StartScanBar extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 GlowButton(
-                  label: flow.allCaptured ? 'Start 3D Scan' : 'Start Scan',
-                  icon: Icons.view_in_ar_rounded,
+                  label: 'Start Dental Scan',
+                  icon: Icons.arrow_forward_rounded,
                   intensity: flow.allCaptured ? 1 : 0.35,
                   onTap: flow.canStartScan ? onStart : null,
                 ),

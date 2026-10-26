@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -330,7 +331,13 @@ class _DeviceHeroCard extends StatefulWidget {
 }
 
 class _DeviceHeroCardState extends State<_DeviceHeroCard> {
-  late final VideoPlayerController _controller;
+  /// The waving mascot is a WebM with a transparent (VP9 alpha) channel.
+  /// Safari, which every iOS browser uses, can't show that transparency
+  /// and draws it on black, so the web build uses the same animation as
+  /// an animated WebP instead. Null on web.
+  VideoPlayerController? _controller;
+
+  static const _webMascot = 'assets/images/bunny_wave.webp';
 
   /// False while Home is a hidden tab or covered by another page.
   bool _onScreen = true;
@@ -338,6 +345,7 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
   @override
   void initState() {
     super.initState();
+    if (kIsWeb) return;
     _controller = VideoPlayerController.asset('assets/videos/BUNNY.webm')
       ..setLooping(true)
       ..setVolume(0)
@@ -360,17 +368,18 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
   }
 
   void _syncPlayback() {
-    if (!_controller.value.isInitialized) return;
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
     if (_onScreen) {
-      _controller.play();
+      controller.play();
     } else {
-      _controller.pause();
+      controller.pause();
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -493,17 +502,25 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
             height: 100,
             child: IgnorePointer(
               child: ExcludeSemantics(
-                child: _controller.value.isInitialized
-                    ? FittedBox(
-                        fit: BoxFit.contain,
-                        alignment: Alignment.bottomRight,
-                        child: SizedBox(
-                          width: _controller.value.size.width,
-                          height: _controller.value.size.height,
-                          child: VideoPlayer(_controller),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+                child: switch (_controller) {
+                  null => Image.asset(
+                      _webMascot,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.bottomRight,
+                      gaplessPlayback: true,
+                    ),
+                  final controller when controller.value.isInitialized =>
+                    FittedBox(
+                      fit: BoxFit.contain,
+                      alignment: Alignment.bottomRight,
+                      child: SizedBox(
+                        width: controller.value.size.width,
+                        height: controller.value.size.height,
+                        child: VideoPlayer(controller),
+                      ),
+                    ),
+                  _ => const SizedBox.shrink(),
+                },
               ),
             ),
           ),

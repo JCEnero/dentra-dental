@@ -291,140 +291,91 @@ class _PulseDotState extends State<_PulseDot>
   }
 }
 
-/// The specs that matter, two by two in one glass panel.
+/// The specs that matter: four small glass tiles, value first.
 class _SpecGrid extends StatelessWidget {
   const _SpecGrid();
 
+  static const _specs = [
+    (Icons.center_focus_strong_outlined, 'RGB + NIR', 'Imaging · 850 nm'),
+    (Icons.wifi_rounded, 'Wireless', 'Connection'),
+    (Icons.battery_5_bar_rounded, '87%', 'Battery'),
+    (Icons.memory_rounded, 'v2.4.1', 'Firmware'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final divider = AppGlass.divider;
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: AppColors.white.withValues(alpha: 0.45),
-        border: Border.all(color: AppGlass.border),
-      ),
-      child: Column(
-        children: [
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Expanded(
-                  child: _SpecCell(
-                    icon: Icons.center_focus_strong_outlined,
-                    label: 'Imaging',
-                    value: 'RGB + NIR',
-                    hint: '850 nm infrared',
-                  ),
-                ),
-                VerticalDivider(width: 1, thickness: 1, color: divider),
-                const Expanded(
-                  child: _SpecCell(
-                    icon: Icons.wifi_rounded,
-                    label: 'Connection',
-                    value: 'Wireless',
-                    hint: 'Strong signal',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 1, thickness: 1, color: divider),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Expanded(
-                  child: _SpecCell(
-                    icon: Icons.battery_5_bar_rounded,
-                    label: 'Battery',
-                    value: '87%',
-                    level: 0.87,
-                  ),
-                ),
-                VerticalDivider(width: 1, thickness: 1, color: divider),
-                const Expanded(
-                  child: _SpecCell(
-                    icon: Icons.memory_rounded,
-                    label: 'Firmware',
-                    value: 'v2.4.1',
-                    hint: 'Up to date',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    Widget tile(int i) {
+      final (icon, value, label) = _specs[i];
+      return Expanded(child: _SpecTile(icon: icon, value: value, label: label));
+    }
+
+    return Column(
+      children: [
+        Row(children: [tile(0), const SizedBox(width: 8), tile(1)]),
+        const SizedBox(height: 8),
+        Row(children: [tile(2), const SizedBox(width: 8), tile(3)]),
+      ],
     );
   }
 }
 
-class _SpecCell extends StatelessWidget {
-  const _SpecCell({
+class _SpecTile extends StatelessWidget {
+  const _SpecTile({
     required this.icon,
-    required this.label,
     required this.value,
-    this.hint,
-    this.level,
+    required this.label,
   });
 
   final IconData icon;
-  final String label;
   final String value;
-  final String? hint;
-
-  /// Shows a small fill bar instead of a hint, e.g. for battery.
-  final double? level;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '$label: $value${hint == null ? '' : ', $hint'}',
+      label: '$label: $value',
       excludeSemantics: true,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: AppColors.white.withValues(alpha: 0.5),
+          border: Border.all(color: AppGlass.border),
+        ),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Icon(icon, size: 14, color: AppColors.g2),
-                const SizedBox(width: 6),
-                Text(label.toUpperCase(), style: capsLabel()),
-              ],
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.lightLavender,
+              ),
+              child: Icon(icon, size: 16, color: AppColors.g2),
             ),
-            const SizedBox(height: 6),
-            Text(value, style: figureText(size: 16, weight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            if (level case final level?)
-              Container(
-                height: 5,
-                margin: const EdgeInsets.only(top: 3, right: 24),
-                alignment: Alignment.centerLeft,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(3),
-                  color: AppColors.navy.withValues(alpha: 0.07),
-                ),
-                child: FractionallySizedBox(
-                  widthFactor: level,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(3),
-                      gradient: AppColors.primaryGradient,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: figureText(size: 14.5, weight: FontWeight.w800),
+                  ),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      color: AppColors.secondaryText,
                     ),
                   ),
-                ),
-              )
-            else
-              Text(
-                hint!,
-                style: GoogleFonts.outfit(
-                  fontSize: 11.5,
-                  color: AppColors.secondaryText,
-                ),
+                ],
               ),
+            ),
           ],
         ),
       ),
