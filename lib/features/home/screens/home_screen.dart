@@ -435,7 +435,7 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Connected · Battery 86% · Signal Strong',
+                        'Connected · Battery 87% · Signal Strong',
                         style: GoogleFonts.outfit(
                           fontSize: 12,
                           height: 1.35,
@@ -455,8 +455,8 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                   children: [
                     _StatusPill(
                       icon: Icons.battery_5_bar_rounded,
-                      label: '86%',
-                      semanticLabel: 'Battery 86%',
+                      label: '87%',
+                      semanticLabel: 'Battery 87%',
                     ),
                     _StatusPill(
                       icon: Icons.wifi_rounded,

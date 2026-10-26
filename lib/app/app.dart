@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
 import '../core/constants/app_colors.dart';
 import '../features/home/screens/home_screen.dart';
-import '../features/scan/screens/scan_screen.dart';
+import '../features/scan/screens/scan_simulation_screen.dart';
 import '../features/history/screens/history_screen.dart';
 import '../features/clinics/screens/clinics_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
@@ -145,7 +145,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final screens = <Widget>[
       HomeScreen(onNavigate: _navigate, tourTargets: _tour),
-      const ScanScreen(),
+      ScanSimulationScreen(onNavigate: _navigate),
       HistoryScreen(onNavigate: _navigate),
       const ClinicsScreen(),
       ProfileScreen(onNavigate: _navigate),
