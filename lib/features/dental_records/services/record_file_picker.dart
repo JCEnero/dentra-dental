@@ -68,7 +68,14 @@ class RecordFilePicker {
           label: 'Documents and photos',
           extensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
           mimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
-          uniformTypeIdentifiers: ['com.adobe.pdf', 'public.image'],
+          // Listed one by one: 'public.image' would also allow iPhone HEIC
+          // files, which the server rejects.
+          uniformTypeIdentifiers: [
+            'com.adobe.pdf',
+            'public.jpeg',
+            'public.png',
+            'org.webmproject.webp',
+          ],
         ),
       ]);
     } catch (_) {
