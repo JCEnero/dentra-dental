@@ -10,28 +10,33 @@ import '../../../core/utils/dentra_dates.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../history/screens/screening_detail_screen.dart';
-import '../../scan/data/scan_regions.dart';
 import '../../screening/data/models/screening_session.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
 
 enum ActivityRange {
-  days30('30D', 'last 30 days', 30),
-  months3('3M', 'last 3 months', 91),
-  months6('6M', 'last 6 months', 182);
+  days30('30D', 'last 30 days', 10, 3, '3 days'),
+  months3('3M', 'last 3 months', 13, 7, 'week'),
+  months6('6M', 'last 6 months', 13, 14, '2 weeks');
 
-  const ActivityRange(this.label, this.spoken, this.days);
+  const ActivityRange(
+      this.label, this.spoken, this.bins, this.binDays, this.binSpoken);
   final String label;
   final String spoken;
-  final int days;
+
+  /// Number of bars, each covering [binDays] days.
+  final int bins;
+  final int binDays;
+  final String binSpoken;
+
+  int get days => bins * binDays;
 }
 
-/// Home's history graph: one mark per saved AI screening, placed at its
-/// date, its height the number of regions captured.
+/// Home's history graph: how often the user ran an AI screening. Each bar
+/// counts the saved screenings in one slice of the chosen range.
 ///
-/// Region coverage is the only number every screening stores the same
-/// way. It says how complete a screening was, not how healthy teeth are,
-/// and the card says so. No score is derived, AI confidence is never
-/// plotted, and user-entered records stay out of it.
+/// It shows frequency only, not how healthy teeth are, and the card says
+/// so. No score is derived, AI confidence is never plotted, and
+/// user-entered records stay out of it.
 class ScreeningActivityCard extends ConsumerStatefulWidget {
   const ScreeningActivityCard({super.key});
 
@@ -43,8 +48,8 @@ class ScreeningActivityCard extends ConsumerStatefulWidget {
 class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
   ActivityRange _range = ActivityRange.months3;
 
-  /// Day of the tapped mark; null when nothing is selected.
-  DateTime? _selectedDay;
+  /// Index of the tapped bar; null when nothing is selected.
+  int? _selectedBin;
 
   @override
   Widget build(BuildContext context) {
@@ -57,11 +62,6 @@ class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
       for (final s in all)
         if (!s.completedAt.isBefore(start) && s.completedAt.isBefore(end)) s,
     ]..sort((a, b) => a.completedAt.compareTo(b.completedAt));
-    final selected = _selectedDay == null
-        ? const <ScreeningSession>[]
-        : inRange
-            .where((s) => DentraDates.sameDay(s.completedAt, _selectedDay!))
-            .toList();
 
     return GlassCard(
       borderRadius: BorderRadius.circular(20),
@@ -91,7 +91,7 @@ class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
                     Text(
                       async.hasValue
                           ? '${inRange.length} ${inRange.length == 1 ? 'screening' : 'screenings'} · ${_range.spoken}'
-                          : 'Regions captured per AI screening',
+                          : 'How often you screen',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
                         color: AppColors.secondaryText,
@@ -104,7 +104,7 @@ class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
                 value: _range,
                 onChanged: (r) => setState(() {
                   _range = r;
-                  _selectedDay = null;
+                  _selectedBin = null;
                 }),
               ),
             ],
@@ -114,12 +114,19 @@ class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
             duration: dentraMotion(context, 220),
             curve: Curves.easeOutCubic,
             alignment: Alignment.topCenter,
-            child: _content(async, all, inRange, start, end, selected),
+            child: _content(async, all, inRange, start, end),
           ),
         ],
       ),
     );
   }
+
+  int _binOf(DateTime t, DateTime start) =>
+      (t.difference(start).inMinutes ~/ (_range.binDays * 24 * 60))
+          .clamp(0, _range.bins - 1);
+
+  DateTime _binStart(int i, DateTime start) =>
+      start.add(Duration(days: i * _range.binDays));
 
   Widget _content(
     AsyncValue<List<ScreeningSession>> async,
@@ -127,7 +134,6 @@ class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
     List<ScreeningSession> inRange,
     DateTime start,
     DateTime end,
-    List<ScreeningSession> selected,
   ) {
     if (async.hasError && !async.hasValue) {
       return _Message(
@@ -150,6 +156,7 @@ class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
         key: ValueKey('empty-$_range'),
         start: start,
         end: end,
+        bins: _range.bins,
         placeholder: true,
         text: 'No screenings yet. Your activity will appear here after your '
             'first scan.',
@@ -161,33 +168,41 @@ class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
         key: ValueKey('none-$_range'),
         start: start,
         end: end,
+        bins: _range.bins,
         text: 'No screenings in the ${_range.spoken}. Your latest was on '
             '${DentraDates.medium(latest)}.',
       );
     }
 
-    final maxRegions = inRange.map((s) => s.totalRegions).fold(1, math.max);
+    final counts = List.filled(_range.bins, 0);
+    for (final s in inRange) {
+      counts[_binOf(s.completedAt, start)]++;
+    }
+    final maxCount = counts.fold(1, math.max);
+    final selected = _selectedBin == null
+        ? const <ScreeningSession>[]
+        : inRange
+            .where((s) => _binOf(s.completedAt, start) == _selectedBin)
+            .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Chart(
           key: ValueKey(_range),
-          sessions: inRange,
+          counts: counts,
           start: start,
           end: end,
-          maxRegions: maxRegions,
-          selectedDay: _selectedDay,
-          summary: _summary(inRange),
-          onSelectDay: (d) => setState(() => _selectedDay = d != null &&
-                  _selectedDay != null &&
-                  DentraDates.sameDay(d, _selectedDay!)
-              ? null
-              : d),
+          maxCount: maxCount,
+          selectedBin: _selectedBin,
+          summary: _summary(counts, start),
+          onSelectBin: (i) =>
+              setState(() => _selectedBin = i == _selectedBin ? null : i),
         ),
         const SizedBox(height: 6),
         Text(
-          'Height shows regions captured, out of $maxRegions. It reflects how '
-          'complete each screening was, not your dental health.',
+          'Each bar counts your screenings in a ${_range.binSpoken}. It shows '
+          'how often you screened, not your dental health.',
           style: GoogleFonts.outfit(
             fontSize: 11,
             color: AppColors.secondaryText,
@@ -198,20 +213,34 @@ class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
           duration: dentraMotion(context, 180),
           child: selected.isEmpty
               ? const SizedBox(width: double.infinity)
-              : _Details(key: ValueKey(_selectedDay), sessions: selected),
+              : _Details(
+                  key: ValueKey(_selectedBin),
+                  title: _binLabel(_selectedBin!, start),
+                  sessions: selected,
+                ),
         ),
       ],
     );
   }
 
-  String _summary(List<ScreeningSession> sessions) {
-    final shown = sessions.reversed.take(8).map((s) =>
-        '${DentraDates.medium(s.completedAt)}, ${s.capturedRegions.length} of '
-        '${s.totalRegions} regions');
-    final more = sessions.length > 8 ? ', and ${sessions.length - 8} more' : '';
-    return 'Screening activity, ${_range.spoken}: ${sessions.length} '
-        '${sessions.length == 1 ? 'screening' : 'screenings'}. '
-        '${shown.join('; ')}$more.';
+  /// "Sep 11 to Sep 17", with the last bar ending today.
+  String _binLabel(int i, DateTime start) {
+    String short(DateTime d) => '${DentraDates.monthShort(d.month)} ${d.day}';
+    final from = _binStart(i, start);
+    final to = _binStart(i + 1, start).subtract(const Duration(days: 1));
+    return '${short(from)} to ${short(to)}';
+  }
+
+  String _summary(List<int> counts, DateTime start) {
+    final total = counts.fold(0, (a, b) => a + b);
+    final shown = [
+      for (var i = counts.length - 1; i >= 0; i--)
+        if (counts[i] > 0)
+          '${_binLabel(i, start)}, ${counts[i]} '
+              '${counts[i] == 1 ? 'screening' : 'screenings'}',
+    ];
+    return 'Screening activity, ${_range.spoken}: $total '
+        '${total == 1 ? 'screening' : 'screenings'}. ${shown.join('; ')}.';
   }
 }
 
@@ -220,22 +249,22 @@ class _ScreeningActivityCardState extends ConsumerState<ScreeningActivityCard> {
 class _Chart extends StatelessWidget {
   const _Chart({
     super.key,
-    required this.sessions,
+    required this.counts,
     required this.start,
     required this.end,
-    required this.maxRegions,
-    required this.selectedDay,
+    required this.maxCount,
+    required this.selectedBin,
     required this.summary,
-    required this.onSelectDay,
+    required this.onSelectBin,
   });
 
-  final List<ScreeningSession> sessions;
+  final List<int> counts;
   final DateTime start;
   final DateTime end;
-  final int maxRegions;
-  final DateTime? selectedDay;
+  final int maxCount;
+  final int? selectedBin;
   final String summary;
-  final ValueChanged<DateTime?> onSelectDay;
+  final ValueChanged<int?> onSelectBin;
 
   static const double _height = 132;
 
@@ -244,14 +273,16 @@ class _Chart extends StatelessWidget {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       label: summary,
-      hint: 'Tap a mark for its details.',
+      hint: 'Tap a bar for its screenings.',
       child: LayoutBuilder(builder: (context, c) {
-        final geometry =
-            _Geometry(Size(c.maxWidth, _height), start, end, maxRegions);
+        final geometry = _Geometry(
+            Size(c.maxWidth, _height), start, end, counts.length, maxCount);
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapUp: (d) =>
-              onSelectDay(geometry.dayAt(d.localPosition, sessions)),
+          onTapUp: (d) {
+            final i = geometry.binAt(d.localPosition);
+            onSelectBin(i != null && counts[i] > 0 ? i : null);
+          },
           child: TweenAnimationBuilder<double>(
             tween: Tween(begin: reduceMotion ? 1 : 0, end: 1),
             duration: reduceMotion
@@ -262,8 +293,8 @@ class _Chart extends StatelessWidget {
               size: Size(c.maxWidth, _height),
               painter: _ActivityPainter(
                 geometry: geometry,
-                sessions: sessions,
-                selectedDay: selectedDay,
+                counts: counts,
+                selectedBin: selectedBin,
                 progress: t,
                 labelStyle: GoogleFonts.outfit(
                   fontSize: 10,
@@ -278,22 +309,24 @@ class _Chart extends StatelessWidget {
   }
 }
 
-/// The chart's frame (axes and dates for the chosen range) with a short
+/// The chart's frame (baseline and dates for the chosen range) with a short
 /// message under it, for when there is nothing to plot. With [placeholder]
 /// it also shows faint example marks so new users see what the graph will
-/// look like. They are decoration only: no dots, no values, hidden from
-/// screen readers, and never shaped like real data.
+/// look like. They are decoration only: no values, hidden from screen
+/// readers, and never shaped like real data.
 class _EmptyChart extends StatelessWidget {
   const _EmptyChart({
     super.key,
     required this.start,
     required this.end,
+    required this.bins,
     required this.text,
     this.placeholder = false,
   });
 
   final DateTime start;
   final DateTime end;
+  final int bins;
   final String text;
   final bool placeholder;
 
@@ -301,8 +334,8 @@ class _EmptyChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return LayoutBuilder(builder: (context, c) {
-      final geometry = _Geometry(
-          Size(c.maxWidth, _Chart._height), start, end, scanRegions.length);
+      final geometry =
+          _Geometry(Size(c.maxWidth, _Chart._height), start, end, bins, 1);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -317,8 +350,8 @@ class _EmptyChart extends StatelessWidget {
                 size: Size(c.maxWidth, _Chart._height),
                 painter: _ActivityPainter(
                   geometry: geometry,
-                  sessions: const [],
-                  selectedDay: null,
+                  counts: const [],
+                  selectedBin: null,
                   progress: t,
                   placeholder: placeholder,
                   labelStyle: GoogleFonts.outfit(
@@ -347,19 +380,24 @@ class _EmptyChart extends StatelessWidget {
   }
 }
 
-/// Maps dates and region counts to the chart's pixels.
+/// Maps dates, bars and screening counts to the chart's pixels.
 class _Geometry {
-  _Geometry(this.size, this.start, this.end, this.maxRegions);
+  _Geometry(this.size, this.start, this.end, this.bins, this.maxCount);
 
   final Size size;
   final DateTime start;
   final DateTime end;
-  final int maxRegions;
+  final int bins;
+  final int maxCount;
 
   static const double left = 18, right = 8, top = 8, bottom = 22;
 
   Rect get plot =>
       Rect.fromLTRB(left, top, size.width - right, size.height - bottom);
+
+  double get binWidth => plot.width / bins;
+
+  double centerOf(int bin) => plot.left + (bin + 0.5) * binWidth;
 
   double xOf(DateTime t) {
     final span = end.difference(start).inMinutes;
@@ -367,36 +405,28 @@ class _Geometry {
     return plot.left + f.clamp(0.0, 1.0) * plot.width;
   }
 
-  double yOf(num regions) => plot.bottom - (regions / maxRegions) * plot.height;
+  double yOf(num count) => plot.bottom - (count / maxCount) * plot.height;
 
-  /// The day of the mark nearest a tap, within a finger's reach.
-  DateTime? dayAt(Offset p, List<ScreeningSession> sessions) {
-    ScreeningSession? best;
-    var bestDist = 24.0;
-    for (final s in sessions) {
-      final d = (xOf(s.completedAt) - p.dx).abs();
-      if (d < bestDist) {
-        best = s;
-        bestDist = d;
-      }
-    }
-    return best == null ? null : DentraDates.dateOnly(best.completedAt);
+  /// The bar under a tap, or null outside the plot.
+  int? binAt(Offset p) {
+    if (p.dx < plot.left || p.dx > plot.right) return null;
+    return ((p.dx - plot.left) / binWidth).floor().clamp(0, bins - 1);
   }
 }
 
 class _ActivityPainter extends CustomPainter {
   _ActivityPainter({
     required this.geometry,
-    required this.sessions,
-    required this.selectedDay,
+    required this.counts,
+    required this.selectedBin,
     required this.progress,
     required this.labelStyle,
     this.placeholder = false,
   });
 
   final _Geometry geometry;
-  final List<ScreeningSession> sessions;
-  final DateTime? selectedDay;
+  final List<int> counts;
+  final int? selectedBin;
   final double progress;
   final TextStyle labelStyle;
 
@@ -419,16 +449,18 @@ class _ActivityPainter extends CustomPainter {
     final g = geometry;
     final plot = g.plot;
 
-    // Recessive hairlines: baseline and the all-regions line.
+    // Recessive hairlines: baseline, plus the busiest bar's level when
+    // there is data to read it against.
     final grid = Paint()
       ..color = AppGlass.divider
       ..strokeWidth = 1;
     canvas.drawLine(
         Offset(plot.left, plot.bottom), Offset(plot.right, plot.bottom), grid);
-    canvas.drawLine(Offset(plot.left, g.yOf(g.maxRegions)),
-        Offset(plot.right, g.yOf(g.maxRegions)), grid);
-
-    _text(canvas, '${g.maxRegions}', Offset(0, g.yOf(g.maxRegions) - 6));
+    if (counts.isNotEmpty) {
+      canvas.drawLine(Offset(plot.left, g.yOf(g.maxCount)),
+          Offset(plot.right, g.yOf(g.maxCount)), grid);
+      _text(canvas, '${g.maxCount}', Offset(0, g.yOf(g.maxCount) - 6));
+    }
     _text(canvas, '0', Offset(0, plot.bottom - 6));
 
     // Date labels: start, middle and today.
@@ -439,16 +471,6 @@ class _ActivityPainter extends CustomPainter {
         center: true);
     _text(canvas, 'Today', Offset(plot.right, plot.bottom + 6),
         alignRight: true);
-
-    final stem = Paint()
-      ..color = AppColors.g2.withValues(alpha: 0.35)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    final dot = Paint()..color = AppColors.g2;
-    final ring = Paint()..color = AppColors.white;
-    final guide = Paint()
-      ..color = AppColors.g2.withValues(alpha: 0.18)
-      ..strokeWidth = 1;
 
     if (placeholder) {
       final ghost = Paint()
@@ -463,19 +485,34 @@ class _ActivityPainter extends CustomPainter {
       }
     }
 
-    for (final s in sessions) {
-      final x = g.xOf(s.completedAt);
-      final regions = s.capturedRegions.length * progress;
-      final y = g.yOf(regions);
-      final isSelected = selectedDay != null &&
-          DentraDates.sameDay(s.completedAt, selectedDay!);
+    final bar = Paint()..color = AppColors.g2.withValues(alpha: 0.45);
+    final barSelected = Paint()..color = AppColors.g2;
+    final guide = Paint()..color = AppColors.g2.withValues(alpha: 0.08);
+    final w = (g.binWidth * 0.5).clamp(4.0, 14.0);
+
+    for (var i = 0; i < counts.length; i++) {
+      if (counts[i] == 0) continue;
+      final x = g.centerOf(i);
+      final isSelected = i == selectedBin;
       if (isSelected) {
-        canvas.drawLine(Offset(x, plot.top), Offset(x, plot.bottom), guide);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTRB(x - g.binWidth / 2 + 1, plot.top,
+                x + g.binWidth / 2 - 1, plot.bottom),
+            const Radius.circular(6),
+          ),
+          guide,
+        );
       }
-      canvas.drawLine(Offset(x, plot.bottom), Offset(x, y), stem);
-      final r = isSelected ? 6.0 : 4.5;
-      canvas.drawCircle(Offset(x, y), r + 2, ring);
-      canvas.drawCircle(Offset(x, y), r, dot);
+      final y = g.yOf(counts[i] * progress);
+      canvas.drawRRect(
+        RRect.fromRectAndCorners(
+          Rect.fromLTRB(x - w / 2, y, x + w / 2, plot.bottom),
+          topLeft: Radius.circular(w / 2),
+          topRight: Radius.circular(w / 2),
+        ),
+        isSelected ? barSelected : bar,
+      );
     }
   }
 
@@ -497,17 +534,18 @@ class _ActivityPainter extends CustomPainter {
   bool shouldRepaint(_ActivityPainter old) =>
       old.progress != progress ||
       old.placeholder != placeholder ||
-      old.selectedDay != selectedDay ||
-      old.sessions != sessions ||
+      old.selectedBin != selectedBin ||
+      old.counts != counts ||
       old.geometry.size != geometry.size;
 }
 
 // ── Pieces ──────────────────────────────────────────────────────────────────
 
-/// The tapped day's screenings, with a way into each one's details.
+/// The tapped bar's screenings, with a way into each one's details.
 class _Details extends StatelessWidget {
-  const _Details({super.key, required this.sessions});
+  const _Details({super.key, required this.title, required this.sessions});
 
+  final String title;
   final List<ScreeningSession> sessions;
 
   @override
@@ -519,6 +557,18 @@ class _Details extends StatelessWidget {
         children: [
           const SizedBox(height: 10),
           Divider(height: 1, color: AppGlass.divider),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              '$title · ${sessions.length} '
+              '${sessions.length == 1 ? 'screening' : 'screenings'}',
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ),
           for (final s in sessions)
             InkWell(
               onTap: () => Navigator.of(context, rootNavigator: true)
@@ -542,9 +592,9 @@ class _Details extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${s.capturedRegions.length} of ${s.totalRegions} '
-                            'regions captured · '
-                            '${s.analysis == null ? 'No AI analysis saved' : 'AI analysis saved'}',
+                            s.analysis == null
+                                ? 'No AI analysis saved'
+                                : 'AI analysis saved',
                             style: GoogleFonts.outfit(
                               fontSize: 12,
                               color: AppColors.secondaryText,

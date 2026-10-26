@@ -20,7 +20,7 @@ import 'scan_chamber_scene.dart';
 import 'scan_sim_theme.dart';
 
 /// Opens the full-screen 3D scan. It fades in over the capture board and,
-/// once done (or skipped), calls [onComplete] and zooms out into the
+/// once done, calls [onComplete] and zooms out into the
 /// results waiting underneath.
 Future<void> showScanChamber(BuildContext context,
     {required VoidCallback onComplete}) {
@@ -121,8 +121,8 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
     // so they decode while the scan is already running.
     for (final entry in photos.entries) {
       try {
-        final codec = await ui.instantiateImageCodec(entry.value.bytes,
-            targetWidth: 240);
+        final codec =
+            await ui.instantiateImageCodec(entry.value.bytes, targetWidth: 240);
         final image = (await codec.getNextFrame()).image;
         codec.dispose();
         if (!mounted) {
@@ -167,14 +167,6 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
     Future<void>.delayed(const Duration(milliseconds: 280), () {
       if (mounted) Navigator.of(context).pop();
     });
-  }
-
-  void _skip() {
-    if (_done) return;
-    _done = true;
-    _ticker.stop();
-    widget.onComplete();
-    Navigator.of(context).pop();
   }
 
   @override
@@ -236,7 +228,6 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
                       _TopBar(
                         sound: _sound,
                         onSound: () => setState(() => _sound = !_sound),
-                        onSkip: _skip,
                       ),
                       Expanded(
                         child: wide
@@ -287,12 +278,10 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.sound,
     required this.onSound,
-    required this.onSkip,
   });
 
   final bool sound;
   final VoidCallback onSound;
-  final VoidCallback onSkip;
 
   @override
   Widget build(BuildContext context) {
@@ -302,8 +291,9 @@ class _TopBar extends StatelessWidget {
           toggled: sound,
           child: IconButton(
             onPressed: onSound,
-            tooltip:
-                sound ? 'Turn sound and haptics off' : 'Turn sound and haptics on',
+            tooltip: sound
+                ? 'Turn sound and haptics off'
+                : 'Turn sound and haptics on',
             style: IconButton.styleFrom(
               backgroundColor: AppColors.white.withValues(alpha: 0.7),
               foregroundColor: sound ? AppColors.g2 : AppColors.secondaryText,
@@ -337,25 +327,8 @@ class _TopBar extends StatelessWidget {
             ],
           ),
         ),
-        TextButton(
-          onPressed: onSkip,
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.secondaryText,
-            minimumSize: const Size(48, 44),
-            textStyle: GoogleFonts.outfit(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Skip'),
-              SizedBox(width: 2),
-              Icon(Icons.chevron_right_rounded, size: 18),
-            ],
-          ),
-        ),
+        // Balances the sound button so the title stays centered.
+        const SizedBox(width: 44),
       ],
     );
   }
@@ -724,9 +697,8 @@ class _TrackPainter extends CustomPainter {
         Offset(x, y),
         2,
         Paint()
-          ..color = p >= s
-              ? AppColors.white
-              : AppColors.navy.withValues(alpha: 0.15),
+          ..color =
+              p >= s ? AppColors.white : AppColors.navy.withValues(alpha: 0.15),
       );
     }
     if (p <= 0) return;

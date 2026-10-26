@@ -41,8 +41,8 @@ class DeviceHubView extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenH),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -390,16 +390,28 @@ class _HowItWorks extends StatelessWidget {
 
   static const _steps = [
     (
-      'Capture 8 views',
-      'Guided photos of every surface, including the tongue side.',
+      'Capture 8 guided views',
+      'The scanner walks you through each angle, from your front teeth to '
+          'the tongue side and back molars. Each view is a color photo plus '
+          'a near-infrared frame.',
     ),
     (
-      '3D reconstruction',
-      'Your photos are mapped onto a 3D model of both arches.',
+      'Photo check',
+      'Every photo is checked for blur, glare and low light first. Unclear '
+          'ones are sent back for a retake, so a bad photo never reads as '
+          'healthy teeth.',
     ),
     (
-      'Screening report',
-      'A color-coded tooth map, findings and next steps.',
+      'AI screening',
+      'Our detection model looks over each clear photo for signs of common '
+          'problems, such as early cavities. Your age helps it account for '
+          'baby or adult teeth, and anything it isn\'t confident about is '
+          'left out.',
+    ),
+    (
+      'Your report',
+      'Results describe general areas of your mouth in plain sentences, '
+          'with suggested next steps. It\'s a screening, not a diagnosis.',
     ),
   ];
 
@@ -407,90 +419,120 @@ class _HowItWorks extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassCard(
       borderRadius: const BorderRadius.all(Radius.circular(20)),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+      padding: const EdgeInsets.fromLTRB(16, 16, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SimSectionTitle('How it works'),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           for (var i = 0; i < _steps.length; i++)
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            _HowItWorksStep(
+              number: i + 1,
+              total: _steps.length,
+              title: _steps[i].$1,
+              body: _steps[i].$2,
+              isLast: i == _steps.length - 1,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One step: a white numbered circle on a thin line, matching the
+/// treatment procedure timeline.
+class _HowItWorksStep extends StatelessWidget {
+  const _HowItWorksStep({
+    required this.number,
+    required this.total,
+    required this.title,
+    required this.body,
+    required this.isLast,
+  });
+
+  final int number;
+  final int total;
+  final String title;
+  final String body;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Step $number of $total. $title. $body',
+      excludeSemantics: true,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 30,
+              child: Column(
                 children: [
-                  Column(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: AppColors.cardGradient,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.g1.withValues(alpha: 0.35),
-                              blurRadius: 10,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          '0${i + 1}',
-                          style: figureText(size: 12.5, color: AppColors.white),
-                        ),
+                  Container(
+                    width: 30,
+                    height: 30,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.white,
+                      border: Border.all(
+                        color: AppColors.g2.withValues(alpha: 0.35),
+                        width: 1.5,
                       ),
-                      if (i < _steps.length - 1)
-                        Expanded(
-                          child: Container(
-                            width: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(1),
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  AppColors.g1.withValues(alpha: 0.6),
-                                  AppColors.g1.withValues(alpha: 0.1),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 6, bottom: 14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _steps[i].$1,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.navy,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _steps[i].$2,
-                            style: GoogleFonts.outfit(
-                              fontSize: 12.5,
-                              height: 1.45,
-                              color: AppColors.secondaryText,
-                            ),
-                          ),
-                        ],
+                    ),
+                    child: Text(
+                      '$number',
+                      textScaler: TextScaler.noScaling,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.g2,
                       ),
                     ),
                   ),
+                  if (!isLast)
+                    Expanded(
+                      child: Container(
+                        width: 1.5,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        color: AppColors.g2.withValues(alpha: 0.18),
+                      ),
+                    ),
                 ],
               ),
             ),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(top: 4, bottom: isLast ? 0 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      body,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12.5,
+                        color: AppColors.secondaryText,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -563,8 +605,7 @@ class _ScannerPainter extends CustomPainter {
       ..hideRoots = false
       ..rootReveal = 1;
     for (var o = 0; o < kOwnerCount; o++) {
-      s.alpha[o] =
-          o == ScannerModel.body || o == ScannerModel.light ? 1 : 0;
+      s.alpha[o] = o == ScannerModel.body || o == ScannerModel.light ? 1 : 0;
     }
     const teal = AppColors.g1;
     s
@@ -598,7 +639,8 @@ class _ScannerPainter extends CustomPainter {
     final floor = h * 0.86;
 
     // Soft glow behind, and the shadow it floats above.
-    final glow = Rect.fromCircle(center: Offset(w / 2, h * 0.45), radius: w * 0.4);
+    final glow =
+        Rect.fromCircle(center: Offset(w / 2, h * 0.45), radius: w * 0.4);
     canvas.drawRect(
       glow,
       Paint()
