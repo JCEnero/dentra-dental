@@ -57,16 +57,23 @@ class PrimaryButton extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: isWhite
-                          ? AppColors.g2
-                          : isSecondary
-                              ? AppColors.secondaryText
-                              : AppColors.white,
+                  // Flexible so long labels at large text sizes wrap
+                  // instead of overflowing; short labels are unaffected.
+                  Flexible(
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isWhite
+                            ? AppColors.g2
+                            : isSecondary
+                                ? AppColors.secondaryText
+                                : AppColors.white,
+                      ),
                     ),
                   ),
                   if (trailing != null) ...[

@@ -1,364 +1,689 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/models/screening_model.dart';
-import '../../../core/services/mock_data.dart';
 
-class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
+import '../../../core/constants/app_radius.dart';
+import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/dentra_dates.dart';
+import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../shared/widgets/dentra_page_header.dart';
+import '../../dental_records/data/models/dental_record.dart';
+import '../../dental_records/providers/dental_records_provider.dart';
+import '../../dental_records/widgets/add_record_sheet.dart';
+import '../../screening/providers/screening_sessions_provider.dart';
+import '../state/history_controller.dart';
+import '../state/history_entry.dart';
+import '../state/history_query.dart';
+import '../widgets/history_calendar.dart';
+import '../widgets/history_filter_sheet.dart';
+import '../widgets/record_history_card.dart';
+import '../widgets/screening_history_card.dart';
+import '../widgets/tooth_history.dart';
+
+class HistoryScreen extends ConsumerStatefulWidget {
+  const HistoryScreen({super.key, this.onBack, this.onNavigate});
+
+  /// Called by the header's back button; hidden when null.
+  final VoidCallback? onBack;
+
+  /// Switches the app shell's tab (used to start a scan).
+  final ValueChanged<int>? onNavigate;
+
+  /// Index of the Scan tab in `AppShell`.
+  static const scanTab = 1;
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
-  int _activeDate = 7;
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  final _searchCtrl = TextEditingController();
+  final _searchFocus = FocusNode();
+  bool _searchOpen = false;
 
-  final _weekDates = const [
-    {'day': 'Wed', 'date': 5},
-    {'day': 'Thu', 'date': 6},
-    {'day': 'Fri', 'date': 7},
-    {'day': 'Sat', 'date': 8},
-    {'day': 'Sun', 'date': 9},
-  ];
+  HistoryController get _controller =>
+      ref.read(historyControllerProvider.notifier);
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
+
+  void _toggleSearch() {
+    setState(() => _searchOpen = !_searchOpen);
+    if (_searchOpen) {
+      _searchFocus.requestFocus();
+    } else {
+      _searchCtrl.clear();
+      _controller.setQuery('');
+      _searchFocus.unfocus();
+    }
+  }
+
+  void _reset() {
+    _searchCtrl.clear();
+    _controller.resetFilters();
+    if (_searchOpen) setState(() => _searchOpen = false);
+  }
+
+  void _open(HistoryEntry entry) {
+    FocusScope.of(context).unfocus();
+    openHistoryEntry(context, entry);
+  }
+
+  Future<void> _refresh() => Future.wait([
+        ref.refresh(screeningSessionsProvider.future),
+        // A records failure is shown by the banner, not the pull-to-refresh.
+        ref
+            .refresh(dentalRecordsProvider.future)
+            .catchError((Object _) => const <DentalRecord>[]),
+      ]);
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Colors.white),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── HEADER ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 20, AppSpacing.screenH, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final entriesAsync = ref.watch(historyEntriesProvider);
+    final recordsFailed = ref.watch(
+        dentalRecordsProvider.select((r) => r.hasError && !r.isLoading));
+    final view = ref.watch(historyControllerProvider);
+    final results = ref.watch(historyResultsProvider);
+    final all = entriesAsync.valueOrNull ?? const <HistoryEntry>[];
+
+    final thisMonth = DentraDates.monthOf(DateTime.now());
+    final earliest = all.isEmpty
+        ? thisMonth
+        : DentraDates.monthOf(
+            all.map((e) => e.at).reduce((a, b) => a.isBefore(b) ? a : b));
+
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── HEADER ──────────────────────────────────────────
+          DentraPageHeader(
+            title: 'Dental History',
+            onBack: widget.onBack,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _HeaderButton(
+                  icon: Icons.add_rounded,
+                  tooltip: 'Add a clinic visit, photo or note',
+                  onPressed: () => showAddRecordSheet(context),
+                ),
+                const SizedBox(width: 8),
+                _HeaderButton(
+                  icon: _searchOpen ? Icons.search_off_rounded : Icons.search_rounded,
+                  tooltip: _searchOpen ? 'Close search' : 'Search history',
+                  active: _searchOpen,
+                  onPressed: _toggleSearch,
+                ),
+                const SizedBox(width: 8),
+                _HeaderButton(
+                  icon: Icons.tune_rounded,
+                  tooltip: 'Filter and sort',
+                  active: !view.filters.isDefault,
+                  badge: view.filters.activeCount,
+                  onPressed: () => showHistoryFilterSheet(context),
+                ),
+              ],
+            ),
+            bottom: AnimatedSize(
+              duration: dentraMotion(context),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _searchOpen
+                  ? _SearchField(
+                      controller: _searchCtrl,
+                      focusNode: _searchFocus,
+                      onChanged: _controller.setQuery,
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+          ),
+          Divider(height: 1, thickness: 1, color: AppGlass.divider),
+
+          // ── BODY ────────────────────────────────────────────
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.fromLTRB(AppSpacing.screenH, 16,
+                    AppSpacing.screenH, 24 + MediaQuery.paddingOf(context).bottom),
                 children: [
-                  Text(
-                    'Screening History',
-                    style: GoogleFonts.outfit(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Track your dental health over time',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      color: AppColors.secondaryText,
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          HistoryCalendar(
+                            month: view.month,
+                            weekStart: view.weekStart,
+                            selectedDay: view.usesCalendar ? view.day : null,
+                            markedDays: {for (final e in all) e.day},
+                            dimmed: !view.usesCalendar,
+                            earliestMonth: earliest,
+                            canGoBack: view.month.isAfter(earliest),
+                            canGoForward: view.month.isBefore(thisMonth),
+                            onShiftMonth: (d) =>
+                                _controller.shiftMonth(d, entries: all),
+                            onShiftWeek: _controller.shiftWeek,
+                            onDayTap: (day) {
+                              // Picking a day returns to calendar mode.
+                              if (!view.usesCalendar) _reset();
+                              _controller.toggleDay(day);
+                            },
+                          ),
+                          if (recordsFailed)
+                            _RecordsErrorBanner(
+                              onRetry: () => ref.invalidate(dentalRecordsProvider),
+                            ),
+                          _ListHeader(
+                            view: view,
+                            count: results.valueOrNull?.length,
+                            onWholeMonth: _controller.clearDay,
+                            onReset: _reset,
+                          ),
+                          _buildResults(results, all, view),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // ── CALENDAR WIDGET ──────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 20, AppSpacing.screenH, 0),
+  Widget _buildResults(
+    AsyncValue<List<HistoryEntry>> results,
+    List<HistoryEntry> all,
+    HistoryViewState view,
+  ) {
+    final Widget child;
+    if (results.hasError && !results.hasValue) {
+      child = HistoryMessage(
+        key: const ValueKey('error'),
+        icon: Icons.cloud_off_rounded,
+        danger: true,
+        title: "We couldn't load your history",
+        message: 'Check your connection and try again.',
+        actions: [
+          DentraPillButton(
+            label: 'Try again',
+            onPressed: () {
+              ref.invalidate(screeningSessionsProvider);
+              ref.invalidate(dentalRecordsProvider);
+            },
+          ),
+        ],
+      );
+    } else if (!results.hasValue) {
+      child = const Column(
+        key: ValueKey('loading'),
+        children: [
+          ScreeningCardSkeleton(),
+          SizedBox(height: 10),
+          ScreeningCardSkeleton(),
+          SizedBox(height: 10),
+          ScreeningCardSkeleton(),
+        ],
+      );
+    } else if (results.requireValue.isEmpty) {
+      child = _emptyState(all, view);
+    } else {
+      child = _ResultsList(
+        key: ValueKey(
+            '${view.month}${view.day}${view.query}${view.filters.activeCount}'
+            '${view.filters.sort}'),
+        entries: results.requireValue,
+        latestScreeningKey: all.whereType<ScreeningEntry>().firstOrNull?.key,
+        grouped: !view.usesCalendar,
+        onOpen: _open,
+      );
+    }
+
+    return AnimatedSwitcher(
+      duration: dentraMotion(context, 220),
+      switchInCurve: Curves.easeOut,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.02),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      layoutBuilder: (current, previous) => Stack(
+        alignment: Alignment.topCenter,
+        children: [...previous, if (current != null) current],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _emptyState(List<HistoryEntry> all, HistoryViewState view) {
+    if (all.isEmpty) {
+      return HistoryMessage(
+        key: const ValueKey('empty-all'),
+        icon: Icons.document_scanner_outlined,
+        title: 'Nothing in your history yet',
+        message: 'Completed screenings appear here. You can also add clinic '
+            'visits, photos and notes.',
+        actions: [
+          if (widget.onNavigate != null)
+            DentraPillButton(
+              label: 'Start a screening',
+              icon: Icons.document_scanner_outlined,
+              onPressed: () => widget.onNavigate!(HistoryScreen.scanTab),
+            ),
+          DentraPillButton(
+            label: 'Add a visit, photo or note',
+            variant: DentraButtonVariant.outline,
+            icon: Icons.add_rounded,
+            onPressed: () => showAddRecordSheet(context),
+          ),
+        ],
+      );
+    }
+    if (view.isSearching || !view.filters.isDefault) {
+      return HistoryMessage(
+        key: const ValueKey('empty-filtered'),
+        icon: Icons.search_off_rounded,
+        title: 'Nothing matches',
+        message: view.isSearching
+            ? 'Nothing matches "${view.query.trim()}". Try a date like '
+                '"Sep 7", a clinic name or "tooth 26".'
+            : 'No history items match these filters.',
+        actions: [
+          DentraPillButton(
+            label: 'Reset search and filters',
+            variant: DentraButtonVariant.outline,
+            onPressed: _reset,
+          ),
+        ],
+      );
+    }
+    if (view.day != null) {
+      return HistoryMessage(
+        key: const ValueKey('empty-day'),
+        icon: Icons.event_busy_outlined,
+        title: 'Nothing recorded on ${DentraDates.medium(view.day!)}',
+        message: 'Days with a dot have history items.',
+        actions: [
+          DentraPillButton(
+            label: 'Show all of ${DentraDates.monthNames[view.month.month - 1]}',
+            variant: DentraButtonVariant.outline,
+            onPressed: _controller.clearDay,
+          ),
+        ],
+      );
+    }
+    final latest = all.first.at;
+    return HistoryMessage(
+      key: const ValueKey('empty-month'),
+      icon: Icons.event_note_outlined,
+      title: 'Nothing in ${DentraDates.monthYear(view.month)}',
+      message: 'Your latest history item is from ${DentraDates.medium(latest)}.',
+      actions: [
+        DentraPillButton(
+          label: 'Go to latest',
+          onPressed: () {
+            _controller.goToMonth(latest, entries: all);
+            _controller.toggleDay(latest);
+          },
+        ),
+        DentraPillButton(
+          label: 'View all history',
+          variant: DentraButtonVariant.outline,
+          onPressed: () => _controller.setFilters(
+            view.filters.copyWith(scope: HistoryScope.allTime),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Pieces ──────────────────────────────────────────────────────────────────
+
+class _HeaderButton extends StatelessWidget {
+  const _HeaderButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.active = false,
+    this.badge = 0,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final bool active;
+  final int badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          onPressed: onPressed,
+          tooltip: badge > 0 ? '$tooltip, $badge active' : tooltip,
+          isSelected: active,
+          style: IconButton.styleFrom(
+            backgroundColor:
+                active ? AppColors.g2.withValues(alpha: 0.14) : AppColors.lightLavender,
+            foregroundColor: active ? AppColors.g2 : AppColors.navy,
+            fixedSize: const Size(44, 44),
+            minimumSize: const Size(44, 44),
+          ),
+          icon: Icon(icon, size: 20),
+        ),
+        if (badge > 0)
+          Positioned(
+            right: -2,
+            top: -2,
+            child: ExcludeSemantics(
               child: Container(
+                constraints: const BoxConstraints(minWidth: 18),
+                height: 18,
+                padding: const EdgeInsets.symmetric(horizontal: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.g1.withValues(alpha: 0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  color: AppColors.g2,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: AppColors.white, width: 1.5),
                 ),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                child: Column(
-                  children: [
-                    // Month nav
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.chevron_left_rounded,
-                              size: 18),
-                          color: AppColors.secondaryText,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        const SizedBox(width: 16),
-                        Row(
-                          children: [
-                            Text(
-                              'Aug',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'September',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.navy,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Oct',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.chevron_right_rounded,
-                              size: 18),
-                          color: AppColors.secondaryText,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Date row
-                    Row(
-                      children: _weekDates.map((wd) {
-                        final date    = wd['date'] as int;
-                        final day     = wd['day'] as String;
-                        final isActive = _activeDate == date;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _activeDate = date),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 4),
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? AppColors.primary
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    day,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                      color: isActive
-                                          ? Colors.white.withValues(alpha: 0.7)
-                                          : AppColors.secondaryText,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '$date',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: isActive
-                                          ? AppColors.white
-                                          : AppColors.navy,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                alignment: Alignment.center,
+                child: Text(
+                  '$badge',
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
+                  ),
                 ),
               ),
             ),
+          ),
+      ],
+    );
+  }
+}
 
-            // ── ONGOING LABEL ─────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 20, AppSpacing.screenH, 12),
-              child: Text(
-                'Ongoing',
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
+class _SearchField extends StatelessWidget {
+  const _SearchField({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) => TextField(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        style: GoogleFonts.outfit(fontSize: 14, color: AppColors.navy),
+        decoration: InputDecoration(
+          hintText: 'Search dates, clinics, notes or teeth',
+          hintStyle: GoogleFonts.outfit(
+            fontSize: 14,
+            color: AppColors.secondaryText.withValues(alpha: 0.7),
+          ),
+          prefixIcon: const Icon(Icons.search_rounded,
+              size: 20, color: AppColors.secondaryText),
+          suffixIcon: value.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Clear search',
+                  onPressed: () {
+                    controller.clear();
+                    onChanged('');
+                  },
+                  icon: const Icon(Icons.close_rounded,
+                      size: 18, color: AppColors.secondaryText),
                 ),
-              ),
-            ),
-
-            // ── SCREENING CARDS ───────────────────────────────────
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenH, 0, AppSpacing.screenH, 24),
-                itemCount: MockData.screenings.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, i) {
-                  final s = MockData.screenings[i];
-                  final isEven = i % 2 == 0;
-                  return _ScreeningCard(
-                    screening: s,
-                    isFirst: i == 0,
-                    isEven: isEven,
-                  );
-                },
-              ),
-            ),
-          ],
+          filled: true,
+          fillColor: AppColors.white.withValues(alpha: 0.7),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          enabledBorder: const OutlineInputBorder(
+            borderRadius: AppRadius.lgAll,
+            borderSide: BorderSide(color: AppGlass.border),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: AppRadius.lgAll,
+            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+          ),
         ),
       ),
     );
   }
 }
 
-class _ScreeningCard extends StatelessWidget {
-  final ScreeningModel screening;
-  final bool isFirst;
-  final bool isEven;
-
-  const _ScreeningCard({
-    required this.screening,
-    required this.isFirst,
-    required this.isEven,
+class _ListHeader extends StatelessWidget {
+  const _ListHeader({
+    required this.view,
+    required this.count,
+    required this.onWholeMonth,
+    required this.onReset,
   });
+
+  final HistoryViewState view;
+  final int? count;
+  final VoidCallback onWholeMonth;
+  final VoidCallback onReset;
 
   @override
   Widget build(BuildContext context) {
-    // White card with teal accent border — alternates teal shade per card
-    final tealBorder = isEven
-        ? const Color(0xFF2CA6A4)
-        : const Color(0xFF3BBFB8);
+    final title = view.isSearching
+        ? 'Search results'
+        : !view.usesCalendar
+            ? 'All history'
+            : view.day != null
+                ? DentraDates.long(view.day!)
+                : DentraDates.monthYear(view.month);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: tealBorder, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: tealBorder.withValues(alpha: 0.18),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+    final Widget? action = view.isSearching || !view.filters.isDefault
+        ? _HeaderLink(label: 'Reset', onTap: onReset)
+        : view.day != null
+            ? _HeaderLink(label: 'Whole month', onTap: onWholeMonth)
+            : null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 20, 0, 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  screening.fullDate,
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.navy.withValues(alpha: 0.45),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Dental Screening',
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                // Avatar circles + image count
-                Row(
-                  children: [
-                    ...List.generate(
-                      screening.images.clamp(0, 3),
-                      (j) => Transform.translate(
-                        offset: Offset(j > 0 ? -6.0 * j : 0, 0),
-                        child: Container(
-                          width: 22, height: 22,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF2CA6A4)
-                                .withValues(alpha: 0.18 - j * 0.04),
-                            border: Border.all(
-                              color: const Color(0xFF2CA6A4).withValues(alpha: 0.35),
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${screening.images} images',
+                Semantics(
+                  header: true,
+                  child: AnimatedSwitcher(
+                    duration: dentraMotion(context, 180),
+                    child: Text(
+                      title,
+                      key: ValueKey(title),
                       style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: AppColors.navy.withValues(alpha: 0.55),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${screening.teeth} teeth detected · ${screening.region}',
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    color: AppColors.navy.withValues(alpha: 0.55),
                   ),
                 ),
+                if (count != null)
+                  Text(
+                    '$count ${count == 1 ? 'item' : 'items'}',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
               ],
             ),
           ),
+          if (action != null) action,
+        ],
+      ),
+    );
+  }
+}
 
-          // Right column
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2CA6A4).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  isFirst ? 'Latest' : 'View',
-                  style: GoogleFonts.outfit(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF2CA6A4),
-                  ),
+class _HeaderLink extends StatelessWidget {
+  const _HeaderLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.g2,
+        minimumSize: const Size(44, 44),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _ResultsList extends StatelessWidget {
+  const _ResultsList({
+    super.key,
+    required this.entries,
+    required this.latestScreeningKey,
+    required this.grouped,
+    required this.onOpen,
+  });
+
+  final List<HistoryEntry> entries;
+
+  /// The newest screening overall, labelled "Latest".
+  final String? latestScreeningKey;
+
+  /// Adds month headings, for lists that span many months.
+  final bool grouped;
+  final ValueChanged<HistoryEntry> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final children = <Widget>[];
+    DateTime? month;
+    var screenings = 0;
+    for (final e in entries) {
+      final m = DentraDates.monthOf(e.at);
+      if (grouped && m != month) {
+        children.add(Padding(
+          padding: EdgeInsets.fromLTRB(4, children.isEmpty ? 0 : 10, 4, 8),
+          child: Text(
+            DentraDates.monthYear(m).toUpperCase(),
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.0,
+              color: AppColors.secondaryText,
+            ),
+          ),
+        ));
+        month = m;
+      } else if (children.isNotEmpty) {
+        children.add(const SizedBox(height: 10));
+      }
+      children.add(switch (e) {
+        ScreeningEntry(:final session) => ScreeningHistoryCard(
+            key: ValueKey(e.key),
+            session: session,
+            isLatest: e.key == latestScreeningKey,
+            alternate: (screenings++).isOdd,
+            onTap: () => onOpen(e),
+          ),
+        RecordEntry(:final record) => RecordHistoryCard(
+            key: ValueKey(e.key),
+            record: record,
+            onTap: () => onOpen(e),
+          ),
+      });
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
+  }
+}
+
+/// Shown when screenings loaded but the user's own records didn't.
+class _RecordsErrorBanner extends StatelessWidget {
+  const _RecordsErrorBanner({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.08),
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: AppColors.danger.withValues(alpha: 0.28)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.danger),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Your clinic visits, photos and notes couldn't load.",
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.navy,
                 ),
               ),
-              const SizedBox(height: 8),
-              Icon(Icons.arrow_forward_rounded,
-                  size: 14, color: const Color(0xFF2CA6A4).withValues(alpha: 0.7)),
-            ],
-          ),
-        ],
+            ),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.g2,
+                minimumSize: const Size(44, 44),
+              ),
+              child: Text(
+                'Retry',
+                style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

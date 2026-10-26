@@ -1,0 +1,571 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+import '../../../core/config/api_config.dart';
+import 'auth_api.dart';
+import 'token_store.dart';
+
+/// Authentication result returned by all auth methods.
+class AuthResult {
+  final bool success;
+  final String? error;
+  final String? userId;
+  final String? email;
+
+  /// The account exists but its email isn't confirmed yet: show the code
+  /// screen for [email] instead of an error.
+  final bool needsVerification;
+
+  /// Seconds until another verification code can be requested.
+  final int? resendAvailableIn;
+
+  const AuthResult({
+    required this.success,
+    this.error,
+    this.userId,
+    this.email,
+    this.needsVerification = false,
+    this.resendAvailableIn,
+  });
+}
+
+/// DENTRA Auth Service.
+///
+/// Talks to the DENTRA backend when one is configured (`API_BASE_URL` in
+/// `.env`): email/password and Google sign-in, a rotating refresh token kept
+/// in secure storage, and an in-memory access token refreshed on demand.
+///
+/// Without a backend it falls back to demo behaviour, so the UI and widget
+/// tests run offline: any password of 6+ characters signs in, and
+/// `taken@dentra.com` plays an already-registered email.
+class AuthService extends ChangeNotifier {
+  AuthService({
+    AuthApi? api,
+    TokenStore? tokenStore,
+    String? googleServerClientId,
+  })  : _api = api,
+        _tokenStore = tokenStore,
+        _googleServerClientId = googleServerClientId;
+
+  /// Uses the backend from `.env` when set, demo mode otherwise.
+  factory AuthService.fromEnvironment() {
+    final baseUrl = ApiConfig.baseUrl;
+    if (baseUrl == null) return AuthService();
+    return AuthService(
+      api: AuthApi(baseUrl: baseUrl),
+      tokenStore: SecureTokenStore(),
+      googleServerClientId: ApiConfig.googleServerClientId,
+    );
+  }
+
+  final AuthApi? _api;
+  final TokenStore? _tokenStore;
+  final String? _googleServerClientId;
+
+  bool _isAuthenticated = false;
+  String? _currentUserId;
+  String? _currentEmail;
+  String? _currentDisplayName;
+
+  String? _accessToken;
+  DateTime? _accessTokenExpiresAt;
+  String? _refreshToken;
+
+  /// The refresh in flight, shared so parallel callers never present the
+  /// same refresh token twice (the server treats that as theft).
+  Future<String?>? _refreshing;
+
+  bool get isAuthenticated => _isAuthenticated;
+  String? get currentUserId => _currentUserId;
+  String? get currentEmail => _currentEmail;
+  String? get currentDisplayName => _currentDisplayName;
+
+  /// Whether a real backend is configured (false in demo mode).
+  bool get usesBackend => _api != null;
+
+  /// Whether to offer "Continue with Google": only once it is configured.
+  bool get googleSignInAvailable =>
+      _api != null && _googleServerClientId != null;
+
+  static const _connectionError =
+      "We couldn't reach DENTRA. Check your connection and try again.";
+  static const _sessionEndedError =
+      'Your session has ended. Please sign in again.';
+
+  // ── Session restore ───────────────────────────────────────────
+
+  /// Signs back in from the stored refresh token. Returns false when there
+  /// is none, it was rejected, or the server could not be reached (the
+  /// token is kept in that last case, so the next launch can retry).
+  Future<bool> restoreSession() async {
+    final api = _api;
+    final store = _tokenStore;
+    if (api == null || store == null) return false;
+
+    final stored = await store.readRefreshToken();
+    // Empty means a sign-out could only blank the token (see _endSession).
+    if (stored == null || stored.isEmpty) return false;
+
+    try {
+      await _startSession(await api.refresh(stored));
+      return true;
+    } on ApiException catch (e) {
+      if (e.isUnauthenticated) await store.clear();
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// A valid access token for calling the DENTRA API, refreshing it when
+  /// it is about to expire. Null when signed out or the session ended.
+  /// Other API clients (profile, screenings, ...) should get tokens here.
+  Future<String?> validAccessToken() async {
+    final token = _accessToken;
+    final expiresAt = _accessTokenExpiresAt;
+    // 30 s margin so a token never expires mid-request.
+    if (token != null &&
+        expiresAt != null &&
+        DateTime.now().isBefore(expiresAt.subtract(const Duration(seconds: 30)))) {
+      return token;
+    }
+    return _refreshing ??= _refreshAccessToken().whenComplete(() {
+      _refreshing = null;
+    });
+  }
+
+  Future<String?> _refreshAccessToken() async {
+    final api = _api;
+    final refreshToken = _refreshToken;
+    if (api == null || refreshToken == null) return null;
+    try {
+      final session = await api.refresh(refreshToken);
+      await _startSession(session);
+      return session.accessToken;
+    } on ApiException catch (e) {
+      if (e.isUnauthenticated) await _endSession();
+      return null;
+    }
+  }
+
+  // ── Email / Password ──────────────────────────────────────────
+
+  /// Sign in with email and password.
+  Future<AuthResult> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    final api = _api;
+    if (api == null) return _demoSignIn(email, password);
+
+    return _runSignIn(() => api.login(email: email, password: password));
+  }
+
+  /// Register with full name, email and password.
+  ///
+  /// With the backend, this emails a 6-digit code and returns
+  /// [AuthResult.needsVerification]; the user is signed in by
+  /// [verifyEmail]. Demo mode signs in straight away.
+  Future<AuthResult> registerWithEmail({
+    required String fullName,
+    required String email,
+    required String password,
+  }) async {
+    final api = _api;
+    if (api == null) return _demoRegister(fullName, email);
+
+    try {
+      final resendIn = await api.register(
+        fullName: fullName,
+        email: email,
+        password: password,
+      );
+      return AuthResult(
+        success: false,
+        needsVerification: true,
+        email: email,
+        resendAvailableIn: resendIn,
+      );
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    }
+  }
+
+  // ── Email verification ────────────────────────────────────────
+
+  /// Confirms the code emailed at sign-up and signs the user in.
+  Future<AuthResult> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 900));
+      // Demo: '000000' plays the part of a wrong code.
+      if (code == '000000') {
+        return const AuthResult(
+          success: false,
+          error: 'That code is incorrect. 4 tries left.',
+        );
+      }
+      _setUser('stub-uid-002', email, null);
+      return AuthResult(success: true, userId: _currentUserId, email: email);
+    }
+    return _runSignIn(() => api.verifyEmail(email: email, code: code));
+  }
+
+  /// Emails a new verification code.
+  Future<AuthResult> resendVerificationCode({required String email}) async {
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      return const AuthResult(success: true, resendAvailableIn: 60);
+    }
+    try {
+      final resendIn = await api.resendVerificationCode(email);
+      return AuthResult(success: true, resendAvailableIn: resendIn);
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    }
+  }
+
+  // ── Google Sign-In ────────────────────────────────────────────
+
+  /// `GoogleSignIn.initialize` must run exactly once per app launch.
+  static Future<void>? _googleInit;
+
+  /// Sign in / sign up with Google.
+  ///
+  /// The app only obtains a Google ID token; the backend verifies it and
+  /// creates or links the DENTRA account. Returns a failed result with no
+  /// error when the user closes the Google sheet.
+  Future<AuthResult> signInWithGoogle() async {
+    final api = _api;
+    final serverClientId = _googleServerClientId;
+    if (api == null || serverClientId == null) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return const AuthResult(
+        success: false,
+        error: 'Google sign-in is not set up yet. Use your email and '
+            'password for now.',
+      );
+    }
+
+    final google = GoogleSignIn.instance;
+    final String? idToken;
+    try {
+      await (_googleInit ??= google.initialize(serverClientId: serverClientId));
+      if (!google.supportsAuthenticate()) {
+        return const AuthResult(
+          success: false,
+          error: "Google sign-in isn't available on this device yet.",
+        );
+      }
+      final account = await google.authenticate();
+      idToken = account.authentication.idToken;
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        return const AuthResult(success: false);
+      }
+      // Lets the next attempt retry initialisation if that is what failed.
+      _googleInit = null;
+      // Usually a missing SHA-1 / client ID in Google Cloud. Logged for
+      // developers; users get a plain message.
+      debugPrint('Google sign-in failed: $e');
+      return const AuthResult(
+        success: false,
+        error: "We couldn't sign you in with Google. Please try again.",
+      );
+    }
+
+    final token = idToken;
+    if (token == null) {
+      return const AuthResult(
+        success: false,
+        error: "We couldn't sign you in with Google. Please try again.",
+      );
+    }
+    return _runSignIn(() => api.loginWithGoogle(token));
+  }
+
+  // ── Password Reset ────────────────────────────────────────────
+
+  /// Emails a 6-digit reset code. The server answers the same for unknown
+  /// emails, so success doesn't mean an account exists.
+  Future<AuthResult> sendPasswordResetEmail({required String email}) async {
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 900));
+      return const AuthResult(success: true, resendAvailableIn: 60);
+    }
+    try {
+      final resendIn = await api.forgotPassword(email);
+      return AuthResult(success: true, email: email, resendAvailableIn: resendIn);
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    }
+  }
+
+  /// Sets a new password with the emailed code and signs the user in.
+  /// Every other device is signed out.
+  Future<AuthResult> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 900));
+      // Demo: '000000' plays the part of a wrong code.
+      if (code == '000000') {
+        return const AuthResult(
+          success: false,
+          error: 'That code is incorrect. 4 tries left.',
+        );
+      }
+      _setUser('stub-uid-001', email, null);
+      return AuthResult(success: true, userId: _currentUserId, email: email);
+    }
+    return _runSignIn(() => api.resetPassword(
+          email: email,
+          code: code,
+          newPassword: newPassword,
+        ));
+  }
+
+  // ── Change Password ───────────────────────────────────────────
+
+  /// Change the signed-in user's password after re-checking the current
+  /// one. Signs out every other device; this one stays signed in.
+  Future<AuthResult> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 1200));
+      // Demo: mirrors the demo sign-in, which rejects passwords under 6.
+      if (currentPassword.length < 6) {
+        return const AuthResult(
+          success: false,
+          error: 'Your current password is incorrect.',
+        );
+      }
+      return const AuthResult(success: true);
+    }
+
+    final accessToken = await validAccessToken();
+    if (accessToken == null) {
+      return const AuthResult(success: false, error: _sessionEndedError);
+    }
+    try {
+      await _startSession(await api.changePassword(
+        accessToken: accessToken,
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      ));
+      return AuthResult(success: true, userId: _currentUserId);
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    }
+  }
+
+  // ── Two-Factor Authentication ─────────────────────────────────
+  // Not on the backend yet: demo-only. With the backend, say so instead
+  // of showing 2FA as on when nothing enforces it.
+
+  static const _twoFactorUnavailable = AuthResult(
+    success: false,
+    error: "Two-factor authentication isn't available yet.",
+  );
+
+  /// Email a one-time code to the signed-in user to confirm 2FA setup.
+  Future<AuthResult> sendTwoFactorCode() async {
+    if (_api != null) return _twoFactorUnavailable;
+    await Future.delayed(const Duration(milliseconds: 800));
+    // TODO: POST '$baseUrl/api/auth/2fa/send'.
+    return const AuthResult(success: true);
+  }
+
+  /// Confirm the emailed code and turn on two-factor authentication.
+  Future<AuthResult> enableTwoFactor({required String code}) async {
+    if (_api != null) return _twoFactorUnavailable;
+    await Future.delayed(const Duration(milliseconds: 1000));
+    // TODO: POST '$baseUrl/api/auth/2fa/verify' with the code.
+
+    // Demo: '000000' plays the part of a wrong or expired code.
+    if (code == '000000') {
+      return const AuthResult(
+        success: false,
+        error: 'That code is incorrect or has expired. Request a new one.',
+      );
+    }
+    return const AuthResult(success: true);
+  }
+
+  /// Turn off two-factor authentication.
+  Future<AuthResult> disableTwoFactor() async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    // TODO: DELETE '$baseUrl/api/auth/2fa'.
+    return const AuthResult(success: true);
+  }
+
+  // ── Account ───────────────────────────────────────────────────
+
+  /// Keep the session's name and email in step after a profile edit.
+  void updateIdentity({String? displayName, String? email}) {
+    if (!_isAuthenticated) return;
+    _currentDisplayName = displayName ?? _currentDisplayName;
+    _currentEmail = email ?? _currentEmail;
+    notifyListeners();
+  }
+
+  /// Permanently delete the signed-in account, then sign out.
+  Future<AuthResult> deleteAccount() async {
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 1400));
+      await _endSession();
+      return const AuthResult(success: true);
+    }
+
+    try {
+      final accessToken = await validAccessToken();
+      if (accessToken == null) {
+        return const AuthResult(success: false, error: _sessionEndedError);
+      }
+      await api.deleteAccount(accessToken: accessToken);
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    } catch (_) {
+      return const AuthResult(success: false, error: _connectionError);
+    }
+    await _signOutOfGoogle();
+    await _endSession();
+    return const AuthResult(success: true);
+  }
+
+  // ── Sign Out ──────────────────────────────────────────────────
+
+  /// Sign out the current user. Always clears the local session, even if
+  /// the server can't be told.
+  Future<void> signOut() async {
+    final api = _api;
+    final refreshToken = _refreshToken;
+    await _endSession();
+    await _signOutOfGoogle();
+    if (api != null && refreshToken != null) {
+      try {
+        await api.logout(refreshToken);
+      } catch (_) {
+        // The token expires on its own; nothing else to do offline.
+      }
+    }
+  }
+
+  // ── Internal helpers ──────────────────────────────────────────
+
+  /// Runs a backend sign-in and turns API errors into an [AuthResult].
+  /// Network errors are rethrown for the screen's connection message.
+  Future<AuthResult> _runSignIn(Future<AuthSession> Function() call) async {
+    try {
+      final session = await call();
+      await _startSession(session);
+      return AuthResult(
+        success: true,
+        userId: session.userId,
+        email: session.email,
+      );
+    } on ApiException catch (e) {
+      // Right password, unfinished sign-up: the server just emailed a code.
+      if (e.code == 'email_not_verified') {
+        return AuthResult(
+          success: false,
+          needsVerification: true,
+          error: e.message,
+        );
+      }
+      return AuthResult(success: false, error: e.message);
+    }
+  }
+
+  Future<void> _startSession(AuthSession session) async {
+    _accessToken = session.accessToken;
+    _accessTokenExpiresAt = session.accessTokenExpiresAt;
+    _refreshToken = session.refreshToken;
+    await _tokenStore?.writeRefreshToken(session.refreshToken);
+    _setUser(session.userId, session.email, session.fullName);
+  }
+
+  Future<void> _endSession() async {
+    _accessToken = null;
+    _accessTokenExpiresAt = null;
+    _refreshToken = null;
+    // Sign the user out in memory first, so a storage error can't keep
+    // them in.
+    _clearUser();
+    final store = _tokenStore;
+    if (store == null) return;
+    try {
+      await store.clear();
+    } catch (_) {
+      // Deleting failed: blank the token instead, so the next launch
+      // can't restore this session from it.
+      try {
+        await store.writeRefreshToken('');
+      } catch (_) {}
+    }
+  }
+
+  /// Lets the next Google sign-in offer the account picker again.
+  Future<void> _signOutOfGoogle() async {
+    if (_googleInit == null) return;
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {
+      // Not signed in with Google on this device.
+    }
+  }
+
+  Future<AuthResult> _demoSignIn(String email, String password) async {
+    await Future.delayed(const Duration(milliseconds: 1400));
+    if (password.length < 6) {
+      return const AuthResult(
+        success: false,
+        error: 'Invalid credentials. Please check your email and password.',
+      );
+    }
+    _setUser('stub-uid-001', email, null);
+    return AuthResult(success: true, userId: _currentUserId, email: email);
+  }
+
+  Future<AuthResult> _demoRegister(String fullName, String email) async {
+    await Future.delayed(const Duration(milliseconds: 1600));
+    if (email.toLowerCase() == 'taken@dentra.com') {
+      return const AuthResult(
+        success: false,
+        error: 'An account with this email already exists.',
+      );
+    }
+    _setUser('stub-uid-002', email, fullName);
+    return AuthResult(success: true, userId: _currentUserId, email: email);
+  }
+
+  void _setUser(String? uid, String? email, String? name) {
+    _isAuthenticated = true;
+    _currentUserId = uid;
+    _currentEmail = email;
+    _currentDisplayName = name;
+    notifyListeners();
+  }
+
+  void _clearUser() {
+    _isAuthenticated = false;
+    _currentUserId = null;
+    _currentEmail = null;
+    _currentDisplayName = null;
+    notifyListeners();
+  }
+}

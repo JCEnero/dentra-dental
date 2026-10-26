@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'models/treatment_model.dart';
-import '../../../core/constants/app_colors.dart';
 
 /// Static list of all dental treatments shown in the Treatment screen.
 abstract class TreatmentData {

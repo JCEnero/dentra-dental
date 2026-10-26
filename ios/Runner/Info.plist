@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Dentra Mobile</string>
+	<string>DENTRA</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>dentra_mobile</string>
+	<string>DENTRA</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -55,9 +55,12 @@
 	<string>Main</string>
 	<!-- image_picker: required usage descriptions -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>DENTRA needs access to your photo library so you can set a profile picture.</string>
+	<string>DENTRA needs access to your photo library so you can set a profile picture or choose dental photos for a scan.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>DENTRA needs access to your camera so you can take a profile photo.</string>
+	<string>DENTRA needs access to your camera so you can take a profile photo and capture dental images during a scan.</string>
+	<!-- geolocator: location access for Clinic Finder -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>DENTRA uses your location to show dental clinics near you and how far away they are.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Microphone access is not used but required by the camera plugin.</string>
 	<key>UISupportedInterfaceOrientations</key>

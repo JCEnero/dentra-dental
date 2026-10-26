@@ -11,8 +11,8 @@
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="DENTRA">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-title" content="Dentra">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png?v=2">
 
   <!-- Outfit font from Google Fonts CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,9 +20,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <!-- Bump ?v= when the icon changes; browsers cache favicons stubbornly. -->
+  <link rel="icon" type="image/png" href="favicon.png?v=2"/>
 
-  <title>DENTRA</title>
+  <title>Dentra</title>
   <link rel="manifest" href="manifest.json">
 
   <style>
@@ -32,10 +33,12 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #6859D8;
+      /* Matches the splash backdrop, so reloads never flash another color. */
+      background-color: #E2F5F3;
     }
-    /* Flutter canvas must fill the whole viewport */
-    flt-glass-pane, flt-scene-host, flt-scene, canvas {
+    /* Flutter's own layers fill the viewport. Kept off bare `canvas`,
+       which would also stretch the canvases Google Maps draws into. */
+    flt-glass-pane, flt-scene-host, flt-scene {
       display: block !important;
       width: 100% !important;
       height: 100% !important;
