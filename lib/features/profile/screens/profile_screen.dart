@@ -7,6 +7,7 @@ import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../app_tour/providers/app_tour_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../dental_profile/data/dental_profile_repository.dart';
 import '../../dental_profile/data/models/dental_answers.dart';
@@ -399,6 +400,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     subtitle: 'Replay the welcome tour',
                     onTap: () => Navigator.of(context, rootNavigator: true)
                         .push(OnboardingScreen.replayRoute()),
+                  ),
+                  ProfileSettingsTile(
+                    icon: Icons.explore_outlined,
+                    title: 'Take the app tour',
+                    subtitle: 'A quick look at where everything lives',
+                    onTap: () => ref.read(appTourProvider.notifier).replay(),
                   ),
                   ProfileSettingsTile(
                     icon: Icons.info_outline_rounded,

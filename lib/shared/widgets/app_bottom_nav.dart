@@ -29,7 +29,14 @@ class AppBottomNav extends StatelessWidget {
     super.key,
     required this.activeIndex,
     required this.onTap,
+    this.itemKeys,
   });
+
+  /// Optional keys for the buttons, in order, so overlays such as the app
+  /// tour can find them on screen.
+  final List<GlobalKey>? itemKeys;
+
+  static int get itemCount => _items.length;
 
   static const List<_NavItem> _items = [
     _NavItem(
@@ -91,6 +98,7 @@ class AppBottomNav extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: List.generate(_items.length, (i) {
                         return _DockButton(
+                          key: itemKeys?[i],
                           item: _items[i],
                           active: i == activeIndex,
                           reduceMotion: reduceMotion,
@@ -114,6 +122,7 @@ class AppBottomNav extends StatelessWidget {
 /// icon otherwise, with a small indicator dot like the macOS Dock.
 class _DockButton extends StatelessWidget {
   const _DockButton({
+    super.key,
     required this.item,
     required this.active,
     required this.reduceMotion,

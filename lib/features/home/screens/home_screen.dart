@@ -9,6 +9,7 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/gradient_divider.dart';
 import '../../../shared/widgets/primary_button.dart';
 import '../../ai_assistant/ai_chat_controller.dart';
+import '../../app_tour/data/app_tour_targets.dart';
 import '../../comparison/screens/comparison_screen.dart';
 import '../../history/screens/tooth_history_explorer.dart';
 import '../../treatment/screens/treatment_screen.dart';
@@ -21,15 +22,17 @@ import '../widgets/screening_activity_card.dart';
 class HomeScreen extends ConsumerWidget {
   final ValueChanged<int> onNavigate;
 
-  const HomeScreen({super.key, required this.onNavigate});
+  /// Keys the app tour uses to point at the bell and services.
+  final AppTourTargets? tourTargets;
+
+  const HomeScreen({super.key, required this.onNavigate, this.tourTargets});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider).valueOrNull;
     final firstName = profile?.firstName ?? '';
-    final tip = ref
-        .watch(dailyTipProvider(ref.watch(currentDayProvider)))
-        .valueOrNull;
+    final tip =
+        ref.watch(dailyTipProvider(ref.watch(currentDayProvider))).valueOrNull;
 
     return SafeArea(
       bottom: false,
@@ -75,7 +78,10 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  NotificationBell(onOpenProfile: () => onNavigate(4)),
+                  NotificationBell(
+                    key: tourTargets?.notifications,
+                    onOpenProfile: () => onNavigate(4),
+                  ),
                   const SizedBox(width: 10),
                   AvatarWidget(
                     size: 44,
@@ -124,6 +130,7 @@ class HomeScreen extends ConsumerWidget {
               child: Row(
                 children: [
                   _ServiceButton(
+                    key: tourTargets?.teeth,
                     glyph: _ServiceGlyph.tooth,
                     label: 'Teeth',
                     semanticLabel: 'Dental Explorer',
@@ -137,6 +144,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   _ServiceButton(
+                    key: tourTargets?.treatment,
                     glyph: _ServiceGlyph.clipboard,
                     label: 'Treatment',
                     onTap: () {
@@ -151,6 +159,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   _ServiceButton(
+                    key: tourTargets?.comparison,
                     glyph: _ServiceGlyph.compare,
                     label: 'Comparison',
                     onTap: () {
@@ -168,6 +177,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   _ServiceButton(
+                    key: tourTargets?.rabi,
                     glyph: _ServiceGlyph.chat,
                     label: 'Rabi AI',
                     onTap: () => AiChatScope.read(context).open(),
@@ -582,6 +592,7 @@ class _ServiceButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const _ServiceButton({
+    super.key,
     required this.glyph,
     required this.label,
     this.semanticLabel,
@@ -669,8 +680,7 @@ class _ServiceGlyphPainter extends CustomPainter {
 
       case _ServiceGlyph.clipboard:
         // Treatment plan: tinted board, solid clip, medical plus.
-        final board =
-            RRect.fromLTRBR(5, 5, 19, 21, const Radius.circular(2.5));
+        final board = RRect.fromLTRBR(5, 5, 19, 21, const Radius.circular(2.5));
         canvas.drawRRect(board, tint);
         canvas.drawRRect(board, stroke);
         canvas.drawRRect(
@@ -708,8 +718,10 @@ class _ServiceGlyphPainter extends CustomPainter {
 
       case _ServiceGlyph.compare:
         // Two frames side by side with a shared baseline: earlier | later.
-        final left = RRect.fromLTRBR(3.5, 6, 11, 18, const Radius.circular(2.2));
-        final right = RRect.fromLTRBR(13, 6, 20.5, 18, const Radius.circular(2.2));
+        final left =
+            RRect.fromLTRBR(3.5, 6, 11, 18, const Radius.circular(2.2));
+        final right =
+            RRect.fromLTRBR(13, 6, 20.5, 18, const Radius.circular(2.2));
         canvas.drawRRect(right, tint);
         canvas.drawRRect(left, stroke);
         canvas.drawRRect(right, stroke);

@@ -12,6 +12,8 @@ import '../shared/widgets/app_backdrop.dart';
 import '../shared/widgets/app_bottom_nav.dart';
 import '../features/ai_assistant/ai_chat_controller.dart';
 import '../features/ai_assistant/ai_assistant.dart';
+import '../features/app_tour/data/app_tour_targets.dart';
+import '../features/app_tour/widgets/app_tour_overlay.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/dental_profile/widgets/dental_onboarding_gate.dart';
@@ -127,6 +129,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _tab = 0;
   final AiChatController _aiChat = AiChatController();
+  final AppTourTargets _tour = AppTourTargets(AppBottomNav.itemCount);
 
   @override
   void dispose() {
@@ -141,7 +144,7 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final screens = <Widget>[
-      HomeScreen(onNavigate: _navigate),
+      HomeScreen(onNavigate: _navigate, tourTargets: _tour),
       const ScanScreen(),
       HistoryScreen(onNavigate: _navigate),
       const ClinicsScreen(),
@@ -168,12 +171,18 @@ class _AppShellState extends State<AppShell> {
                   AppBottomNav(
                     activeIndex: _tab,
                     onTap: _navigate,
+                    itemKeys: _tour.tabs,
                   ),
                 ],
               ),
 
               // ── AI chat overlay (floats above everything) ───
               const AiChatOverlay(),
+
+              // ── First-run app tour (above everything) ───────
+              Positioned.fill(
+                child: AppTour(targets: _tour, onSelectTab: _navigate),
+              ),
             ],
           ),
         ),
