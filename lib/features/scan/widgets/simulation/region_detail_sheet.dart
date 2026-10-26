@@ -141,8 +141,7 @@ class _RegionDetailSheetState extends ConsumerState<RegionDetailSheet> {
                   ),
                   child: Text(
                     '${i + 1}',
-                    style: hudText(
-                        size: 10.5, weight: FontWeight.w700, color: AppColors.g2),
+                    style: figureText(size: 11.5, color: AppColors.g2),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -228,7 +227,7 @@ class _OutlineSwitch extends StatelessWidget {
       label: 'Guide outline',
       excludeSemantics: true,
       child: Material(
-        color: const Color(0x8C000000),
+        color: AppColors.navy.withValues(alpha: 0.6),
         shape: StadiumBorder(
           side: BorderSide(color: AppColors.white.withValues(alpha: 0.3)),
         ),

@@ -146,9 +146,11 @@ CameraPose regionPose(DentitionModel model, CaptureRegion region, Size size,
       : pose.copyWith(distance: pose.distance * region.zoom);
 }
 
-// Enamel and gum tones for sample photos, in linear 0–1 RGB.
-const _ivory = (1.0, 0.95, 0.85);
-const _gumPink = (0.86, 0.42, 0.47);
+// Enamel and gum tones for sample photos, in linear 0–1 RGB. The gums
+// sit between the palette's peach and coral, tinted strongly enough to
+// cover the model's teal glass gums.
+const _ivory = (1.0, 0.96, 0.88);
+const _gumPeach = (0.95, 0.72, 0.64);
 
 /// Writes [region]'s [look] into [style].
 void styleRegion(SceneStyle style, CaptureRegion region, SceneLook look) {
@@ -174,7 +176,7 @@ void styleRegion(SceneStyle style, CaptureRegion region, SceneLook look) {
           style.alpha[o] = 0.4;
         case SceneLook.photo:
           style.alpha[o] = 1;
-          _tint(style, o, _gumPink, 0.85);
+          _tint(style, o, _gumPeach, 0.92);
         case SceneLook.overlay:
           style.alpha[o] = 0;
       }
@@ -236,13 +238,13 @@ Future<Uint8List> _renderSample(
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder, rect);
 
-  // Inside of the mouth: warm red falling off to near black.
+  // A light studio backdrop in the brand mint.
   canvas.drawRect(
     rect,
     Paint()
       ..shader = const RadialGradient(
-        radius: 0.85,
-        colors: [Color(0xFF6E2A30), Color(0xFF34111A), Color(0xFF10060A)],
+        radius: 0.9,
+        colors: [AppColors.white, AppColors.lightLavender, Color(0xFFCDEDE9)],
         stops: [0, 0.6, 1],
       ).createShader(rect),
   );
@@ -252,16 +254,6 @@ Future<Uint8List> _renderSample(
   renderer.paint(canvas, size,
       regionPose(renderer.model, region, size, fill: 0.9), style);
 
-  // Soft vignette, like a phone flash falling off.
-  canvas.drawRect(
-    rect,
-    Paint()
-      ..shader = const RadialGradient(
-        radius: 0.75,
-        colors: [Color(0x00000000), Color(0x00000000), Color(0x99000000)],
-        stops: [0, 0.6, 1],
-      ).createShader(rect),
-  );
   _paintSampleTag(canvas);
 
   final picture = recorder.endRecording();
@@ -285,7 +277,7 @@ void _paintSampleTag(Canvas canvas) {
         fontSize: 20,
         fontWeight: FontWeight.w800,
         letterSpacing: 3,
-        color: const Color(0xE6FFFFFF),
+        color: AppColors.g2,
       ),
     ),
     textDirection: TextDirection.ltr,
@@ -294,13 +286,13 @@ void _paintSampleTag(Canvas canvas) {
     Rect.fromLTWH(22, 22, tp.width + 28, tp.height + 12),
     const Radius.circular(8),
   );
-  canvas.drawRRect(box, Paint()..color = const Color(0x66000000));
+  canvas.drawRRect(box, Paint()..color = const Color(0xD9FFFFFF));
   canvas.drawRRect(
     box,
     Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
-      ..color = const Color(0x8C4DD8C8),
+      ..color = AppColors.lavender,
   );
   tp.paint(canvas, const Offset(36, 28));
 }

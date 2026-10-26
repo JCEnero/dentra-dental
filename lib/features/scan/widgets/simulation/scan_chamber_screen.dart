@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_glass.dart';
+import '../../../../shared/widgets/app_backdrop.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../data/capture_regions.dart';
 import '../../data/mock_scan_report.dart';
@@ -46,7 +48,7 @@ Future<void> showScanChamber(BuildContext context,
 }
 
 /// The scan animation, about 13 seconds (6 with reduced motion): point
-/// cloud → wireframe → solid model → photo projection → anomaly check →
+/// cloud → wireframe → solid model → photo projection → area check →
 /// report. Mock throughout; nothing is sent anywhere.
 class ScanChamberScreen extends ConsumerStatefulWidget {
   const ScanChamberScreen({super.key, required this.onComplete});
@@ -62,14 +64,13 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
   late final Ticker _ticker = createTicker(_onTick);
   final _progress = ValueNotifier<double>(0);
   late final ChamberTimeline _timeline;
-  late final Map<int, ToothHealth> _health;
-  late final String _scanId;
+  late final ScanReport _preview;
   ChamberScene? _scene;
   bool _reduced = false;
   bool _started = false;
   bool _done = false;
   bool _sound = false;
-  int _stage = 0;
+  int _step = 0;
   int _landed = 0;
   Duration _length = const Duration(seconds: 13);
 
@@ -81,15 +82,13 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
       for (final r in captureRegions)
         if (flow.photos.containsKey(r.id)) r,
     ]);
-    // The same mock report the results will show, so the colours the
-    // scan settles on match the tooth map.
-    final preview = ScanReport.generate(
+    // The same mock report the results will show, so the shades the scan
+    // settles on match the map.
+    _preview = ScanReport.generate(
       captured: flow.photos.keys.toSet(),
       completedAt: DateTime.now(),
       sequence: flow.completedScans + 1,
     );
-    _health = preview.toothHealth;
-    _scanId = preview.id;
   }
 
   @override
@@ -110,7 +109,7 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
     final scene = ChamberScene(
       model: model,
       timeline: _timeline,
-      health: _health,
+      report: _preview,
       thumbs: {},
       reduced: _reduced,
       seconds: _length.inMilliseconds / 1000,
@@ -140,9 +139,9 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
   void _onTick(Duration elapsed) {
     final p = (elapsed.inMicroseconds / _length.inMicroseconds).clamp(0.0, 1.0);
     _progress.value = p;
-    final stage = _timeline.stageAt(p);
-    if (stage != _stage) {
-      _stage = stage;
+    final step = _timeline.stepAt(p);
+    if (step != _step) {
+      _step = step;
       _cue(HapticFeedback.lightImpact);
     }
     final landed = _timeline.landedCount(p);
@@ -193,89 +192,91 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
     final scene = _scene;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: HoloColors.space,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (scene != null)
-              Semantics(
-                image: true,
-                label: '3D scan animation of your teeth',
-                child: RepaintBoundary(
-                  child: CustomPaint(
-                    painter: ChamberPainter(
-                      scene: scene,
-                      progress: _progress,
-                      stageInsets: EdgeInsets.fromLTRB(
-                        wide ? 180 : 0,
-                        media.padding.top + 64,
-                        wide ? 40 : 0,
-                        media.padding.bottom + (wide ? 190 : 250),
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            else
-              const Center(
-                child: SizedBox.square(
-                  dimension: 28,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    color: HoloColors.cyan,
-                  ),
-                ),
-              ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                child: Column(
-                  children: [
-                    _TopBar(
-                      sound: _sound,
-                      onSound: () => setState(() => _sound = !_sound),
-                      onSkip: _skip,
-                    ),
-                    Expanded(
-                      child: wide
-                          ? Align(
-                              alignment: Alignment.centerLeft,
-                              child: SizedBox(
-                                width: 168,
-                                child: _RegionChecklist(
-                                  timeline: _timeline,
-                                  progress: _progress,
-                                  compact: false,
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                    if (!wide) ...[
-                      _RegionChecklist(
-                        timeline: _timeline,
+        backgroundColor: AppColors.lightLavender,
+        body: AppBackdrop(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (scene != null)
+                Semantics(
+                  image: true,
+                  label: '3D scan animation of your teeth',
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: ChamberPainter(
+                        scene: scene,
                         progress: _progress,
-                        compact: true,
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 560),
-                        child: _StatusPanel(
-                          timeline: _timeline,
-                          progress: _progress,
-                          scanId: _scanId,
+                        stageInsets: EdgeInsets.fromLTRB(
+                          wide ? 180 : 0,
+                          media.padding.top + 72,
+                          wide ? 40 : 0,
+                          media.padding.bottom + (wide ? 190 : 250),
                         ),
                       ),
                     ),
-                  ],
+                  ),
+                )
+              else
+                const Center(
+                  child: SizedBox.square(
+                    dimension: 28,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: AppColors.g2,
+                    ),
+                  ),
+                ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                  child: Column(
+                    children: [
+                      _TopBar(
+                        sound: _sound,
+                        onSound: () => setState(() => _sound = !_sound),
+                        onSkip: _skip,
+                      ),
+                      Expanded(
+                        child: wide
+                            ? Align(
+                                alignment: Alignment.centerLeft,
+                                child: SizedBox(
+                                  width: 176,
+                                  child: _RegionChecklist(
+                                    timeline: _timeline,
+                                    progress: _progress,
+                                    compact: false,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                      if (!wide) ...[
+                        _RegionChecklist(
+                          timeline: _timeline,
+                          progress: _progress,
+                          compact: true,
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 560),
+                          child: _StatusPanel(
+                            timeline: _timeline,
+                            progress: _progress,
+                            scanId: _preview.id,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -301,12 +302,13 @@ class _TopBar extends StatelessWidget {
           toggled: sound,
           child: IconButton(
             onPressed: onSound,
-            tooltip: sound ? 'Turn sound and haptics off' : 'Turn sound and haptics on',
+            tooltip:
+                sound ? 'Turn sound and haptics off' : 'Turn sound and haptics on',
             style: IconButton.styleFrom(
-              backgroundColor: const Color(0x2914324A),
-              foregroundColor: sound ? HoloColors.cyan : HoloColors.textDim,
+              backgroundColor: AppColors.white.withValues(alpha: 0.7),
+              foregroundColor: sound ? AppColors.g2 : AppColors.secondaryText,
               fixedSize: const Size(44, 44),
-              side: const BorderSide(color: HoloColors.rim),
+              side: const BorderSide(color: AppGlass.border),
             ),
             icon: Icon(
               sound ? Icons.volume_up_rounded : Icons.volume_off_rounded,
@@ -318,37 +320,19 @@ class _TopBar extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                'DENTRA SCAN PRO',
-                style: hudText(
-                  size: 9.5,
-                  weight: FontWeight.w700,
-                  color: HoloColors.cyan.withValues(alpha: 0.8),
-                  letterSpacing: 2.6,
+                'Scanning your teeth',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
                 ),
               ),
-              const SizedBox(height: 3),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: HealthColors.attention,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'LIVE 3D SCAN',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: HoloColors.text,
-                    ),
-                  ),
-                ],
+              Text(
+                'Dentra Scan Pro',
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: AppColors.secondaryText,
+                ),
               ),
             ],
           ),
@@ -356,7 +340,7 @@ class _TopBar extends StatelessWidget {
         TextButton(
           onPressed: onSkip,
           style: TextButton.styleFrom(
-            foregroundColor: HoloColors.textDim,
+            foregroundColor: AppColors.secondaryText,
             minimumSize: const Size(48, 44),
             textStyle: GoogleFonts.outfit(
               fontSize: 13,
@@ -366,7 +350,7 @@ class _TopBar extends StatelessWidget {
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Skip animation'),
+              Text('Skip'),
               SizedBox(width: 2),
               Icon(Icons.chevron_right_rounded, size: 18),
             ],
@@ -396,17 +380,15 @@ class _RegionChecklist extends StatelessWidget {
       valueListenable: progress,
       builder: (context, p, _) {
         final rows = [
-          for (final region in captureRegions)
-            (region, _stateOf(region, p)),
+          for (final region in captureRegions) (region, _stateOf(region, p)),
         ];
         final landed = timeline.landedCount(p);
         final header = Text(
-          'REGIONS  $landed/${timeline.captured.length}',
-          style: hudText(
-              size: 9, color: HoloColors.textDim, letterSpacing: 1.6),
+          'PHOTOS MATCHED  $landed/${timeline.captured.length}',
+          style: capsLabel(),
         );
         return Semantics(
-          label: '$landed of ${timeline.captured.length} regions analyzed',
+          label: '$landed of ${timeline.captured.length} photos matched',
           excludeSemantics: true,
           child: compact
               ? Column(
@@ -433,15 +415,15 @@ class _RegionChecklist extends StatelessWidget {
                     ),
                   ],
                 )
-              : Container(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-                  decoration: holoGlass(),
+              : GlassCard(
+                  borderRadius: const BorderRadius.all(Radius.circular(18)),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       header,
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       for (final (region, state) in rows)
                         _RegionRow(
                           key: ValueKey(region.id),
@@ -461,7 +443,9 @@ class _RegionChecklist extends StatelessWidget {
     final i = timeline.captured.indexOf(region);
     if (i < 0) return _RegionState.skipped;
     if (timeline.landed(i, p)) return _RegionState.done;
-    return timeline.flight(i, p) > 0 ? _RegionState.active : _RegionState.pending;
+    return timeline.flight(i, p) > 0
+        ? _RegionState.active
+        : _RegionState.pending;
   }
 }
 
@@ -479,14 +463,14 @@ class _StatusIcon extends StatelessWidget {
     switch (state) {
       case _RegionState.skipped:
         return Icon(Icons.remove_rounded,
-            size: size, color: HoloColors.textDim.withValues(alpha: 0.5));
+            size: size, color: AppColors.secondaryText.withValues(alpha: 0.5));
       case _RegionState.pending:
         return Container(
           width: size - 4,
           height: size - 4,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: HoloColors.textDim, width: 1.4),
+            border: Border.all(color: AppColors.lavender, width: 1.6),
           ),
         );
       case _RegionState.active:
@@ -496,10 +480,10 @@ class _StatusIcon extends StatelessWidget {
           height: size - 4,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: HoloColors.cyan.withValues(alpha: 0.4 + 0.5 * glow),
+            color: AppColors.g1.withValues(alpha: 0.45 + 0.5 * glow),
             boxShadow: [
               BoxShadow(
-                color: HoloColors.cyan.withValues(alpha: 0.6 * glow),
+                color: AppColors.g1.withValues(alpha: 0.5 * glow),
                 blurRadius: 8,
               ),
             ],
@@ -510,22 +494,11 @@ class _StatusIcon extends StatelessWidget {
           width: size,
           height: size,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             shape: BoxShape.circle,
-            color: HoloColors.cyan,
-            boxShadow: [
-              BoxShadow(
-                color: HoloColors.cyan.withValues(alpha: 0.6),
-                blurRadius: 8,
-              ),
-            ],
+            gradient: AppColors.cardGradient,
           ),
-          child: const DrawnCheck(
-            visible: true,
-            size: 12,
-            strokeWidth: 2,
-            color: HoloColors.space,
-          ),
+          child: const DrawnCheck(visible: true, size: 12, strokeWidth: 2),
         );
     }
   }
@@ -546,28 +519,26 @@ class _RegionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final done = state == _RegionState.done;
+    final skipped = state == _RegionState.skipped;
     return AnimatedContainer(
       duration: ScanMotion.of(context, ScanMotion.medium),
-      height: 48,
-      decoration: holoGlass(
-        borderRadius: const BorderRadius.all(Radius.circular(10)),
-        borderColor: done
-            ? HoloColors.cyan.withValues(alpha: 0.7)
-            : state == _RegionState.skipped
-                ? HoloColors.rim.withValues(alpha: 0.15)
-                : null,
+      height: 50,
+      decoration: AppGlass.surface(
+        borderRadius: BorderRadius.circular(12),
+        borderColor: done ? AppColors.g1 : null,
+        borderWidth: done ? 1.4 : 1,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             region.code,
-            style: hudText(
-              size: 9,
-              weight: FontWeight.w700,
-              color: state == _RegionState.skipped
-                  ? HoloColors.textDim.withValues(alpha: 0.45)
-                  : HoloColors.text,
+            style: figureText(
+              size: 11,
+              weight: FontWeight.w800,
+              color: skipped
+                  ? AppColors.secondaryText.withValues(alpha: 0.5)
+                  : AppColors.navy,
             ),
           ),
           const SizedBox(height: 4),
@@ -594,35 +565,23 @@ class _RegionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final skipped = state == _RegionState.skipped;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 9),
       child: Row(
         children: [
           SizedBox.square(
             dimension: 18,
             child: Center(child: _StatusIcon(state: state, pulse: pulse)),
           ),
-          const SizedBox(width: 8),
-          Text(
-            region.code,
-            style: hudText(
-              size: 9,
-              color: skipped
-                  ? HoloColors.textDim.withValues(alpha: 0.45)
-                  : HoloColors.cyan,
-            ),
-          ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               skipped ? '${region.shortLabel} · skipped' : region.shortLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.outfit(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: skipped
-                    ? HoloColors.textDim.withValues(alpha: 0.5)
-                    : HoloColors.text,
+                color: skipped ? AppColors.secondaryText : AppColors.navy,
               ),
             ),
           ),
@@ -645,122 +604,107 @@ class _StatusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const radius = BorderRadius.all(Radius.circular(22));
-    return ClipRRect(
-      borderRadius: radius,
-      child: GlassBlur(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-          decoration: holoGlass(borderRadius: radius),
-          child: ValueListenableBuilder<double>(
-            valueListenable: progress,
-            builder: (context, p, _) {
-              final stage = timeline.stageAt(p);
-              final done = p >= 1;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    return GlassCard(
+      borderRadius: const BorderRadius.all(Radius.circular(24)),
+      borderWidth: 1.4,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      child: ValueListenableBuilder<double>(
+        valueListenable: progress,
+        builder: (context, p, _) {
+          final step = timeline.stepAt(p);
+          final done = p >= 1;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'STAGE ${stage + 1} / ${ChamberTimeline.stageCount}',
-                              style: hudText(
-                                size: 9,
-                                color: HoloColors.cyan.withValues(alpha: 0.8),
-                                letterSpacing: 1.6,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Semantics(
-                              liveRegion: true,
-                              child: AnimatedSwitcher(
-                                duration:
-                                    ScanMotion.of(context, ScanMotion.medium),
-                                transitionBuilder: ScanMotion.fadeRise,
-                                layoutBuilder: (current, previous) => Stack(
-                                  alignment: Alignment.centerLeft,
-                                  children: [
-                                    ...previous,
-                                    if (current != null) current,
-                                  ],
-                                ),
-                                child: Text(
-                                  done ? 'Report ready' : timeline.labelOf(stage),
-                                  key: ValueKey(done ? -1 : stage),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                    color: HoloColors.text,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'STEP ${step + 1} OF ${ChamberTimeline.stepCount}',
+                          style: capsLabel(color: AppColors.g2),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        '${(p * 100).floor()}%',
-                        style: hudText(
-                          size: 30,
-                          weight: FontWeight.w700,
-                          color: HoloColors.text,
-                          letterSpacing: 0,
-                          height: 1,
-                        ).copyWith(shadows: [
-                          Shadow(
-                            color: HoloColors.cyan.withValues(alpha: 0.7),
-                            blurRadius: 16,
+                        const SizedBox(height: 5),
+                        Semantics(
+                          liveRegion: true,
+                          child: AnimatedSwitcher(
+                            duration: ScanMotion.of(context, ScanMotion.medium),
+                            transitionBuilder: ScanMotion.fadeRise,
+                            layoutBuilder: (current, previous) => Stack(
+                              alignment: Alignment.centerLeft,
+                              children: [
+                                ...previous,
+                                if (current != null) current,
+                              ],
+                            ),
+                            child: Text(
+                              done ? 'Report ready' : timeline.labelOf(step),
+                              key: ValueKey(done ? -1 : step),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.outfit(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.navy,
+                              ),
+                            ),
                           ),
-                        ]),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: 10,
-                    child: CustomPaint(painter: _TrackPainter(p)),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'SCAN #$scanId',
-                          style: hudText(
-                              size: 8.5,
-                              color: HoloColors.textDim,
-                              letterSpacing: 1.2),
                         ),
-                      ),
-                      Text(
-                        '${timeline.captured.length}/${captureRegions.length} VIEWS',
-                        style: hudText(
-                            size: 8.5,
-                            color: HoloColors.textDim,
-                            letterSpacing: 1.2),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${(p * 100).floor()}%',
+                    style: figureText(
+                      size: 30,
+                      weight: FontWeight.w800,
+                      color: AppColors.g2,
+                      height: 1,
+                    ),
                   ),
                 ],
-              );
-            },
-          ),
-        ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 10,
+                child: CustomPaint(painter: _TrackPainter(p)),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Scan #$scanId',
+                      style: GoogleFonts.outfit(
+                        fontSize: 11.5,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${timeline.captured.length} of '
+                    '${captureRegions.length} views',
+                    style: GoogleFonts.outfit(
+                      fontSize: 11.5,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-/// Progress track with a tick at each stage and a glowing head.
+/// Progress track with a tick at each step and a soft glowing head.
 class _TrackPainter extends CustomPainter {
   const _TrackPainter(this.p);
   final double p;
@@ -769,38 +713,44 @@ class _TrackPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final y = size.height / 2;
     final track = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, y - 2.5, size.width, 5),
-      const Radius.circular(2.5),
+      Rect.fromLTWH(0, y - 3, size.width, 6),
+      const Radius.circular(3),
     );
     canvas.drawRRect(
-        track, Paint()..color = HoloColors.cyan.withValues(alpha: 0.12));
-    for (final s in ChamberTimeline.stageStarts.skip(1)) {
+        track, Paint()..color = AppColors.navy.withValues(alpha: 0.07));
+    for (final s in ChamberTimeline.stepStarts.skip(1)) {
       final x = size.width * s;
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x, size.height),
+      canvas.drawCircle(
+        Offset(x, y),
+        2,
         Paint()
-          ..strokeWidth = 1
-          ..color = HoloColors.cyan.withValues(alpha: p >= s ? 0.6 : 0.2),
+          ..color = p >= s
+              ? AppColors.white
+              : AppColors.navy.withValues(alpha: 0.15),
       );
     }
     if (p <= 0) return;
-    final fill = Rect.fromLTWH(0, y - 2.5, size.width * p, 5);
-    final gradient = const LinearGradient(
-      colors: [AppColors.g2, AppColors.g1, HoloColors.cyan],
-    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    final fill = Rect.fromLTWH(0, y - 3, size.width * p, 6);
+    final gradient = AppColors.primaryGradient
+        .createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRRect(
       RRect.fromRectAndRadius(fill.inflate(2), const Radius.circular(4)),
       Paint()
-        ..shader = gradient
+        ..color = AppColors.g1.withValues(alpha: 0.35)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(fill, const Radius.circular(2.5)),
+      RRect.fromRectAndRadius(fill, const Radius.circular(3)),
       Paint()..shader = gradient,
     );
-    canvas.drawCircle(Offset(size.width * p, y), 3.5,
-        Paint()..color = AppColors.white);
+    for (final s in ChamberTimeline.stepStarts.skip(1)) {
+      if (p < s) continue;
+      canvas.drawCircle(Offset(size.width * s, y), 2,
+          Paint()..color = AppColors.white.withValues(alpha: 0.9));
+    }
+    final head = Offset(size.width * p, y);
+    canvas.drawCircle(head, 6, Paint()..color = AppColors.white);
+    canvas.drawCircle(head, 3.2, Paint()..color = AppColors.g2);
   }
 
   @override

@@ -18,10 +18,10 @@ import '../../data/mock_scan_report.dart';
 import '../../providers/scan_flow_provider.dart';
 import '../scan_motion.dart';
 import 'scan_sim_theme.dart';
-import 'tooth_map_panel.dart';
 
-/// Results of the simulated scan: score, 3D tooth map, findings, region
-/// breakdown, metrics, recommendations and next steps.
+/// Results of the simulated scan: score, what was found in each general
+/// area of the mouth, region breakdown, metrics, recommendations and
+/// next steps. Nothing points at a specific tooth.
 class ScanReportView extends ConsumerStatefulWidget {
   const ScanReportView({
     super.key,
@@ -33,7 +33,7 @@ class ScanReportView extends ConsumerStatefulWidget {
   final ScanReport report;
   final VoidCallback onScanAgain;
 
-  /// Switches app tabs (used for "Book a Dentist Visit").
+  /// Switches app tabs (used for "Find Clinics Nearby").
   final ValueChanged<int>? onNavigate;
 
   @override
@@ -44,22 +44,7 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
   /// Index of the Clinics tab in `AppShell`.
   static const _clinicsTab = 3;
 
-  final _mapKey = GlobalKey();
-  int? _selected;
   bool _saved = false;
-
-  void _focusTooth(int fdi) {
-    setState(() => _selected = fdi);
-    final map = _mapKey.currentContext;
-    if (map != null) {
-      Scrollable.ensureVisible(
-        map,
-        duration: ScanMotion.of(context, ScanMotion.slow),
-        curve: ScanMotion.curve,
-        alignment: 0.05,
-      );
-    }
-  }
 
   void _askRabi() {
     final chat = AiChatScope.read(context);
@@ -78,26 +63,12 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
   @override
   Widget build(BuildContext context) {
     final report = widget.report;
-    final summary = [
-      Reveal(child: _ScoreCard(report: report)),
-      const SizedBox(height: 16),
-      Reveal(
-        delay: const Duration(milliseconds: 120),
-        child: KeyedSubtree(
-          key: _mapKey,
-          child: ToothMapPanel(
-            report: report,
-            selected: _selected,
-            onSelect: (fdi) => setState(() => _selected = fdi),
-          ),
-        ),
-      ),
-    ];
-    final details = [
+    final score = [Reveal(child: _ScoreCard(report: report))];
+    final findings = [
       Reveal(
         delay: const Duration(milliseconds: 200),
         child: SimSectionTitle(
-          'Findings',
+          'What we found',
           trailing: _CountPill('${report.findings.length}'),
         ),
       ),
@@ -105,18 +76,17 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
       for (var i = 0; i < report.findings.length; i++) ...[
         Reveal(
           delay: Duration(milliseconds: 240 + 60 * i),
-          child: _FindingTile(
-            finding: report.findings[i],
-            onTap: () => _focusTooth(report.findings[i].teeth.first),
-          ),
+          child: _FindingCard(finding: report.findings[i]),
         ),
         const SizedBox(height: 10),
       ],
-      Reveal(
-        delay: Duration(milliseconds: 240 + 60 * report.findings.length),
-        child: _OthersTile(report: report),
-      ),
-      const SizedBox(height: 26),
+      if (report.countOf(AreaHealth.healthy) > 0)
+        Reveal(
+          delay: Duration(milliseconds: 240 + 60 * report.findings.length),
+          child: _OthersTile(report: report),
+        ),
+    ];
+    final breakdown = [
       const Reveal(
         delay: Duration(milliseconds: 300),
         child: SimSectionTitle('Region Breakdown'),
@@ -126,17 +96,19 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
         delay: const Duration(milliseconds: 340),
         child: _RegionBreakdown(report: report),
       ),
-      const SizedBox(height: 26),
+    ];
+    final metrics = [
       const Reveal(
-        delay: Duration(milliseconds: 380),
+        delay: Duration(milliseconds: 80),
         child: SimSectionTitle('Health Metrics'),
       ),
       const SizedBox(height: 10),
       Reveal(
-        delay: const Duration(milliseconds: 420),
+        delay: const Duration(milliseconds: 120),
         child: _MetricGrid(metrics: report.metrics),
       ),
-      const SizedBox(height: 26),
+    ];
+    final nextSteps = [
       const Reveal(
         delay: Duration(milliseconds: 460),
         child: SimSectionTitle('Recommendations'),
@@ -170,6 +142,7 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
         ),
       ),
     ];
+    const gap = SizedBox(height: 26);
 
     return SafeArea(
       bottom: false,
@@ -179,7 +152,7 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const DentraPageHeader(title: 'Scan Results', trailing: _DemoChip()),
+            const DentraPageHeader(title: 'Scan Results'),
             Divider(height: 1, thickness: 1, color: AppGlass.divider),
             const SizedBox(height: 16),
             Center(
@@ -189,8 +162,8 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
                   child: LayoutBuilder(builder: (context, constraints) {
-                    // Side by side on wide screens: the model stays in
-                    // view while the details scroll past.
+                    // Two columns on wide screens: the overview on the
+                    // left, what to do about it on the right.
                     if (constraints.maxWidth >= 920) {
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,7 +172,13 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
                             flex: 5,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: summary,
+                              children: [
+                                ...score,
+                                gap,
+                                ...metrics,
+                                gap,
+                                ...breakdown,
+                              ],
                             ),
                           ),
                           const SizedBox(width: 24),
@@ -207,7 +186,7 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
                             flex: 6,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: details,
+                              children: [...findings, gap, ...nextSteps],
                             ),
                           ),
                         ],
@@ -216,9 +195,15 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ...summary,
-                        const SizedBox(height: 26),
-                        ...details,
+                        ...score,
+                        gap,
+                        ...metrics,
+                        gap,
+                        ...findings,
+                        gap,
+                        ...breakdown,
+                        gap,
+                        ...nextSteps,
                       ],
                     );
                   }),
@@ -235,52 +220,21 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
 /// What Rabi is told, so its answer is about these results.
 String _rabiPrompt(ScanReport report) {
   final findings = report.findings.isEmpty
-      ? '- No findings.'
+      ? '- Nothing that needs attention.'
       : report.findings
-          .map((f) => '- ${f.teethLabel} (${f.location}): ${f.condition}, '
-              '${(f.confidence * 100).round()}% confidence, '
-              '${f.health.label.toLowerCase()}.')
+          .map((f) => '- ${f.condition} (${f.health.label.toLowerCase()}, '
+              '${(f.confidence * 100).round()}% confidence): ${f.summary}')
           .join('\n');
   final tips = report.recommendations.map((r) => '- ${r.title}').join('\n');
   return 'I just finished a Dentra demo scan. The results are simulated '
-      'sample data, not a real analysis.\n'
+      'sample data, not a real analysis, and they describe general areas '
+      'of the mouth rather than specific teeth.\n'
       'Oral health score: ${report.score}/100 (${report.scoreHeadline}). '
       '${report.captured.length} of ${captureRegions.length} views captured.\n'
-      'Findings:\n$findings\n'
+      'What was found:\n$findings\n'
       'Suggested next steps:\n$tips\n'
       'Explain what these findings mean in plain language and what I '
       'should do next. Remind me this is a screening, not a diagnosis.';
-}
-
-class _DemoChip extends StatelessWidget {
-  const _DemoChip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.lavender),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.science_outlined, size: 14, color: AppColors.g2),
-          const SizedBox(width: 5),
-          Text(
-            'Demo data',
-            style: GoogleFonts.outfit(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.g2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _CountPill extends StatelessWidget {
@@ -296,8 +250,7 @@ class _CountPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.lavender),
       ),
-      child: Text(text,
-          style: hudText(size: 10.5, weight: FontWeight.w700, color: AppColors.g2)),
+      child: Text(text, style: figureText(size: 12, color: AppColors.g2)),
     );
   }
 }
@@ -312,17 +265,18 @@ class _ScoreCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final at = report.completedAt;
     final partial = report.captured.length < captureRegions.length;
+    final unchecked = report.countOf(AreaHealth.notChecked);
     return GlassCard(
       borderRadius: const BorderRadius.all(Radius.circular(24)),
       borderWidth: 1.5,
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              _ScoreGauge(score: report.score, size: 124),
-              const SizedBox(width: 16),
+              _ScoreRing(score: report.score, size: 120),
+              const SizedBox(width: 18),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,7 +293,7 @@ class _ScoreCard extends StatelessWidget {
                         height: 1.1,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       report.scoreSummary,
                       style: GoogleFonts.outfit(
@@ -349,45 +303,28 @@ class _ScoreCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _MetaChip(
-                          icon: Icons.schedule_rounded,
-                          child: Text(
-                            '${DentraDates.medium(at)} · ${DentraDates.time(at)}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.navy,
-                            ),
-                          ),
-                        ),
-                        _MetaChip(
-                          icon: Icons.tag_rounded,
-                          child: Text(
-                            report.id,
-                            style: hudText(
-                                size: 9.5,
-                                weight: FontWeight.w700,
-                                color: AppColors.navy),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      '${DentraDates.medium(at)} · ${DentraDates.time(at)}\n'
+                      'Scan #${report.id}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 11.5,
+                        height: 1.45,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.secondaryText,
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             children: [
               for (final (i, h) in const [
-                ToothHealth.attention,
-                ToothHealth.monitor,
-                ToothHealth.healthy,
+                AreaHealth.attention,
+                AreaHealth.monitor,
+                AreaHealth.healthy,
               ].indexed) ...[
                 if (i > 0) const SizedBox(width: 8),
                 Expanded(child: _CountTile(health: h, count: report.countOf(h))),
@@ -398,17 +335,17 @@ class _ScoreCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(Icons.error_outline_rounded,
+                const Icon(Icons.info_outline_rounded,
                     size: 15, color: HealthColors.monitorInk),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'Based on ${report.captured.length} of '
                     '${captureRegions.length} regions.'
-                    '${switch (report.countOf(ToothHealth.notAssessed)) {
+                    '${switch (unchecked) {
                       0 => '',
-                      1 => ' 1 tooth was not assessed.',
-                      final n => ' $n teeth were not assessed.',
+                      1 => ' 1 area was not checked.',
+                      final n => ' $n areas were not checked.',
                     }}',
                     style: GoogleFonts.outfit(
                       fontSize: 12,
@@ -426,82 +363,55 @@ class _ScoreCard extends StatelessWidget {
   }
 }
 
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.icon, required this.child});
-  final IconData icon;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppGlass.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: AppColors.secondaryText),
-          const SizedBox(width: 4),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
+/// How many areas of the mouth landed in each group.
 class _CountTile extends StatelessWidget {
   const _CountTile({required this.health, required this.count});
-  final ToothHealth health;
+  final AreaHealth health;
   final int count;
 
   @override
   Widget build(BuildContext context) {
     final color = HealthColors.of(health);
+    final label =
+        health == AreaHealth.attention ? 'Attention' : health.label;
     return Semantics(
-      label: '$count teeth ${health.label.toLowerCase()}',
+      label: '$count ${count == 1 ? 'area' : 'areas'} '
+          '${label.toLowerCase()}',
       excludeSemantics: true,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
+        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          color: color.withValues(alpha: 0.1),
-          border: Border.all(color: color.withValues(alpha: 0.28)),
+          color: AppColors.white.withValues(alpha: 0.5),
+          border: Border.all(color: AppGlass.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
+                Text(
+                  '$count',
+                  style: figureText(size: 20, weight: FontWeight.w800),
+                ),
+                const SizedBox(width: 6),
                 Container(
-                  width: 7,
-                  height: 7,
+                  width: 8,
+                  height: 8,
                   decoration:
                       BoxDecoration(color: color, shape: BoxShape.circle),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  '$count',
-                  style: hudText(
-                    size: 16,
-                    weight: FontWeight.w700,
-                    color: HealthColors.ink(health),
-                    letterSpacing: 0,
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Text(
-              health == ToothHealth.attention ? 'Attention' : health.label,
+              label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.outfit(
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: HealthColors.ink(health),
+                color: AppColors.secondaryText,
               ),
             ),
           ],
@@ -511,22 +421,22 @@ class _CountTile extends StatelessWidget {
   }
 }
 
-/// Speedometer-style ring that sweeps up to the score while the number
-/// counts along with it.
-class _ScoreGauge extends StatefulWidget {
-  const _ScoreGauge({required this.score, required this.size});
+/// The score on a frosted glass disc, with a thin ring that fills to it
+/// while the number counts up.
+class _ScoreRing extends StatefulWidget {
+  const _ScoreRing({required this.score, required this.size});
   final int score;
   final double size;
 
   @override
-  State<_ScoreGauge> createState() => _ScoreGaugeState();
+  State<_ScoreRing> createState() => _ScoreRingState();
 }
 
-class _ScoreGaugeState extends State<_ScoreGauge>
+class _ScoreRingState extends State<_ScoreRing>
     with SingleTickerProviderStateMixin {
   late final AnimationController _fill = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1600),
+    duration: const Duration(milliseconds: 1400),
   );
   late final Animation<double> _curve =
       CurvedAnimation(parent: _fill, curve: Curves.easeOutCubic);
@@ -557,208 +467,217 @@ class _ScoreGaugeState extends State<_ScoreGauge>
       excludeSemantics: true,
       child: SizedBox.square(
         dimension: widget.size,
-        child: AnimatedBuilder(
-          animation: _curve,
-          builder: (context, _) {
-            final value = widget.score * _curve.value;
-            return CustomPaint(
-              painter: _GaugePainter(value / 100),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${value.round()}',
-                      style: hudText(
-                        size: widget.size * 0.27,
-                        weight: FontWeight.w700,
-                        color: AppColors.navy,
-                        letterSpacing: 0,
-                        height: 1,
+        child: DecoratedBox(
+          // Frosted disc with a bright rim, like the app's glass cards.
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.white.withValues(alpha: 0.85),
+                AppColors.lightLavender.withValues(alpha: 0.5),
+              ],
+            ),
+            border: Border.all(color: AppGlass.border, width: 1.4),
+          ),
+          child: AnimatedBuilder(
+            animation: _curve,
+            builder: (context, _) {
+              final value = widget.score * _curve.value;
+              return CustomPaint(
+                painter: _RingPainter(value / 100),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${value.round()}',
+                        style: figureText(
+                          size: widget.size * 0.3,
+                          weight: FontWeight.w800,
+                          letterSpacing: -1,
+                          height: 1,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '/ 100',
-                      style: hudText(
-                        size: 9.5,
-                        color: AppColors.secondaryText,
-                        letterSpacing: 1,
+                      const SizedBox(height: 2),
+                      Text(
+                        'out of 100',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.secondaryText,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
   }
 }
 
-class _GaugePainter extends CustomPainter {
-  const _GaugePainter(this.fraction);
+/// A full, thin ring: a faint track and a teal arc from the top.
+class _RingPainter extends CustomPainter {
+  const _RingPainter(this.fraction);
   final double fraction;
-
-  static const _start = math.pi * 0.75;
-  static const _sweep = math.pi * 1.5;
 
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
-    final r = size.shortestSide / 2 - 8;
-    final rect = Rect.fromCircle(center: c, radius: r);
-
-    // Ticks around the outside.
-    for (var i = 0; i <= 30; i++) {
-      final a = _start + _sweep * i / 30;
-      final d = Offset(math.cos(a), math.sin(a));
-      final lit = i / 30 <= fraction;
-      canvas.drawLine(
-        c + d * (r + 4),
-        c + d * (r + (i % 5 == 0 ? 8 : 6)),
-        Paint()
-          ..strokeWidth = 1.2
-          ..strokeCap = StrokeCap.round
-          ..color = lit
-              ? AppColors.g2.withValues(alpha: 0.7)
-              : AppColors.navy.withValues(alpha: 0.12),
-      );
-    }
-
-    final track = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round
-      ..color = AppColors.navy.withValues(alpha: 0.07);
-    canvas.drawArc(rect.deflate(6), _start, _sweep, false, track);
+    final rect = Rect.fromCircle(center: c, radius: size.shortestSide / 2 - 11);
+    canvas.drawArc(
+      rect,
+      0,
+      2 * math.pi,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6
+        ..color = AppColors.g2.withValues(alpha: 0.12),
+    );
     if (fraction <= 0) return;
-
-    final sweep = _sweep * fraction.clamp(0.0, 1.0);
-    // Rotated rather than starting at _start, so the sweep never passes
-    // 2π (where the gradient would clamp).
-    final shader = const SweepGradient(
-      endAngle: _sweep,
-      colors: [AppColors.g2, AppColors.g1, Color(0xFF7FF3E6)],
-      transform: GradientRotation(_start),
-    ).createShader(rect);
     canvas.drawArc(
-      rect.deflate(6),
-      _start,
-      sweep,
+      rect,
+      -math.pi / 2,
+      2 * math.pi * fraction.clamp(0.0, 1.0),
       false,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 12
+        ..strokeWidth = 6
         ..strokeCap = StrokeCap.round
-        ..shader = shader
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+        ..shader = const SweepGradient(
+          colors: [AppColors.g1, AppColors.g2],
+          transform: GradientRotation(-math.pi / 2),
+        ).createShader(rect),
     );
-    canvas.drawArc(
-      rect.deflate(6),
-      _start,
-      sweep,
-      false,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 10
-        ..strokeCap = StrokeCap.round
-        ..shader = shader,
-    );
-    final end = _start + sweep;
-    final knob = c + Offset(math.cos(end), math.sin(end)) * (r - 6);
-    canvas.drawCircle(knob, 6.5, Paint()..color = AppColors.white);
-    canvas.drawCircle(knob, 3.2, Paint()..color = AppColors.g2);
   }
 
   @override
-  bool shouldRepaint(_GaugePainter old) => old.fraction != fraction;
+  bool shouldRepaint(_RingPainter old) => old.fraction != fraction;
 }
 
 // ── Findings ──────────────────────────────────────────────────────
 
-class _FindingTile extends ConsumerWidget {
-  const _FindingTile({required this.finding, required this.onTap});
+/// One finding, described for an area of the mouth, with what to do.
+class _FindingCard extends StatelessWidget {
+  const _FindingCard({required this.finding});
 
   final ScanFinding finding;
-  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final color = HealthColors.of(finding.health);
-    final ink = HealthColors.ink(finding.health);
     final region =
         finding.foundIn == null ? null : captureRegionById(finding.foundIn!);
-    return Semantics(
-      button: true,
-      hint: 'Shows it on the 3D map',
-      child: GlassCard(
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
-        onTap: onTap,
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withValues(alpha: 0.13),
-                border: Border.all(color: color.withValues(alpha: 0.35)),
+    return GlassCard(
+      borderRadius: const BorderRadius.all(Radius.circular(20)),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.13),
+                ),
+                child: Icon(
+                  finding.health == AreaHealth.attention
+                      ? Icons.error_outline_rounded
+                      : Icons.visibility_outlined,
+                  size: 19,
+                  color: HealthColors.ink(finding.health),
+                ),
               ),
-              child: Icon(
-                finding.health == ToothHealth.attention
-                    ? Icons.priority_high_rounded
-                    : Icons.visibility_outlined,
-                size: 19,
-                color: ink,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          finding.teethLabel.toUpperCase(),
-                          style: hudText(
-                              size: 10, weight: FontWeight.w700, color: ink),
-                        ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      finding.condition,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
                       ),
-                      HealthChip(health: finding.health),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    finding.condition,
+                    ),
+                    Text(
+                      finding.area.label,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    HealthChip(health: finding.health),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            finding.summary,
+            style: GoogleFonts.outfit(
+              fontSize: 13.5,
+              height: 1.45,
+              color: AppColors.navy,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ConfidenceBar(value: finding.confidence, color: color),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(10, 9, 12, 9),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: AppColors.lightLavender.withValues(alpha: 0.7),
+              border: Border.all(color: AppColors.lavender),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Icon(Icons.tips_and_updates_outlined,
+                      size: 16, color: AppColors.g2),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    finding.recommendation,
                     style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                      height: 1.45,
                       color: AppColors.navy,
                     ),
                   ),
-                  const SizedBox(height: 1),
-                  Text(
-                    region == null
-                        ? finding.location
-                        : '${finding.location} · ${region.shortLabel} view',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ConfidenceBar(value: finding.confidence, color: color),
-                ],
+                ),
+              ],
+            ),
+          ),
+          if (region != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Seen in your ${region.label} photo',
+              style: GoogleFonts.outfit(
+                fontSize: 11.5,
+                color: AppColors.secondaryText,
               ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -770,22 +689,21 @@ class _OthersTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final healthy = report.countOf(ToothHealth.healthy);
-    final missing = report.countOf(ToothHealth.notAssessed);
+    final healthy = report.countOf(AreaHealth.healthy);
+    final missing = report.countOf(AreaHealth.notChecked);
+    String areas(int n) => '$n area${n == 1 ? '' : 's'}';
     return GlassCard(
-      borderRadius: const BorderRadius.all(Radius.circular(18)),
+      borderRadius: const BorderRadius.all(Radius.circular(20)),
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: HealthColors.healthy.withValues(alpha: 0.13),
-              border: Border.all(
-                  color: HealthColors.healthy.withValues(alpha: 0.35)),
+              color: HealthColors.healthy.withValues(alpha: 0.15),
             ),
             child: const DrawnCheck(
               visible: true,
@@ -800,7 +718,7 @@ class _OthersTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'All other teeth',
+                  'Everywhere else',
                   style: GoogleFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -809,8 +727,9 @@ class _OthersTile extends StatelessWidget {
                 ),
                 Text(
                   missing == 0
-                      ? '$healthy teeth look healthy'
-                      : '$healthy healthy · $missing not assessed',
+                      ? 'No concerns in ${areas(healthy)} of your mouth'
+                      : 'No concerns in ${areas(healthy)} · '
+                          '$missing not checked',
                   style: GoogleFonts.outfit(
                     fontSize: 12,
                     color: AppColors.secondaryText,
@@ -819,7 +738,6 @@ class _OthersTile extends StatelessWidget {
               ],
             ),
           ),
-          const HealthChip(health: ToothHealth.healthy),
         ],
       ),
     );
@@ -931,11 +849,9 @@ class _RegionBar extends StatelessWidget {
                           )
                         : Text(
                             '$score',
-                            style: hudText(
-                              size: 12,
-                              weight: FontWeight.w700,
+                            style: figureText(
+                              size: 13,
                               color: HealthColors.ink(health!),
-                              letterSpacing: 0.4,
                             ),
                           ),
                   ],
@@ -1029,9 +945,9 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final health = switch (metric.level) {
-      MetricLevel.good => ToothHealth.healthy,
-      MetricLevel.fair => ToothHealth.monitor,
-      MetricLevel.poor => ToothHealth.attention,
+      MetricLevel.good => AreaHealth.healthy,
+      MetricLevel.fair => AreaHealth.monitor,
+      MetricLevel.poor => AreaHealth.attention,
     };
     final color = HealthColors.of(health);
     final bars = 3 - metric.level.index;
@@ -1119,12 +1035,7 @@ class _Recommendations extends StatelessWidget {
                     ),
                     child: Text(
                       '0${i + 1}',
-                      style: hudText(
-                        size: 9.5,
-                        weight: FontWeight.w700,
-                        color: AppColors.white,
-                        letterSpacing: 0.3,
-                      ),
+                      style: figureText(size: 12, color: AppColors.white),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1184,8 +1095,8 @@ class _Actions extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         GlowButton(
-          label: 'Book a Dentist Visit',
-          icon: Icons.event_available_rounded,
+          label: 'Find Clinics Nearby',
+          icon: Icons.location_on_outlined,
           intensity: 0.8,
           onTap: onBook,
         ),
@@ -1196,20 +1107,13 @@ class _Actions extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
           child: Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppColors.cardGradient,
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/images/rabi_avatar.png',
-                    fit: BoxFit.cover,
-                    excludeFromSemantics: true,
-                  ),
+              // Rabi's bunny mark, as in the chat.
+              SizedBox.square(
+                dimension: 36,
+                child: Image.asset(
+                  'assets/images/rabi_avatar.png',
+                  fit: BoxFit.contain,
+                  excludeFromSemantics: true,
                 ),
               ),
               const SizedBox(width: 12),

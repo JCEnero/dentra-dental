@@ -259,7 +259,7 @@ class _CodeChip extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         color: onPhoto
-            ? const Color(0x73000000)
+            ? AppColors.navy.withValues(alpha: 0.5)
             : AppColors.white.withValues(alpha: 0.8),
         border: Border.all(
           color: onPhoto
@@ -269,9 +269,8 @@ class _CodeChip extends StatelessWidget {
       ),
       child: Text(
         code,
-        style: hudText(
-          size: 9.5,
-          weight: FontWeight.w700,
+        style: figureText(
+          size: 10.5,
           color: onPhoto ? AppColors.white : AppColors.g2,
         ),
       ),
@@ -299,11 +298,11 @@ class _CheckBadge extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: HealthColors.healthy,
+            gradient: AppColors.cardGradient,
             border: Border.all(color: AppColors.white, width: 1.6),
             boxShadow: [
               BoxShadow(
-                color: HealthColors.healthy.withValues(alpha: 0.5),
+                color: AppColors.g1.withValues(alpha: 0.5),
                 blurRadius: 8,
               ),
             ],
@@ -335,7 +334,7 @@ class _QualityStrip extends StatelessWidget {
             Text(label, style: text),
             const SizedBox(width: 2),
             const Icon(Icons.check_rounded,
-                size: 12, color: HealthColors.healthy),
+                size: 12, color: AppColors.g1),
           ],
         );
     Widget dot() => Padding(
@@ -355,7 +354,7 @@ class _QualityStrip extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0x00000000), Color(0xB3000000)],
+            colors: [Color(0x001A2E35), Color(0xB31A2E35)], // navy
           ),
         ),
         child: AnimatedSwitcher(

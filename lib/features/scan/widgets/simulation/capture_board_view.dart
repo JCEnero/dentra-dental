@@ -174,9 +174,8 @@ class _CaptureProgress extends StatelessWidget {
               ),
               Text(
                 '${(count / total * 100).round()}%',
-                style: hudText(
-                  size: 11,
-                  weight: FontWeight.w700,
+                style: figureText(
+                  size: 12.5,
                   color: done ? AppColors.g2 : AppColors.secondaryText,
                 ),
               ),
@@ -330,7 +329,7 @@ class _StartScanBar extends StatelessWidget {
             : (
                 Icons.check_circle_outline_rounded,
                 HealthColors.healthyInk,
-                'All 8 regions ready for a full 3D scan',
+                'All 8 regions ready for a full scan',
               );
 
     return Padding(

@@ -9,6 +9,11 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../shared/widgets/dentra_note_card.dart';
 import '../../../../shared/widgets/dentra_page_header.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../../../dental_explorer/geometry/dentition_builder.dart';
+import '../../../dental_explorer/geometry/mesh.dart';
+import '../../../dental_explorer/rendering/dentition_renderer.dart';
+import '../../../dental_explorer/rendering/orbit_camera.dart';
+import '../../rendering/scanner_model.dart';
 import '../scan_motion.dart';
 import 'scan_sim_theme.dart';
 
@@ -69,6 +74,8 @@ class DeviceHubView extends StatelessWidget {
   }
 }
 
+/// The connected scanner: a floating 3D model on a glass stage, its name,
+/// the few specs that matter, and the way into a scan.
 class _DeviceCard extends StatelessWidget {
   const _DeviceCard({required this.onStart});
 
@@ -77,62 +84,47 @@ class _DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      borderRadius: const BorderRadius.all(Radius.circular(24)),
+      borderRadius: const BorderRadius.all(Radius.circular(28)),
       borderWidth: 1.5,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Semantics(
-            container: true,
-            label: 'Dentra Scanner connected and calibrated',
-            excludeSemantics: true,
-            child: Row(
-              children: [
-                const _PulseDot(),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Dentra Scanner Connected',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
+          const _ScannerStage(height: 184),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Semantics(
+              header: true,
+              child: Text(
+                'Dentra Scan Pro',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                  color: AppColors.navy,
                 ),
-                const _CalibratedBadge(),
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Center(child: ExcludeSemantics(child: ScannerOrb(size: 184))),
-          Text(
-            'Dentra Scan Pro',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
-              color: AppColors.navy,
+              ),
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            'Intraoral imaging scanner · Paired',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 12.5,
-              color: AppColors.secondaryText,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'Intraoral scanner · Synced just now',
+              style: GoogleFonts.outfit(
+                fontSize: 12.5,
+                color: AppColors.secondaryText,
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          const _StatGrid(),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
+          const _SpecGrid(),
+          const SizedBox(height: 14),
           GlowButton(
             label: 'Start New Scan',
             icon: Icons.arrow_forward_rounded,
-            intensity: 0.85,
+            intensity: 0.6,
             onTap: onStart,
           ),
         ],
@@ -141,7 +133,96 @@ class _DeviceCard extends StatelessWidget {
   }
 }
 
-/// Green "connected" dot with a halo that keeps rippling out.
+/// Glass stage the scanner floats on, with its status on top.
+class _ScannerStage extends StatelessWidget {
+  const _ScannerStage({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = BorderRadius.all(Radius.circular(22));
+    return SizedBox(
+      height: height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.white.withValues(alpha: 0.75),
+              AppColors.lightLavender.withValues(alpha: 0.5),
+            ],
+          ),
+          border: Border.all(color: AppGlass.border),
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ExcludeSemantics(child: _ScannerView()),
+              Positioned(
+                left: 12,
+                top: 12,
+                child: Semantics(
+                  label: 'Scanner connected',
+                  excludeSemantics: true,
+                  child: _GlassPill(
+                    children: [
+                      const _PulseDot(),
+                      const SizedBox(width: 5),
+                      Text('Connected', style: _pillText),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 12,
+                top: 12,
+                child: _GlassPill(
+                  children: [
+                    const Icon(Icons.verified_rounded,
+                        size: 14, color: AppColors.g2),
+                    const SizedBox(width: 4),
+                    Text('Calibrated', style: _pillText),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static final TextStyle _pillText = GoogleFonts.outfit(
+    fontSize: 11.5,
+    fontWeight: FontWeight.w700,
+    color: AppColors.navy,
+  );
+}
+
+class _GlassPill extends StatelessWidget {
+  const _GlassPill({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
+      decoration: BoxDecoration(
+        color: AppColors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppGlass.border),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
+    );
+  }
+}
+
+/// Small "connected" dot with a halo that ripples out.
 class _PulseDot extends StatefulWidget {
   const _PulseDot();
 
@@ -177,7 +258,7 @@ class _PulseDotState extends State<_PulseDot>
   @override
   Widget build(BuildContext context) {
     return SizedBox.square(
-      dimension: 22,
+      dimension: 14,
       child: AnimatedBuilder(
         animation: _pulse,
         builder: (context, _) {
@@ -186,25 +267,20 @@ class _PulseDotState extends State<_PulseDot>
             alignment: Alignment.center,
             children: [
               Container(
-                width: 10 + 12 * t,
-                height: 10 + 12 * t,
+                width: 7 + 7 * t,
+                height: 7 + 7 * t,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: HealthColors.healthy.withValues(alpha: 0.35 * (1 - t)),
+                  color:
+                      AppColors.successGreen.withValues(alpha: 0.35 * (1 - t)),
                 ),
               ),
               Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: HealthColors.healthy,
-                  boxShadow: [
-                    BoxShadow(
-                      color: HealthColors.healthy.withValues(alpha: 0.5),
-                      blurRadius: 6,
-                    ),
-                  ],
+                  color: AppColors.successGreen,
                 ),
               ),
             ],
@@ -215,30 +291,68 @@ class _PulseDotState extends State<_PulseDot>
   }
 }
 
-class _CalibratedBadge extends StatelessWidget {
-  const _CalibratedBadge();
+/// The specs that matter, two by two in one glass panel.
+class _SpecGrid extends StatelessWidget {
+  const _SpecGrid();
 
   @override
   Widget build(BuildContext context) {
+    final divider = AppGlass.divider;
     return Container(
-      padding: const EdgeInsets.fromLTRB(7, 4, 9, 4),
       decoration: BoxDecoration(
-        color: HealthColors.healthy.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: HealthColors.healthy.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(18),
+        color: AppColors.white.withValues(alpha: 0.45),
+        border: Border.all(color: AppGlass.border),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
         children: [
-          const Icon(Icons.verified_rounded,
-              size: 14, color: HealthColors.healthyInk),
-          const SizedBox(width: 4),
-          Text(
-            'Calibrated',
-            style: GoogleFonts.outfit(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: HealthColors.healthyInk,
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Expanded(
+                  child: _SpecCell(
+                    icon: Icons.center_focus_strong_outlined,
+                    label: 'Imaging',
+                    value: 'RGB + NIR',
+                    hint: '850 nm infrared',
+                  ),
+                ),
+                VerticalDivider(width: 1, thickness: 1, color: divider),
+                const Expanded(
+                  child: _SpecCell(
+                    icon: Icons.wifi_rounded,
+                    label: 'Connection',
+                    value: 'Wireless',
+                    hint: 'Strong signal',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, thickness: 1, color: divider),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Expanded(
+                  child: _SpecCell(
+                    icon: Icons.battery_5_bar_rounded,
+                    label: 'Battery',
+                    value: '87%',
+                    level: 0.87,
+                  ),
+                ),
+                VerticalDivider(width: 1, thickness: 1, color: divider),
+                const Expanded(
+                  child: _SpecCell(
+                    icon: Icons.memory_rounded,
+                    label: 'Firmware',
+                    value: 'v2.4.1',
+                    hint: 'Up to date',
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -247,235 +361,75 @@ class _CalibratedBadge extends StatelessWidget {
   }
 }
 
-// ── Device readouts ───────────────────────────────────────────────
-
-class _StatGrid extends StatelessWidget {
-  const _StatGrid();
-
-  @override
-  Widget build(BuildContext context) {
-    const gap = SizedBox(width: 10);
-    return const Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _StatTile(
-                label: 'Battery',
-                value: '87%',
-                semantic: 'Battery 87 percent',
-                hud: true,
-                leading: _BatteryGlyph(level: 0.87),
-              ),
-            ),
-            gap,
-            Expanded(
-              child: _StatTile(
-                label: 'Signal',
-                value: '4/4',
-                semantic: 'Signal 4 of 4 bars',
-                hud: true,
-                leading: _SignalGlyph(bars: 4),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _StatTile(
-                label: 'Firmware',
-                value: 'v2.4.1',
-                semantic: 'Firmware version 2.4.1',
-                hud: true,
-                leading: _IconGlyph(Icons.memory_rounded),
-              ),
-            ),
-            gap,
-            Expanded(
-              child: _StatTile(
-                label: 'Last sync',
-                value: 'Just now',
-                semantic: 'Last synced just now',
-                leading: _IconGlyph(Icons.sync_rounded),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({
+class _SpecCell extends StatelessWidget {
+  const _SpecCell({
+    required this.icon,
     required this.label,
     required this.value,
-    required this.semantic,
-    required this.leading,
-    this.hud = false,
+    this.hint,
+    this.level,
   });
 
+  final IconData icon;
   final String label;
   final String value;
-  final String semantic;
-  final Widget leading;
+  final String? hint;
 
-  /// Numbers use the HUD face.
-  final bool hud;
+  /// Shows a small fill bar instead of a hint, e.g. for battery.
+  final double? level;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: semantic,
+      label: '$label: $value${hint == null ? '' : ', $hint'}',
       excludeSemantics: true,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: AppColors.white.withValues(alpha: 0.55),
-          border: Border.all(color: AppGlass.border),
-        ),
-        child: Row(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox.square(dimension: 30, child: Center(child: leading)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label.toUpperCase(), style: capsLabel()),
-                  const SizedBox(height: 2),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      value,
-                      maxLines: 1,
-                      style: hud
-                          ? hudText(size: 14, weight: FontWeight.w700)
-                          : GoogleFonts.outfit(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.navy,
-                            ),
+            Row(
+              children: [
+                Icon(icon, size: 14, color: AppColors.g2),
+                const SizedBox(width: 6),
+                Text(label.toUpperCase(), style: capsLabel()),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(value, style: figureText(size: 16, weight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            if (level case final level?)
+              Container(
+                height: 5,
+                margin: const EdgeInsets.only(top: 3, right: 24),
+                alignment: Alignment.centerLeft,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  color: AppColors.navy.withValues(alpha: 0.07),
+                ),
+                child: FractionallySizedBox(
+                  widthFactor: level,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(3),
+                      gradient: AppColors.primaryGradient,
                     ),
                   ),
-                ],
+                ),
+              )
+            else
+              Text(
+                hint!,
+                style: GoogleFonts.outfit(
+                  fontSize: 11.5,
+                  color: AppColors.secondaryText,
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
-}
-
-class _IconGlyph extends StatelessWidget {
-  const _IconGlyph(this.icon);
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 30,
-      height: 30,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.lightLavender,
-        border: Border.all(color: AppColors.lavender),
-      ),
-      child: Icon(icon, size: 17, color: AppColors.g2),
-    );
-  }
-}
-
-class _BatteryGlyph extends StatelessWidget {
-  const _BatteryGlyph({required this.level});
-  final double level;
-
-  @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: const Size(28, 15), painter: _BatteryPainter(level));
-}
-
-class _BatteryPainter extends CustomPainter {
-  const _BatteryPainter(this.level);
-  final double level;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final body = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width - 3, size.height),
-      const Radius.circular(4),
-    );
-    canvas.drawRRect(
-      body,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4
-        ..color = AppColors.g2,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width - 2.4, size.height * 0.3, 2.4,
-            size.height * 0.4),
-        const Radius.circular(1.2),
-      ),
-      Paint()..color = AppColors.g2,
-    );
-    final inner = body.deflate(2.6);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-            inner.left, inner.top, inner.width * level, inner.height),
-        const Radius.circular(2),
-      ),
-      Paint()..shader = AppColors.primaryGradient.createShader(inner.outerRect),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_BatteryPainter old) => old.level != level;
-}
-
-class _SignalGlyph extends StatelessWidget {
-  const _SignalGlyph({required this.bars});
-  final int bars;
-
-  @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: const Size(24, 18), painter: _SignalPainter(bars));
-}
-
-class _SignalPainter extends CustomPainter {
-  const _SignalPainter(this.bars);
-  final int bars;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const count = 4;
-    const gap = 2.5;
-    final w = (size.width - gap * (count - 1)) / count;
-    for (var i = 0; i < count; i++) {
-      final h = size.height * (0.35 + 0.65 * i / (count - 1));
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(i * (w + gap), size.height - h, w, h),
-        const Radius.circular(1.5),
-      );
-      canvas.drawRRect(
-        rect,
-        Paint()
-          ..color = i < bars
-              ? Color.lerp(AppColors.g1, AppColors.g2, i / (count - 1))!
-              : AppColors.border,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_SignalPainter old) => old.bars != bars;
 }
 
 // ── How it works ──────────────────────────────────────────────────
@@ -531,12 +485,7 @@ class _HowItWorks extends StatelessWidget {
                         ),
                         child: Text(
                           '0${i + 1}',
-                          style: hudText(
-                            size: 11,
-                            weight: FontWeight.w700,
-                            color: AppColors.white,
-                            letterSpacing: 0.4,
-                          ),
+                          style: figureText(size: 12.5, color: AppColors.white),
                         ),
                       ),
                       if (i < _steps.length - 1)
@@ -596,262 +545,194 @@ class _HowItWorks extends StatelessWidget {
   }
 }
 
-// ── Scanner orb ───────────────────────────────────────────────────
+// ── Scanner model ─────────────────────────────────────────────────
 
-/// Glass orb holding the scanner wand, with orbit rings turning in 3D
-/// and lights travelling along them. Still under reduced motion.
-class ScannerOrb extends StatefulWidget {
-  const ScannerOrb({super.key, this.size = 180});
-
-  final double size;
+/// The 3D scanner, floating and turning gently while its light ring
+/// breathes and a scan beam sweeps the surface below. Still under
+/// reduced motion.
+class _ScannerView extends StatefulWidget {
+  const _ScannerView();
 
   @override
-  State<ScannerOrb> createState() => _ScannerOrbState();
+  State<_ScannerView> createState() => _ScannerViewState();
 }
 
-class _ScannerOrbState extends State<ScannerOrb>
+class _ScannerViewState extends State<_ScannerView>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _spin = AnimationController(
+  static const _period = 24.0; // seconds per loop of the motion
+
+  late final AnimationController _clock = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 14),
+    duration: Duration(milliseconds: (_period * 1000).round()),
   );
+  bool _still = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (ScanMotion.reduced(context)) {
-      _spin
+    _still = ScanMotion.reduced(context);
+    if (_still) {
+      _clock
         ..stop()
-        ..value = 0.12;
-    } else if (!_spin.isAnimating) {
-      _spin.repeat();
+        ..value = 0;
+    } else if (!_clock.isAnimating) {
+      _clock.repeat();
     }
   }
 
   @override
   void dispose() {
-    _spin.dispose();
+    _clock.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: widget.size,
-      child: RepaintBoundary(
-        child: AnimatedBuilder(
-          animation: _spin,
-          builder: (context, _) =>
-              CustomPaint(painter: _OrbPainter(_spin.value)),
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _clock,
+        builder: (context, _) => CustomPaint(
+          painter: _ScannerPainter(t: _clock.value * _period, still: _still),
         ),
       ),
     );
   }
 }
 
-class _OrbPainter extends CustomPainter {
-  const _OrbPainter(this.t);
+class _ScannerPainter extends CustomPainter {
+  _ScannerPainter({required this.t, required this.still});
 
-  /// 0–1 over one full cycle.
+  /// Seconds into the motion loop.
   final double t;
+  final bool still;
 
-  static const _rings = [
-    // tilt (rad), squash, speed (turns per cycle), radius factor
-    (-0.5, 0.32, 1.0, 0.92),
-    (0.62, 0.26, -1.5, 0.82),
-    (1.57, 0.2, 2.0, 0.72),
-  ];
+  static final _renderer = DentitionRenderer(ScannerModel.instance.model);
+  static final SceneStyle _style = () {
+    final s = SceneStyle()
+      ..hideRoots = false
+      ..rootReveal = 1;
+    for (var o = 0; o < kOwnerCount; o++) {
+      s.alpha[o] =
+          o == ScannerModel.body || o == ScannerModel.light ? 1 : 0;
+    }
+    const teal = AppColors.g1;
+    s
+      ..tintR[ScannerModel.light] = teal.r
+      ..tintG[ScannerModel.light] = teal.g
+      ..tintB[ScannerModel.light] = teal.b
+      ..tint[ScannerModel.light] = 0.5;
+    return s;
+  }();
+
+  static double _wave(double t, double period) =>
+      math.sin(2 * math.pi * t / period);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero);
-    final r = size.shortestSide / 2;
-    final a = t * 2 * math.pi;
-
-    // Halo.
-    canvas.drawCircle(
-      c,
-      r,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [
-            AppColors.g1.withValues(alpha: 0.32),
-            AppColors.g1.withValues(alpha: 0.1),
-            AppColors.g1.withValues(alpha: 0),
-          ],
-          stops: const [0.25, 0.6, 1],
-        ).createShader(Rect.fromCircle(center: c, radius: r)),
+    if (size.isEmpty) return;
+    final w = size.width, h = size.height;
+    final scanner = ScannerModel.instance;
+    final bob = still ? 0.0 : 1.5 * _wave(t, 3.6);
+    final f = DentitionRenderer.focalLength(size);
+    final pose = CameraPose(
+      yaw: -0.55 + (still ? 0 : 0.42 * _wave(t, 12)),
+      pitch: 0.22 + (still ? 0 : 0.05 * _wave(t, 8)),
+      // Fit the wand's length across the width and its height in the
+      // stage, whichever needs more room.
+      distance: math.max(62 * f / (0.4 * w), 34 * f / (0.3 * h)),
+      // Aiming a little below the wand lifts it, leaving room for the
+      // beam under the pills' row.
+      target: Vec3(0, -3 - bob, 0),
     );
+    final floor = h * 0.86;
 
-    // Tick ring, turning slowly.
-    final tick = Paint()
-      ..strokeWidth = 1.2
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 60; i++) {
-      final ang = i / 60 * 2 * math.pi + a * 0.25;
-      final long = i % 5 == 0;
-      final d = Offset(math.cos(ang), math.sin(ang));
-      tick.color = AppColors.g2.withValues(alpha: long ? 0.45 : 0.18);
-      canvas.drawLine(
-          c + d * (r * 0.97), c + d * (r * (long ? 0.9 : 0.93)), tick);
-    }
-
-    // Back halves of the rings, behind the orb.
-    for (final ring in _rings) {
-      _ring(canvas, c, r, ring, a, front: false);
-    }
-
-    _orb(canvas, c, r * 0.4);
-
-    // Front halves and their travelling lights.
-    for (final ring in _rings) {
-      _ring(canvas, c, r, ring, a, front: true);
-    }
-  }
-
-  void _ring(Canvas canvas, Offset c, double r,
-      (double, double, double, double) ring, double a,
-      {required bool front}) {
-    final (tilt, squash, speed, k) = ring;
-    final rx = r * k, ry = r * k * squash;
-    canvas.save();
-    canvas.translate(c.dx, c.dy);
-    // The rings precess slowly so the orb reads as turning in 3D.
-    canvas.rotate(tilt + math.sin(a + tilt) * 0.12);
-    final rect = Rect.fromCenter(center: Offset.zero, width: rx * 2, height: ry * 2);
-    canvas.drawArc(
-      rect,
-      front ? 0 : math.pi,
-      math.pi,
-      false,
+    // Soft glow behind, and the shadow it floats above.
+    final glow = Rect.fromCircle(center: Offset(w / 2, h * 0.45), radius: w * 0.4);
+    canvas.drawRect(
+      glow,
       Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = front ? 1.6 : 1.1
-        ..color = AppColors.g2.withValues(alpha: front ? 0.55 : 0.22),
+        ..shader = RadialGradient(colors: [
+          AppColors.white.withValues(alpha: 0.8),
+          AppColors.white.withValues(alpha: 0),
+        ]).createShader(glow),
     );
-    // Light on the ring: drawn on whichever half it is on.
-    final phi = a * speed + tilt;
-    final onFront = math.sin(phi) >= 0;
-    if (onFront == front) {
-      final p = Offset(rx * math.cos(phi), ry * math.sin(phi));
-      canvas.drawCircle(
-        p,
-        front ? 7 : 5,
-        Paint()
-          ..color = AppColors.g1.withValues(alpha: front ? 0.45 : 0.2)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
-      );
-      canvas.drawCircle(p, front ? 2.6 : 1.8,
-          Paint()..color = front ? AppColors.white : AppColors.lavender);
-    }
-    canvas.restore();
-  }
-
-  void _orb(Canvas canvas, Offset c, double r) {
-    canvas.drawCircle(
-      c.translate(0, 3),
-      r,
-      Paint()
-        ..color = AppColors.g2.withValues(alpha: 0.22)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
-    );
-    final rect = Rect.fromCircle(center: c, radius: r);
-    canvas.drawCircle(
-      c,
-      r,
-      Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-0.35, -0.45),
-          colors: [AppColors.white, Color(0xFFE6F9F7), Color(0xFFB9ECE6)],
-          stops: [0, 0.55, 1],
-        ).createShader(rect),
-    );
-    canvas.drawCircle(
-      c,
-      r,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4
-        ..color = AppColors.white,
-    );
-    // Specular highlight.
     canvas.drawOval(
       Rect.fromCenter(
-          center: c.translate(-r * 0.3, -r * 0.45),
-          width: r * 0.8,
-          height: r * 0.36),
-      Paint()..color = AppColors.white.withValues(alpha: 0.7),
+        center: Offset(w / 2, floor),
+        width: w * (0.46 - 0.02 * bob / 1.5),
+        height: 10,
+      ),
+      Paint()
+        ..color = AppColors.g2.withValues(alpha: 0.16 - 0.03 * bob / 1.5)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
     );
-    _wand(canvas, c, r);
+
+    // Scan beam from the window under the tip, with a line sweeping it.
+    final from = _project(pose, size, f, scanner.window);
+    if (from != null) {
+      final to = Offset(from.dx + 4, floor - 2);
+      final beam = Path()
+        ..moveTo(from.dx - 4, from.dy)
+        ..lineTo(from.dx + 4, from.dy)
+        ..lineTo(to.dx + 28, to.dy)
+        ..lineTo(to.dx - 28, to.dy)
+        ..close();
+      final breathe = still ? 0.7 : 0.6 + 0.4 * (0.5 + 0.5 * _wave(t, 2.4));
+      canvas.drawPath(
+        beam,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.g1.withValues(alpha: 0.38 * breathe),
+              AppColors.g1.withValues(alpha: 0.06 * breathe),
+            ],
+          ).createShader(beam.getBounds()),
+      );
+      if (!still) {
+        final k = (t % 1.6) / 1.6;
+        final y = from.dy + (to.dy - from.dy) * k;
+        final half = 4 + 24 * k;
+        final x = from.dx + (to.dx - from.dx) * k;
+        canvas.drawLine(
+          Offset(x - half, y),
+          Offset(x + half, y),
+          Paint()
+            ..strokeWidth = 1.6
+            ..strokeCap = StrokeCap.round
+            ..color =
+                AppColors.g2.withValues(alpha: 0.75 * math.sin(math.pi * k)),
+        );
+      }
+      canvas.drawOval(
+        Rect.fromCenter(center: to, width: 64, height: 11),
+        Paint()
+          ..color = AppColors.g1.withValues(alpha: 0.3 * breathe)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      );
+    }
+
+    // The light ring breathes.
+    _style.glow[ScannerModel.light] =
+        still ? 0.8 : 0.45 + 0.55 * (0.5 + 0.5 * _wave(t, 1.8));
+    _renderer.paint(canvas, size, pose, _style);
   }
 
-  /// A slim intraoral scanner, angled, with its scan light on.
-  void _wand(Canvas canvas, Offset c, double r) {
-    canvas.save();
-    canvas.translate(c.dx, c.dy);
-    canvas.rotate(-math.pi / 4);
-    final len = r * 1.5;
-    final half = r * 0.16;
-
-    // Light cone from the head.
-    final head = Offset(len * 0.42, 0);
-    final cone = Path()
-      ..moveTo(head.dx, head.dy - half * 0.4)
-      ..lineTo(head.dx + r * 0.42, head.dy - half * 1.6)
-      ..lineTo(head.dx + r * 0.42, head.dy + half * 1.6)
-      ..lineTo(head.dx, head.dy + half * 0.4)
-      ..close();
-    canvas.drawPath(
-      cone,
-      Paint()
-        ..shader = LinearGradient(
-          colors: [
-            AppColors.g1.withValues(alpha: 0.55),
-            AppColors.g1.withValues(alpha: 0),
-          ],
-        ).createShader(cone.getBounds()),
+  /// Screen position of [p] for [pose] (see DentitionRenderer.paint).
+  static Offset? _project(CameraPose pose, Size size, double f, Vec3 p) {
+    final r = pose.rotation;
+    final px = p.x - pose.target.x,
+        py = p.y - pose.target.y,
+        pz = p.z - pose.target.z;
+    final d = pose.distance - (r[6] * px + r[7] * py + r[8] * pz);
+    if (d < 4) return null;
+    return Offset(
+      size.width / 2 + (r[0] * px + r[1] * py + r[2] * pz) * f / d,
+      size.height / 2 - (r[3] * px + r[4] * py + r[5] * pz) * f / d,
     );
-
-    final body = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(-len / 2, -half, len * 0.6, half * 2),
-        Radius.circular(half),
-      ))
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(-len / 2 + len * 0.55, -half * 0.6, len * 0.3,
-            half * 1.2),
-        Radius.circular(half * 0.6),
-      ))
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(len * 0.26, -half * 0.85, len * 0.18, half * 1.7),
-        Radius.circular(half * 0.7),
-      ));
-    canvas.drawPath(
-      body,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppColors.white, Color(0xFFDDE7E6)],
-        ).createShader(body.getBounds()),
-    );
-    canvas.drawPath(
-      body,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8
-        ..color = AppColors.navy.withValues(alpha: 0.2),
-    );
-    // Status light and lens.
-    canvas.drawCircle(Offset(-len * 0.12, 0), half * 0.42,
-        Paint()..color = HealthColors.healthy);
-    canvas.drawCircle(Offset(len * 0.35, 0), half * 0.45,
-        Paint()..color = AppColors.navy.withValues(alpha: 0.8));
-    canvas.drawCircle(Offset(len * 0.35, 0), half * 0.2,
-        Paint()..color = AppColors.g1);
-    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_OrbPainter old) => old.t != t;
+  bool shouldRepaint(_ScannerPainter old) => old.t != t || old.still != still;
 }

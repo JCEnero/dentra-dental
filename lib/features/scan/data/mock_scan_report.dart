@@ -1,30 +1,63 @@
 /// Mock screening report for the scan simulation.
 ///
+/// Everyone's mouth is different (missing teeth, extra teeth, crowding),
+/// and pinpointing a single tooth from phone photos isn't reliable, so
+/// results describe general areas of the mouth ("we detected a possible
+/// early cavity in your lower left back teeth"), never numbered teeth.
+///
 /// Nothing here is analyzed: findings come from a fixed list. A finding
 /// only shows up when one of the views that would reveal it was captured,
-/// and teeth no captured view shows are "not assessed", so the report
+/// and areas no captured view shows are "not checked", so the report
 /// still responds to what the user actually photographed.
 library;
 
 import '../../dental_explorer/data/tooth_catalog.dart';
 import 'capture_regions.dart';
 
-enum ToothHealth {
+/// Six general areas: each arch split into left back, front and right
+/// back (the user's own left and right).
+enum MouthArea {
+  upperRight('Upper right back teeth', 'Upper right'),
+  upperFront('Upper front teeth', 'Upper front'),
+  upperLeft('Upper left back teeth', 'Upper left'),
+  lowerLeft('Lower left back teeth', 'Lower left'),
+  lowerFront('Lower front teeth', 'Lower front'),
+  lowerRight('Lower right back teeth', 'Lower right');
+
+  const MouthArea(this.label, this.shortLabel);
+  final String label;
+  final String shortLabel;
+
+  ToothArch get arch => index < 3 ? ToothArch.upper : ToothArch.lower;
+
+  /// The area a tooth of the reference model belongs to.
+  static MouthArea of(ToothInfo tooth) {
+    final upper = tooth.arch == ToothArch.upper;
+    if (tooth.position <= 3) return upper ? upperFront : lowerFront;
+    final right = tooth.side == ToothSide.right;
+    return upper
+        ? (right ? upperRight : upperLeft)
+        : (right ? lowerRight : lowerLeft);
+  }
+
+  bool contains(ToothInfo tooth) => of(tooth) == this;
+}
+
+enum AreaHealth {
   healthy('Healthy'),
   monitor('Monitor'),
   attention('Needs attention'),
-  notAssessed('Not assessed');
+  notChecked('Not checked');
 
-  const ToothHealth(this.label);
+  const AreaHealth(this.label);
   final String label;
 }
 
 class ScanFinding {
   const ScanFinding({
-    required this.teeth,
-    required this.location,
+    required this.area,
     required this.condition,
-    required this.detail,
+    required this.summary,
     required this.confidence,
     required this.health,
     required this.recommendation,
@@ -32,15 +65,16 @@ class ScanFinding {
     this.foundIn,
   });
 
-  /// FDI numbers.
-  final List<int> teeth;
-  final String location;
+  final MouthArea area;
   final String condition;
-  final String detail;
+
+  /// What was seen, in a sentence about the area, e.g. "We detected a
+  /// possible early cavity on … your lower left back teeth."
+  final String summary;
 
   /// 0–1.
   final double confidence;
-  final ToothHealth health;
+  final AreaHealth health;
   final String recommendation;
 
   /// Region ids of the views that can show this, best first.
@@ -49,15 +83,10 @@ class ScanFinding {
   /// The captured view it was found in. Null on the templates below.
   final String? foundIn;
 
-  String get teethLabel => teeth.length == 1
-      ? 'Tooth ${teeth.first}'
-      : 'Teeth ${teeth.join(', ')}';
-
   ScanFinding _foundIn(String regionId) => ScanFinding(
-        teeth: teeth,
-        location: location,
+        area: area,
         condition: condition,
-        detail: detail,
+        summary: summary,
         confidence: confidence,
         health: health,
         recommendation: recommendation,
@@ -83,34 +112,13 @@ class ScanRecommendation {
   final String body;
 }
 
-/// What the report says about one tooth.
-class ToothReport {
-  const ToothReport({
-    required this.tooth,
-    required this.health,
-    required this.condition,
-    required this.detail,
-    required this.recommendation,
-    this.confidence,
-    this.regionId,
-  });
-
-  final ToothInfo tooth;
-  final ToothHealth health;
-  final String condition;
-  final String detail;
-  final String recommendation;
-  final double? confidence;
-  final String? regionId;
-}
-
 class ScanReport {
   const ScanReport._({
     required this.id,
     required this.completedAt,
     required this.captured,
     required this.findings,
-    required this.toothHealth,
+    required this.areaHealth,
     required this.score,
     required this.regionScores,
     required this.metrics,
@@ -130,69 +138,72 @@ class ScanReport {
           f._foundIn(id),
     ];
 
-    final health = <int, ToothHealth>{
-      for (final t in ToothCatalog.all)
-        t.fdi: captureRegions
-                .any((r) => captured.contains(r.id) && r.covers(t))
-            ? ToothHealth.healthy
-            : ToothHealth.notAssessed,
+    // An area is checked when some captured view shows part of it.
+    final health = <MouthArea, AreaHealth>{
+      for (final area in MouthArea.values)
+        area: captureRegions.any((r) =>
+                captured.contains(r.id) &&
+                ToothCatalog.all.any((t) => area.contains(t) && r.covers(t)))
+            ? AreaHealth.healthy
+            : AreaHealth.notChecked,
     };
     for (final f in findings) {
-      for (final fdi in f.teeth) {
-        health[fdi] = f.health;
-      }
+      // The most serious finding in an area decides its status.
+      if (health[f.area] != AreaHealth.attention) health[f.area] = f.health;
     }
 
-    bool found(int fdi) => findings.any((f) => f.teeth.contains(fdi));
+    bool found(String condition) =>
+        findings.any((f) => f.condition == condition);
     final attention =
-        findings.where((f) => f.health == ToothHealth.attention).length;
+        findings.where((f) => f.health == AreaHealth.attention).length;
     final monitor =
-        findings.where((f) => f.health == ToothHealth.monitor).length;
-    final score = (100 - attention * 10 - monitor * 2.4).round().clamp(0, 100);
+        findings.where((f) => f.health == AreaHealth.monitor).length;
+    final score = (100 - attention * 10 - monitor * 3).clamp(0, 100);
     final skipped = captureRegions.length - captured.length;
+    final plaque = found(_plaque) || found(_tartar);
 
     return ScanReport._(
       id: 'DS-${20480 + sequence}',
       completedAt: completedAt,
       captured: Set.unmodifiable(captured),
       findings: List.unmodifiable(findings),
-      toothHealth: Map.unmodifiable(health),
+      areaHealth: Map.unmodifiable(health),
       score: score,
       regionScores: {
         for (final r in captureRegions)
           r.id: captured.contains(r.id) ? _regionScores[r.id] : null,
       },
       metrics: [
-        ScanMetric('plaque', 'Plaque', found(46) || found(31) ? 'Moderate' : 'Low',
-            found(46) || found(31) ? MetricLevel.fair : MetricLevel.good),
-        ScanMetric('gums', 'Gum Health', found(17) ? 'Fair' : 'Good',
-            found(17) ? MetricLevel.fair : MetricLevel.good),
+        ScanMetric('plaque', 'Plaque', plaque ? 'Moderate' : 'Low',
+            plaque ? MetricLevel.fair : MetricLevel.good),
+        ScanMetric('gums', 'Gum Health', found(_recession) ? 'Fair' : 'Good',
+            found(_recession) ? MetricLevel.fair : MetricLevel.good),
         const ScanMetric('enamel', 'Enamel', 'Good', MetricLevel.good),
         const ScanMetric('alignment', 'Alignment', 'Normal', MetricLevel.good),
-        ScanMetric('cavity', 'Cavity Risk', found(36) ? 'Medium' : 'Low',
-            found(36) ? MetricLevel.fair : MetricLevel.good),
-        ScanMetric('staining', 'Staining', found(11) ? 'Mild' : 'None',
-            found(11) ? MetricLevel.fair : MetricLevel.good),
+        ScanMetric('cavity', 'Cavity Risk', found(_cavity) ? 'Medium' : 'Low',
+            found(_cavity) ? MetricLevel.fair : MetricLevel.good),
+        ScanMetric('staining', 'Staining', found(_staining) ? 'Mild' : 'None',
+            found(_staining) ? MetricLevel.fair : MetricLevel.good),
       ],
       recommendations: [
-        if (found(31))
+        if (found(_tartar))
           const ScanRecommendation(
             'lingual',
             'Brush the tongue side of your lower front teeth more carefully',
             'Hold the brush upright and use short strokes behind your lower '
                 'front teeth, where tartar builds up first.',
           ),
-        if (found(46) || found(17))
+        if (found(_plaque) || found(_recession))
           const ScanRecommendation(
             'floss',
-            'Floss between your back molars daily',
-            "Plaque collects between molars where a brush can't reach. "
+            'Floss between your back teeth daily',
+            "Plaque collects between back teeth where a brush can't reach. "
                 'Floss or use interdental brushes once a day.',
           ),
-        if (found(36))
+        if (found(_cavity))
           const ScanRecommendation(
             'checkup',
-            'Schedule a check-up for tooth 36 within 2–4 weeks',
+            'Have your lower left back teeth checked within 2–4 weeks',
             'A dentist can confirm the spot and treat it early, often with '
                 'a small filling.',
           ),
@@ -201,9 +212,9 @@ class ScanReport {
             'coverage',
             'Capture all 8 regions next time',
             '$skipped region${skipped == 1 ? ' was' : 's were'} skipped, so '
-                "some teeth weren't checked.",
+                "some areas weren't checked.",
           ),
-        if (found(11))
+        if (found(_staining))
           const ScanRecommendation(
             'stain',
             'Rinse with water after coffee or tea',
@@ -222,10 +233,10 @@ class ScanReport {
   final String id;
   final DateTime completedAt;
   final Set<String> captured;
-  final List<ScanFinding> findings;
 
-  /// By FDI number.
-  final Map<int, ToothHealth> toothHealth;
+  /// Most serious first.
+  final List<ScanFinding> findings;
+  final Map<MouthArea, AreaHealth> areaHealth;
 
   /// 0–100.
   final int score;
@@ -235,62 +246,40 @@ class ScanReport {
   final List<ScanMetric> metrics;
   final List<ScanRecommendation> recommendations;
 
-  String get scoreHeadline => switch (score) {
-        >= 85 => 'Excellent',
-        >= 70 => 'Good',
-        >= 55 => 'Fair',
-        _ => 'Needs care',
-      };
+  /// Half or more of the areas weren't in any photo, so a high score
+  /// would mostly reflect what wasn't seen.
+  bool get isPartial =>
+      countOf(AreaHealth.notChecked) * 2 >= MouthArea.values.length;
 
-  String get scoreSummary => switch (score) {
-        >= 85 => 'Your teeth look healthy',
-        >= 70 => 'A few areas need attention',
-        >= 55 => 'Several areas need care',
-        _ => 'See a dentist soon',
-      };
+  String get scoreHeadline => isPartial
+      ? 'Partial scan'
+      : switch (score) {
+          >= 85 => 'Excellent',
+          >= 70 => 'Good',
+          >= 55 => 'Fair',
+          _ => 'Needs care',
+        };
 
-  int countOf(ToothHealth health) =>
-      toothHealth.values.where((h) => h == health).length;
+  String get scoreSummary => isPartial
+      ? 'Add more views for a full picture'
+      : switch (score) {
+          >= 85 => 'Your teeth look healthy',
+          >= 70 => 'A few areas need attention',
+          >= 55 => 'Several areas need care',
+          _ => 'See a dentist soon',
+        };
 
-  ToothReport toothReport(ToothInfo tooth) {
-    final health = toothHealth[tooth.fdi]!;
-    for (final f in findings) {
-      if (!f.teeth.contains(tooth.fdi)) continue;
-      return ToothReport(
-        tooth: tooth,
-        health: health,
-        condition: f.condition,
-        detail: f.detail,
-        recommendation: f.recommendation,
-        confidence: f.confidence,
-        regionId: f.foundIn,
-      );
-    }
-    if (health == ToothHealth.notAssessed) {
-      final suggestion = captureRegions.firstWhere((r) => r.covers(tooth));
-      return ToothReport(
-        tooth: tooth,
-        health: health,
-        condition: 'Not assessed',
-        detail: "This tooth isn't visible in the views you captured.",
-        recommendation:
-            'Add the ${suggestion.label} view next time to include it.',
-      );
-    }
-    final region = captureRegions
-        .firstWhere((r) => captured.contains(r.id) && r.covers(tooth));
-    return ToothReport(
-      tooth: tooth,
-      health: health,
-      condition: 'Healthy',
-      detail: 'No signs of decay, plaque or gum changes.',
-      recommendation: _healthyAdvice[tooth.type]!,
-      // Stable per tooth, 88–97%.
-      confidence: 0.88 + (tooth.fdi * 7 % 10) / 100,
-      regionId: region.id,
-    );
-  }
+  /// Areas with this status.
+  int countOf(AreaHealth health) =>
+      areaHealth.values.where((h) => h == health).length;
+
 }
+
+const _cavity = 'Possible early cavity';
+const _plaque = 'Plaque buildup';
+const _tartar = 'Tartar buildup';
+const _recession = 'Mild gum recession';
+const _staining = 'Minor surface staining';
 
 const _regionScores = {
   'front': 88,
@@ -303,82 +292,60 @@ const _regionScores = {
   'posterior': 72,
 };
 
-const _healthyAdvice = {
-  ToothType.incisor:
-      'Looks healthy. Keep brushing along the gumline with gentle circles.',
-  ToothType.canine:
-      'Looks healthy. Angle your brush around the corner of this tooth.',
-  ToothType.premolar:
-      'Looks healthy. Keep flossing between neighboring teeth daily.',
-  ToothType.molar:
-      'Looks healthy. Brush the chewing grooves well; they trap food easily.',
-};
-
 const _findingTemplates = [
   ScanFinding(
-    teeth: [36],
-    location: 'Lower left first molar',
-    condition: 'Possible early cavity',
-    detail: 'A small dark spot in the central groove of the chewing surface.',
+    area: MouthArea.lowerLeft,
+    condition: _cavity,
+    summary: 'We detected a possible early cavity on the chewing surface '
+        'of your lower left back teeth.',
     confidence: 0.82,
-    health: ToothHealth.attention,
-    recommendation: 'Book a check-up within 2–4 weeks. Caught early, a '
-        'cavity can often be treated with a small filling.',
+    health: AreaHealth.attention,
+    recommendation: 'Have this area checked within 2–4 weeks. Caught early, '
+        'a cavity can often be treated with a small filling.',
     seenIn: ['lower-occlusal', 'posterior', 'left'],
   ),
   ScanFinding(
-    teeth: [46],
-    location: 'Lower right first molar',
-    condition: 'Plaque on biting surface',
-    detail: 'A soft film along the grooves of the chewing surface.',
+    area: MouthArea.lowerRight,
+    condition: _plaque,
+    summary: 'We noticed plaque building up on the chewing surfaces of '
+        'your lower right back teeth.',
     confidence: 0.74,
-    health: ToothHealth.monitor,
-    recommendation: 'Brush the chewing surface with short back-and-forth '
+    health: AreaHealth.monitor,
+    recommendation: 'Brush the chewing surfaces with short back-and-forth '
         'strokes for a few extra seconds.',
     seenIn: ['lower-occlusal', 'posterior', 'right'],
   ),
   ScanFinding(
-    teeth: [31, 41],
-    location: 'Back of lower front teeth',
-    condition: 'Tartar buildup (tongue side)',
-    detail: 'Hardened deposits along the gumline on the tongue side.',
+    area: MouthArea.lowerFront,
+    condition: _tartar,
+    summary: 'We detected tartar along the tongue side of your lower '
+        'front teeth.',
     confidence: 0.79,
-    health: ToothHealth.monitor,
+    health: AreaHealth.monitor,
     recommendation: 'Tilt your brush upright to reach the tongue side. A '
         "professional cleaning removes tartar that brushing can't.",
     seenIn: ['lower-lingual'],
   ),
   ScanFinding(
-    teeth: [17, 27],
-    location: 'Upper back molars',
-    condition: 'Mild gum recession',
-    detail: 'The gumline sits slightly higher than on neighboring teeth.',
+    area: MouthArea.upperRight,
+    condition: _recession,
+    summary: 'The gumline around your upper right back teeth may be '
+        'pulling back slightly.',
     confidence: 0.68,
-    health: ToothHealth.monitor,
+    health: AreaHealth.monitor,
     recommendation: 'Use a soft-bristled brush with gentle pressure along '
         'the gumline.',
-    seenIn: ['posterior', 'right', 'left', 'upper-lingual'],
+    seenIn: ['posterior', 'right', 'upper-lingual'],
   ),
   ScanFinding(
-    teeth: [11, 21],
-    location: 'Upper front teeth',
-    condition: 'Minor surface staining',
-    detail: 'Light surface discoloration, typical of coffee or tea.',
+    area: MouthArea.upperFront,
+    condition: _staining,
+    summary: 'We noticed light surface staining on your upper front '
+        'teeth, typical of coffee or tea.',
     confidence: 0.71,
-    health: ToothHealth.monitor,
+    health: AreaHealth.monitor,
     recommendation: 'Rinse with water after coffee or tea. A professional '
         'polish removes surface stains.',
     seenIn: ['front'],
-  ),
-  ScanFinding(
-    teeth: [48],
-    location: 'Lower right wisdom tooth',
-    condition: 'Partially erupted, monitor',
-    detail: 'The crown is only partly through the gum, which can trap food.',
-    confidence: 0.63,
-    health: ToothHealth.monitor,
-    recommendation: 'Keep the area clean and mention it at your next visit. '
-        'See a dentist if it becomes sore or swollen.',
-    seenIn: ['posterior', 'right', 'lower-occlusal'],
   ),
 ];

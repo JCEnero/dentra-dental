@@ -1,169 +1,106 @@
 import 'dart:math' as math;
-import 'dart:ui' show PathMetric;
+import 'dart:ui' show FontFeature, PathMetric;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../shared/widgets/glass_card.dart';
 import '../../data/mock_scan_report.dart';
 import '../scan_motion.dart';
 
-// Shared look for the scan simulation: health colours, the HUD typeface,
-// dark "holo" glass for 3D views, the glowing CTA and entrance motion.
+// Shared look for the scan simulation: status colours from the brand
+// palette, figures in the app font, the glowing CTA and entrance motion.
 
-/// Green, amber and red are used for tooth health only.
+/// Status colours, all shades of the brand palette: a ramp from bright
+/// mint (healthy) through deep teal (monitor) to navy (needs attention),
+/// so the more serious a finding, the deeper its colour.
 abstract class HealthColors {
-  static const Color healthy = Color(0xFF22C38E);
-  static const Color monitor = Color(0xFFF2A93B);
-  static const Color attention = Color(0xFFEF5A5F);
-  static const Color muted = Color(0xFF8FA3AB);
+  static const Color healthy = AppColors.g1;
+  static const Color monitor = Color(0xFF267C7D); // g2 toward navy
+  static const Color attention = AppColors.navy;
+  static const Color muted = Color(0xFFB7C3C5); // border toward grey
 
   /// Text and icons on light glass, kept above 4.5:1 contrast.
-  static const Color healthyInk = Color(0xFF12805B);
-  static const Color monitorInk = Color(0xFF975A00);
-  static const Color attentionInk = AppColors.dangerInk;
+  static const Color healthyInk = Color(0xFF17807D); // deeper g2
+  static const Color monitorInk = monitor;
+  static const Color attentionInk = AppColors.navy;
 
-  static Color of(ToothHealth health) => switch (health) {
-        ToothHealth.healthy => healthy,
-        ToothHealth.monitor => monitor,
-        ToothHealth.attention => attention,
-        ToothHealth.notAssessed => muted,
+  static Color of(AreaHealth health) => switch (health) {
+        AreaHealth.healthy => healthy,
+        AreaHealth.monitor => monitor,
+        AreaHealth.attention => attention,
+        AreaHealth.notChecked => muted,
       };
 
-  static Color ink(ToothHealth health) => switch (health) {
-        ToothHealth.healthy => healthyInk,
-        ToothHealth.monitor => monitorInk,
-        ToothHealth.attention => attentionInk,
-        ToothHealth.notAssessed => AppColors.secondaryText,
+  static Color ink(AreaHealth health) => switch (health) {
+        AreaHealth.healthy => healthyInk,
+        AreaHealth.monitor => monitorInk,
+        AreaHealth.attention => attentionInk,
+        AreaHealth.notChecked => AppColors.secondaryText,
+      };
+
+  /// Shade used on the 3D model. Lighter than the dots, so a mouth with
+  /// several findings still looks calm: white-mint, light teal, slate
+  /// teal.
+  static Color modelOf(AreaHealth health) => switch (health) {
+        AreaHealth.healthy => AppColors.g1,
+        AreaHealth.monitor => AppColors.g2,
+        AreaHealth.attention => const Color(0xFF215E61), // g2 toward navy
+        AreaHealth.notChecked => muted,
+      };
+
+  /// How strongly the 3D model is tinted with [modelOf].
+  static double tintOf(AreaHealth health) => switch (health) {
+        AreaHealth.healthy => 0.18,
+        AreaHealth.monitor => 0.5,
+        AreaHealth.attention => 0.58,
+        AreaHealth.notChecked => 0,
       };
 
   /// Region and metric scores, on the same three-step scale.
-  static ToothHealth forScore(int score) => score >= 80
-      ? ToothHealth.healthy
+  static AreaHealth forScore(int score) => score >= 80
+      ? AreaHealth.healthy
       : score >= 65
-          ? ToothHealth.monitor
-          : ToothHealth.attention;
+          ? AreaHealth.monitor
+          : AreaHealth.attention;
 }
 
-/// Night palette for the scan chamber and 3D panels.
-abstract class HoloColors {
-  static const Color space = Color(0xFF030A12);
-  static const Color deep = Color(0xFF061423);
-  static const Color panel = Color(0xFF0B2133);
-  static const Color cyan = Color(0xFF5CF0FF);
-  static const Color text = Color(0xFFE8FBFF);
-  static const Color textDim = Color(0xA6CFEFF5);
-  static const Color rim = Color(0x524DD8C8);
-}
-
-/// Orbitron, for numbers and machine readouts.
-TextStyle hudText({
+/// Figures (scores, percentages, counts) in the app font, with tabular
+/// digits so counters don't jitter while they run.
+TextStyle figureText({
   double size = 12,
-  FontWeight weight = FontWeight.w600,
+  FontWeight weight = FontWeight.w700,
   Color color = AppColors.navy,
-  double letterSpacing = 0.8,
+  double letterSpacing = 0,
   double? height,
 }) =>
-    GoogleFonts.orbitron(
+    GoogleFonts.outfit(
       fontSize: size,
       fontWeight: weight,
       color: color,
       letterSpacing: letterSpacing,
       height: height,
+      fontFeatures: const [FontFeature.tabularFigures()],
     );
 
-/// Dark frosted glass that frames 3D views on the light pages.
-class HoloPanel extends StatelessWidget {
-  const HoloPanel({
-    super.key,
-    required this.child,
-    this.padding,
-    this.borderRadius = const BorderRadius.all(Radius.circular(24)),
-  });
-
-  final Widget child;
-  final EdgeInsetsGeometry? padding;
-  final BorderRadius borderRadius;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      // A soft teal halo instead of a shadow, like light leaking out.
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.g2.withValues(alpha: 0.22),
-            blurRadius: 28,
-            spreadRadius: -6,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: borderRadius,
-        child: GlassBlur(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: borderRadius,
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xF00C2235), Color(0xF5061423)],
-              ),
-              border: Border.all(color: HoloColors.rim),
-            ),
-            child: padding == null
-                ? child
-                : Padding(padding: padding!, child: child),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Small dark-glass surface used on top of the 3D scene.
-BoxDecoration holoGlass({
-  BorderRadius borderRadius = const BorderRadius.all(Radius.circular(16)),
-  Color? borderColor,
-}) =>
-    BoxDecoration(
-      borderRadius: borderRadius,
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          const Color(0xFF14324A).withValues(alpha: 0.62),
-          const Color(0xFF07182A).withValues(alpha: 0.72),
-        ],
-      ),
-      border: Border.all(color: borderColor ?? HoloColors.rim),
-    );
-
-/// Health status pill: pale tint, rim and ink, never a solid block.
+/// Status pill: pale tint, rim and ink.
 class HealthChip extends StatelessWidget {
-  const HealthChip({super.key, required this.health, this.label, this.dark = false});
+  const HealthChip({super.key, required this.health, this.label});
 
-  final ToothHealth health;
+  final AreaHealth health;
 
-  /// Defaults to the health label.
+  /// Defaults to the status label.
   final String? label;
-
-  /// For dark (holo) surfaces.
-  final bool dark;
 
   @override
   Widget build(BuildContext context) {
     final color = HealthColors.of(health);
-    final ink = dark ? color : HealthColors.ink(health);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: dark ? 0.16 : 0.13),
+        color: color.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: dark ? 0.45 : 0.32)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -182,7 +119,7 @@ class HealthChip extends StatelessWidget {
               style: GoogleFonts.outfit(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: ink,
+                color: HealthColors.ink(health),
               ),
             ),
           ),
@@ -587,3 +524,56 @@ TextStyle capsLabel({Color color = AppColors.secondaryText}) =>
       letterSpacing: 1.3,
       color: color,
     );
+
+/// Confidence as a thin bar that fills in, with the percentage.
+class ConfidenceBar extends StatelessWidget {
+  const ConfidenceBar({super.key, required this.value, required this.color});
+
+  final double value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (value * 100).round();
+    return Semantics(
+      label: '$percent percent confidence',
+      excludeSemantics: true,
+      child: Row(
+        children: [
+          Text('CONFIDENCE', style: capsLabel()),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: value),
+              duration:
+                  ScanMotion.of(context, const Duration(milliseconds: 900)),
+              curve: ScanMotion.curve,
+              builder: (context, v, _) => Container(
+                height: 6,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  color: AppColors.navy.withValues(alpha: 0.07),
+                ),
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: v,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(3),
+                      gradient: LinearGradient(colors: [
+                        color.withValues(alpha: 0.55),
+                        color,
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text('$percent%', style: figureText(size: 12.5)),
+        ],
+      ),
+    );
+  }
+}
