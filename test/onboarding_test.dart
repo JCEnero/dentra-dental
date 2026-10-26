@@ -65,7 +65,7 @@ void main() {
         'Your companion for smarter oral health monitoring.');
     expect(
         onboardingSlides[1].description,
-        'Explore AI-assisted dental screening designed to help you monitor '
+        'Explore smart dental screening designed to help you monitor '
         'your oral health.');
     expect(
         onboardingSlides[2].description,

@@ -699,8 +699,8 @@ class _ProvenanceNote extends StatelessWidget {
         "Recorded by you. DENTRA doesn't verify clinic information and isn't "
             'connected to clinic records. Ask your clinic for official records.',
       RecordSource.personalPhoto =>
-        "Your own photo. It isn't an AI screening result or clinical evidence.",
-      _ => 'Your own note. It is kept apart from AI screenings and clinic records.',
+        "Your own photo. It isn't a smart screening result or clinical evidence.",
+      _ => 'Your own note. It is kept apart from smart screenings and clinic records.',
     };
     return _Note(text: text);
   }

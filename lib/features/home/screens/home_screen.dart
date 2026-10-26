@@ -220,7 +220,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sectionGap),
             const GradientDivider(),
 
-            // ── DENTRA AI ─────────────────────────────────────
+            // ── RABI AI ───────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
                   AppSpacing.sectionGap, AppSpacing.screenH, 0),
@@ -243,7 +243,7 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'DENTRA AI',
+                              'RABI AI',
                               style: GoogleFonts.outfit(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -834,7 +834,7 @@ class _DailyTipCard extends StatelessWidget {
                       const SizedBox(height: 10),
                       Text(
                         t.aiGenerated
-                            ? 'AI-written general tip · not personal advice'
+                            ? 'Smart general tip · not personal advice'
                             : 'General tip · not personal advice',
                         style: GoogleFonts.outfit(
                           fontSize: 11,

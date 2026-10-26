@@ -62,7 +62,7 @@ Future<void> showAboutSheet(BuildContext context) {
         const Center(child: DentraLogo(size: 1.4)),
         const SizedBox(height: 8),
         Text(
-          'AI-assisted dental screening at home',
+          'Smart dental screening at home',
           textAlign: TextAlign.center,
           style: GoogleFonts.outfit(
             fontSize: 14,

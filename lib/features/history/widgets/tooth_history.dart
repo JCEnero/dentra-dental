@@ -74,7 +74,7 @@ class ToothHistoryList extends ConsumerWidget {
     } else if (async.requireValue.isEmpty) {
       body = _Message(
         text: 'Nothing recorded for tooth $fdi yet. Items appear here when you '
-            'add this tooth to a visit, photo or note, or when an AI '
+            'add this tooth to a visit, photo or note, or when a smart '
             'screening finding names it.',
       );
     } else {
@@ -206,7 +206,7 @@ class _Row extends StatelessWidget {
     ];
     return (
       title.isEmpty ? 'Dental screening' : title,
-      'AI-reported finding${findings.length == 1 ? '' : 's'}, not a diagnosis'
+      'Screening finding${findings.length == 1 ? '' : 's'}, not a diagnosis'
           '${confidence.isEmpty ? '' : ' · reported confidence ${confidence.join(', ')}'}',
     );
   }

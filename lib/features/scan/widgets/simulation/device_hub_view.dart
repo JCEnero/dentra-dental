@@ -402,7 +402,7 @@ class _HowItWorks extends StatelessWidget {
           'healthy teeth.',
     ),
     (
-      'AI screening',
+      'Smart screening',
       'Our detection model looks over each clear photo for signs of common '
           'problems, such as early cavities. Your age helps it account for '
           'baby or adult teeth, and anything it isn\'t confident about is '

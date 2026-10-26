@@ -331,7 +331,7 @@ void main() {
     await tapText(tester, 'Finish with 1 of 5');
     await settle(tester);
     expect(find.text('Partial scan saved'), findsOneWidget);
-    expect(find.textContaining("AI analysis isn't connected"), findsOneWidget);
+    expect(find.textContaining("Smart analysis isn't connected"), findsOneWidget);
     expect(find.text('Analyzing images…'), findsNothing);
 
     final history = await container.read(screeningSessionsProvider.future);
@@ -422,7 +422,7 @@ void main() {
         .completeError(const AnalysisException(AnalysisFailure.unavailable));
     await settle(tester);
     expect(find.text('Partial scan saved'), findsOneWidget);
-    expect(find.textContaining("AI analysis isn't connected"), findsOneWidget);
+    expect(find.textContaining("Smart analysis isn't connected"), findsOneWidget);
     expect(find.text('Try again'), findsNothing);
   });
 

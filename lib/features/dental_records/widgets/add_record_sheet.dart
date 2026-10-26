@@ -14,7 +14,7 @@ Future<void> showAddRecordSheet(BuildContext context, {List<String>? teeth}) asy
   final source = await showGlassSheet<RecordSource>(
     context: context,
     title: 'Add to your history',
-    subtitle: 'Each entry keeps its own label, apart from AI screenings.',
+    subtitle: 'Each entry keeps its own label, apart from smart screenings.',
     builder: (sheetContext) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

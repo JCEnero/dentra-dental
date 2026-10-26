@@ -72,7 +72,7 @@ class _FilterBody extends ConsumerWidget {
               ),
           ],
         ),
-        const _Label('Screening status', hint: 'AI screenings only'),
+        const _Label('Screening status', hint: 'Smart screenings only'),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -92,7 +92,7 @@ class _FilterBody extends ConsumerWidget {
               ),
           ],
         ),
-        const _Label('Region captured', hint: 'AI screenings only'),
+        const _Label('Region captured', hint: 'Smart screenings only'),
         Wrap(
           spacing: 8,
           runSpacing: 8,

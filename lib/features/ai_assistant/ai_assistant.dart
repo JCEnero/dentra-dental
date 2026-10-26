@@ -161,8 +161,8 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
       ..writeln(
           '- Regions captured: ${regions.isEmpty ? 'none' : regions.join(', ')}')
       ..writeln(analysis == null
-          ? '- AI analysis: none available for this screening'
-          : '- AI analysis summary: ${analysis.summary}');
+          ? '- Screening analysis: none available for this screening'
+          : '- Screening analysis summary: ${analysis.summary}');
     if (analysis != null) {
       for (final f in analysis.findings) {
         prompt.writeln('- Finding: ${f.label}'

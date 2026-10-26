@@ -236,7 +236,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Dental History'), findsOneWidget);
-    expect(find.text('AI Screening'), findsOneWidget);
+    expect(find.text('Smart Screening'), findsOneWidget);
     expect(find.text('Personal Note'), findsOneWidget);
     expect(find.text('Ask about sensitivity'), findsOneWidget);
     expect(find.text('2 items'), findsOneWidget);
@@ -249,7 +249,7 @@ void main() {
       records: FakeDentalRecordRepository()..fetchError = Exception('offline'),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('AI Screening'), findsOneWidget);
+    expect(find.text('Smart Screening'), findsOneWidget);
     expect(find.textContaining("couldn't load"), findsOneWidget);
   });
 

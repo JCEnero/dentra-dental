@@ -195,7 +195,7 @@ class _Done extends StatelessWidget {
             _ThumbGrid(session: session, showMissing: true),
             if (summary != null) ...[
               const SizedBox(height: 16),
-              Text('AI-assisted summary', style: _subtitle),
+              Text('Screening summary', style: _subtitle),
               const SizedBox(height: 4),
               Text(summary, style: _body.copyWith(color: AppColors.navy)),
               if (details != null && details.qualityIssues.isNotEmpty)
@@ -206,7 +206,7 @@ class _Done extends StatelessWidget {
             ] else if (notConnected) ...[
               const SizedBox(height: 14),
               Text(
-                "AI analysis isn't connected in this version yet, so no "
+                "Smart analysis isn't connected in this version yet, so no "
                 'findings were generated.',
                 style: _body,
               ),
@@ -278,7 +278,7 @@ class ScanDisclaimer extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'DENTRA provides AI-assisted screening information and does not '
+              'DENTRA provides smart screening information and does not '
               'replace professional dental evaluation.',
               style: GoogleFonts.outfit(
                 fontSize: 11.5,

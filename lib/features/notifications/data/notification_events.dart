@@ -84,7 +84,7 @@ abstract class NotificationEvents {
       AppNotification(
         id: 'analysis-$sessionId',
         category: NotificationCategory.screening,
-        title: 'AI analysis ready',
+        title: 'Screening results ready',
         body: 'Your screening summary is available. It is not a diagnosis; '
             'share it with your dentist.',
         createdAt: DateTime.now(),

@@ -76,7 +76,7 @@ const List<AppTourStep> appTourSteps = [
     spot: TourSpot.rabi,
     chapter: 'Home',
     title: 'Meet Rabi',
-    body: 'Your AI assistant. Ask about your results or your teeth in '
+    body: 'Your smart assistant. Ask about your results or your teeth in '
         'plain words. Rabi guides, a dentist diagnoses.',
   ),
   AppTourStep(

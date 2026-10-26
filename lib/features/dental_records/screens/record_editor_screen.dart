@@ -327,7 +327,7 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
         "Saved as you enter it. DENTRA doesn't verify clinic details or "
             'documents, and isn\'t connected to clinic systems.',
       RecordSource.personalPhoto =>
-        "Saved as your own photo, separate from AI screenings. It isn't "
+        "Saved as your own photo, separate from smart screenings. It isn't "
             'analysed or checked by a dentist.',
       _ => 'Only you can see your notes.',
     };

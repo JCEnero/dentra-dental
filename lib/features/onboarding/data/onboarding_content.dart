@@ -51,9 +51,9 @@ const List<OnboardingSlideContent> onboardingSlides = [
         'orbits.',
   ),
   OnboardingSlideContent(
-    eyebrow: 'AI-assisted screening',
+    eyebrow: 'Smart screening',
     headline: 'See Your Smile Differently',
-    description: 'Explore AI-assisted dental screening designed to help you '
+    description: 'Explore smart dental screening designed to help you '
         'monitor your oral health.',
     note: 'Screening support only, not a medical diagnosis.',
     visual: OnboardingVisual.screening,

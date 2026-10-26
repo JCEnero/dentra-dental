@@ -136,7 +136,7 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
         delay: Duration(milliseconds: 580),
         child: DentraNoteCard(
           icon: Icons.health_and_safety_outlined,
-          message: 'This is an AI-assisted screening, not a medical '
+          message: 'This is a smart screening, not a medical '
               'diagnosis. Please consult a licensed dentist. Results in '
               'this demo are simulated.',
         ),

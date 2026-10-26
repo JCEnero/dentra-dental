@@ -593,8 +593,8 @@ class _Details extends StatelessWidget {
                           ),
                           Text(
                             s.analysis == null
-                                ? 'No AI analysis saved'
-                                : 'AI analysis saved',
+                                ? 'No analysis saved'
+                                : 'Analysis saved',
                             style: GoogleFonts.outfit(
                               fontSize: 12,
                               color: AppColors.secondaryText,

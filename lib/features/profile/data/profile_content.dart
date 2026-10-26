@@ -12,7 +12,7 @@ abstract class ProfileContent {
   static const faqs = <(String, String)>[
     (
       'What is DENTRA?',
-      'DENTRA is an AI-assisted dental screening app. You scan your teeth at '
+      'DENTRA is a smart dental screening app. You scan your teeth at '
           'home and get preliminary observations before visiting a clinic.',
     ),
     (
@@ -57,7 +57,7 @@ abstract class ProfileContent {
           'date of birth and password.\n'
           '• Profile details you choose to add, such as a profile photo.\n'
           '• Dental screening photos and videos you capture or upload.\n'
-          '• Answers you give in questionnaires, notes, and messages to our AI '
+          '• Answers you give in questionnaires, notes, and messages to our smart '
           'assistant or support team.\n\n'
           'Information collected automatically:\n'
           '• Device information such as model, operating system, app version '
@@ -95,12 +95,12 @@ abstract class ProfileContent {
           '• Prevent fraud and abuse, and meet our legal obligations.',
     ),
     (
-      'AI-assisted screening',
-      'DENTRA uses artificial intelligence to review your dental photos and '
+      'Smart screening',
+      'DENTRA uses automated image analysis to review your dental photos and '
           'to power the in-app assistant. To do this, images and messages are '
-          'sent securely to our AI processing provider, which analyzes them on '
+          'sent securely to our secure processing provider, which analyzes them on '
           'our behalf and is not allowed to use them for its own purposes.\n\n'
-          'AI results are preliminary observations only. They are not a '
+          'Screening results are preliminary observations only. They are not a '
           'diagnosis and can be wrong. Always consult a licensed dentist '
           'before making decisions about your dental health.',
     ),
@@ -122,7 +122,7 @@ abstract class ProfileContent {
           'advertising.\n\n'
           'We share information only with:\n'
           '• Service providers that help us run DENTRA, such as cloud hosting, '
-          'secure file storage, email delivery and AI processing. They act on '
+          'secure file storage, email delivery and image processing. They act on '
           'our instructions and must protect your data.\n'
           '• Dental clinics or professionals, only when you choose to share '
           'your results with them.\n'

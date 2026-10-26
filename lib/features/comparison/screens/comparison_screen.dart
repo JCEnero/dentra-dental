@@ -605,7 +605,7 @@ class _Result extends ConsumerWidget {
                     'by side.',
           ),
         if (s1 != null || s2 != null) ...[
-          const _SectionTitle('AI screening details'),
+          const _SectionTitle('Smart screening details'),
           _ScreeningComparison(earlier: s1, later: s2),
         ],
         if (earlier.record != null || later.record != null) ...[
@@ -634,7 +634,7 @@ class _Result extends ConsumerWidget {
   }
 
   static String _kind(RecordSource s) => switch (s) {
-        RecordSource.aiScreening => 'an AI-assisted screening',
+        RecordSource.aiScreening => 'a smart screening',
         RecordSource.clinicRecord => 'a clinic record you entered',
         RecordSource.personalPhoto => 'a photo you uploaded',
         RecordSource.personalNote => 'a note you wrote',
@@ -723,16 +723,16 @@ class _ScreeningComparison extends StatelessWidget {
     final a1 = earlier?.analysis, a2 = later?.analysis;
     final String note;
     if (earlier == null || later == null) {
-      note = 'Only one side is an AI screening, so screening results are shown '
+      note = 'Only one side is a smart screening, so screening results are shown '
           'for that side only.';
     } else if (a1 == null && a2 == null) {
-      note = 'Neither screening has an AI analysis saved, so there are no '
+      note = 'Neither screening has an analysis saved, so there are no '
           'findings to compare. Only the captured regions can be shown.';
     } else if (a1 == null || a2 == null) {
-      note = 'Only the ${a1 == null ? 'later' : 'earlier'} screening has an AI '
+      note = 'Only the ${a1 == null ? 'later' : 'earlier'} screening has an '
           "analysis, so findings can't be compared.";
     } else {
-      note = 'Findings are listed as the AI reported them for each screening. '
+      note = 'Findings are listed as the screening reported them for each screening. '
           "A finding that appears in one and not the other doesn't show that a "
           'condition improved or worsened.';
     }
@@ -750,7 +750,7 @@ class _ScreeningComparison extends StatelessWidget {
               _names(earlier!.capturedRegions.toSet().intersection(later!.capturedRegions.toSet())),
               null,
             ),
-          _PairRow('AI analysis', analysis(earlier), analysis(later), last: a1 == null && a2 == null),
+          _PairRow('Analysis', analysis(earlier), analysis(later), last: a1 == null && a2 == null),
           if (a1 != null || a2 != null) ...[
             const SizedBox(height: 10),
             Row(
@@ -788,7 +788,7 @@ class _Findings extends StatelessWidget {
     final a = analysis;
     final style = GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText);
     if (!present) return Text('—', style: style);
-    if (a == null) return Text('No AI findings saved', style: style);
+    if (a == null) return Text('No findings saved', style: style);
     if (a.findings.isEmpty) {
       return Text('No structured findings reported', style: style);
     }
@@ -838,7 +838,7 @@ class _RecordDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget side(DentalRecord? r) {
       final style = GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText, height: 1.4);
-      if (r == null) return Text('AI screening', style: style);
+      if (r == null) return Text('Smart screening', style: style);
       final lines = [
         recordDateLabel(r),
         if (r.source == RecordSource.clinicRecord) ...[

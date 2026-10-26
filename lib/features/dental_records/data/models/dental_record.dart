@@ -10,8 +10,8 @@ enum RecordSource {
   /// DENTRA's screening pipeline (`screening_sessions` on the server).
   aiScreening(
     'ai_screening',
-    'AI Screening',
-    'AI-assisted visual screening result',
+    'Smart Screening',
+    'Smart visual screening result',
   ),
 
   /// A dental visit the user wrote down. Not verified by DENTRA.

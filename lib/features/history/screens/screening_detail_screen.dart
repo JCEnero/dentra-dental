@@ -156,7 +156,7 @@ class _BodyState extends ConsumerState<_Body> {
               _Images(session: s, images: widget.images),
               const _SectionTitle('Regions'),
               _Regions(session: s),
-              const _SectionTitle('AI-assisted findings'),
+              const _SectionTitle('Screening findings'),
               _Findings(session: s),
               if (widget.previous != null) ...[
                 const _SectionTitle('Compared with previous'),
@@ -355,7 +355,7 @@ class _ImageTile extends StatelessWidget {
   void _open(BuildContext context) => showDentraImageViewer(
         context,
         image: image,
-        caption: 'AI Screening · $label',
+        caption: 'Smart Screening · $label',
       );
 
   @override
@@ -513,8 +513,8 @@ class _Findings extends StatelessWidget {
     if (analysis == null) {
       return const _Note(
         icon: Icons.auto_awesome_outlined,
-        text: 'No AI analysis was run for this screening, so there are no '
-            'findings, tooth annotations or confidence scores to show. AI '
+        text: 'No analysis was run for this screening, so there are no '
+            'findings, tooth annotations or confidence scores to show. Smart '
             "analysis isn't connected yet.",
       );
     }
@@ -532,7 +532,7 @@ class _Findings extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              'AI-assisted · Not a clinical diagnosis',
+              'Smart screening · Not a clinical diagnosis',
               style: GoogleFonts.outfit(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
