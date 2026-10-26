@@ -265,31 +265,45 @@ class _Header extends StatelessWidget {
                 child: Container(
                   width: 60,
                   height: 60,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.white.withValues(alpha: 0.85),
-                        treatment.iconBackground.withValues(alpha: 0.9),
-                      ],
-                    ),
-                    border: Border.all(color: AppGlass.border),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.18),
-                        blurRadius: 18,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
+                  decoration: treatment.iconPath != null
+                      // Neutral frosted tile, so no treatment tint shows.
+                      ? AppGlass.iconTile(BorderRadius.circular(18)).copyWith(
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.navy.withValues(alpha: 0.08),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        )
+                      : BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.white.withValues(alpha: 0.85),
+                              treatment.iconBackground.withValues(alpha: 0.9),
+                            ],
+                          ),
+                          border: Border.all(color: AppGlass.border),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accent.withValues(alpha: 0.18),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
                   child: treatment.iconPath != null
                       ? Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Image.asset(
-                            treatment.iconPath!,
-                            fit: BoxFit.contain,
+                          padding: const EdgeInsets.all(6),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              treatment.iconPath!,
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         )
                       : Icon(treatment.icon, size: 28, color: accent),

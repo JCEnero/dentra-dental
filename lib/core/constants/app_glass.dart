@@ -93,4 +93,21 @@ abstract class AppGlass {
       border: Border.all(color: borderColor ?? border, width: borderWidth),
     );
   }
+
+  /// Neutral frosted tile behind treatment icons: white fading to a
+  /// light grey, so no per-treatment tint (e.g. peach) shows through.
+  static BoxDecoration iconTile(BorderRadius borderRadius) {
+    return BoxDecoration(
+      borderRadius: borderRadius,
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xD9FFFFFF), // white, 85%
+          Color(0xB3E6E9EB), // light grey, 70%
+        ],
+      ),
+      border: Border.all(color: border),
+    );
+  }
 }

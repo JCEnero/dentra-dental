@@ -302,17 +302,22 @@ class _TreatmentCard extends StatelessWidget {
               Container(
                 width: 60,
                 height: 60,
-                decoration: BoxDecoration(
-                  color: treatment.iconBackground,
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                decoration: treatment.iconPath != null
+                    ? AppGlass.iconTile(BorderRadius.circular(14))
+                    : BoxDecoration(
+                        color: treatment.iconBackground,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                 clipBehavior: Clip.antiAlias,
                 child: treatment.iconPath != null
                     ? Padding(
                         padding: const EdgeInsets.all(6),
-                        child: Image.asset(
-                          treatment.iconPath!,
-                          fit: BoxFit.contain,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
+                          child: Image.asset(
+                            treatment.iconPath!,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       )
                     : treatment.imagePath != null
