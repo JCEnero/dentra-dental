@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/avatar_widget.dart';
+import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/gradient_divider.dart';
 import '../../../shared/widgets/primary_button.dart';
@@ -14,8 +15,11 @@ import '../../app_tour/data/app_tour_targets.dart';
 import '../../comparison/screens/comparison_screen.dart';
 import '../../history/screens/tooth_history_explorer.dart';
 import '../../treatment/screens/treatment_screen.dart';
+import '../../notifications/data/notification_events.dart';
+import '../../notifications/providers/notifications_provider.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../../profile/screens/edit_profile_screen.dart';
 import '../data/daily_tip_repository.dart';
 import '../providers/daily_tip_provider.dart';
 import '../widgets/screening_activity_card.dart';
@@ -84,10 +88,36 @@ class HomeScreen extends ConsumerWidget {
                     onOpenProfile: () => onNavigate(4),
                   ),
                   const SizedBox(width: 10),
-                  AvatarWidget(
-                    size: 44,
-                    initials: profile?.initials ?? '',
-                    imageBytes: profile?.avatarBytes,
+                  // Opens Edit Profile; the Profile tab until it has loaded.
+                  Semantics(
+                    button: true,
+                    label: 'Edit profile',
+                    excludeSemantics: true,
+                    child: Tooltip(
+                      message: 'Edit profile',
+                      child: Material(
+                        type: MaterialType.transparency,
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () async {
+                            if (profile == null) return onNavigate(4);
+                            final saved =
+                                await Navigator.of(context, rootNavigator: true)
+                                    .push(EditProfileScreen.route(profile));
+                            if (saved != true || !context.mounted) return;
+                            ref.read(notificationsProvider.notifier).record(
+                                NotificationEvents.profileUpdated());
+                            showDentraSnack(context, 'Profile updated.');
+                          },
+                          child: AvatarWidget(
+                            size: 44,
+                            initials: profile?.initials ?? '',
+                            imageBytes: profile?.avatarBytes,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

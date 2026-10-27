@@ -154,7 +154,9 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
           children: [
             const DentraPageHeader(title: 'Scan Results'),
             Divider(height: 1, thickness: 1, color: AppGlass.divider),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            const Center(child: _DemoBadge()),
+            const SizedBox(height: 12),
             Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1120),
@@ -744,6 +746,47 @@ class _OthersTile extends StatelessWidget {
   }
 }
 
+/// Says up front that the results are simulated, not a real analysis.
+class _DemoBadge extends StatelessWidget {
+  const _DemoBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Demo result. The analysis is simulated, not a diagnosis.',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.warmOrange.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppColors.warmOrange.withValues(alpha: 0.45),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.science_outlined,
+                size: 15, color: AppColors.warmOrange),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Demo result · simulated analysis',
+                style: GoogleFonts.outfit(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Region breakdown ──────────────────────────────────────────────
 
 class _RegionBreakdown extends ConsumerWidget {
@@ -752,7 +795,7 @@ class _RegionBreakdown extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final photos = ref.watch(scanFlowProvider.select((s) => s.photos));
+    final photos = ref.watch(scanFlowProvider.select((s) => s.usablePhotos));
     return GlassCard(
       borderRadius: const BorderRadius.all(Radius.circular(20)),
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),

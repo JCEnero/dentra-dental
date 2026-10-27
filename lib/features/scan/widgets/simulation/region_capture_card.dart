@@ -35,7 +35,17 @@ Future<void> pickRegionPhoto(
   try {
     final image = await camera.capture(source);
     if (image == null) return; // closed without a photo
-    ref.read(scanFlowProvider.notifier).setPhoto(region.id, image.bytes);
+    final check = await ref
+        .read(scanFlowProvider.notifier)
+        .setPhoto(region.id, image.bytes);
+    if (check == PhotoCheck.rejected && context.mounted) {
+      showDentraSnack(
+        context,
+        "We couldn't find teeth in that photo. Retake it close up, with "
+        'your lips pulled back and good light.',
+        tone: DentraFeedbackTone.error,
+      );
+    }
   } on CameraException catch (e) {
     if (!context.mounted) return;
     showDentraSnack(
@@ -121,11 +131,13 @@ class RegionCaptureCard extends ConsumerWidget {
     final photo =
         ref.watch(scanFlowProvider.select((s) => s.photos[region.id]));
     final passed = photo?.check == PhotoCheck.passed;
-    final status = photo == null
-        ? 'no photo yet'
-        : passed
-            ? 'photo added, quality check passed'
-            : 'photo added, checking quality';
+    final rejected = photo?.check == PhotoCheck.rejected;
+    final status = switch (photo?.check) {
+      null => 'no photo yet',
+      PhotoCheck.passed => 'photo added, quality check passed',
+      PhotoCheck.rejected => 'no teeth found in this photo, retake it',
+      PhotoCheck.checking => 'photo added, checking quality',
+    };
 
     return Semantics(
       container: true,
@@ -133,8 +145,12 @@ class RegionCaptureCard extends ConsumerWidget {
           '${captureRegions.length}, $status',
       child: GlassCard(
         borderRadius: const BorderRadius.all(Radius.circular(20)),
-        borderColor: passed ? AppColors.g2.withValues(alpha: 0.55) : null,
-        borderWidth: passed ? 1.4 : 1,
+        borderColor: passed
+            ? AppColors.g2.withValues(alpha: 0.55)
+            : rejected
+                ? AppColors.danger.withValues(alpha: 0.6)
+                : null,
+        borderWidth: passed || rejected ? 1.4 : 1,
         onTap: onOpen,
         padding: const EdgeInsets.all(8),
         child: Column(
@@ -225,7 +241,7 @@ class RegionCaptureCard extends ConsumerWidget {
                       Expanded(
                         child: _CardButton(
                           icon: Icons.cached_rounded,
-                          label: 'Replace',
+                          label: rejected ? 'Retake' : 'Replace',
                           semantic: 'Replace ${region.label} photo',
                           onTap: () => pickRegionPhoto(context, ref, region),
                         ),
@@ -314,8 +330,8 @@ class _CheckBadge extends StatelessWidget {
   }
 }
 
-/// Mock quality check over the bottom of a photo: a moment of
-/// "checking", then three passes.
+/// Quality check over the bottom of a photo: a moment of "checking",
+/// then three passes, or a retake prompt when no teeth were found.
 class _QualityStrip extends StatelessWidget {
   const _QualityStrip({required this.check});
   final PhotoCheck check;
@@ -323,6 +339,7 @@ class _QualityStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final checking = check == PhotoCheck.checking;
+    final rejected = check == PhotoCheck.rejected;
     final text = GoogleFonts.outfit(
       fontSize: 10.5,
       fontWeight: FontWeight.w600,
@@ -346,7 +363,9 @@ class _QualityStrip extends StatelessWidget {
       liveRegion: true,
       label: checking
           ? 'Checking photo quality'
-          : 'Sharp, well-lit and aligned',
+          : rejected
+              ? 'No teeth found. Retake this photo'
+              : 'Sharp, well-lit and aligned',
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.fromLTRB(8, 14, 8, 6),
@@ -376,7 +395,25 @@ class _QualityStrip extends StatelessWidget {
                     Text('Checking quality…', style: text),
                   ],
                 )
-              : FittedBox(
+              : rejected
+                  ? Row(
+                      key: const ValueKey('rejected'),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline_rounded,
+                            size: 12, color: AppColors.danger),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'No teeth found · Retake',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text,
+                          ),
+                        ),
+                      ],
+                    )
+                  : FittedBox(
                   key: const ValueKey('passed'),
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,

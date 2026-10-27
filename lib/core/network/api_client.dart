@@ -75,6 +75,47 @@ class ApiClient {
     bool authorized = true,
     String? bearer,
   }) async {
+    final request = await _build(method, path,
+        json: json,
+        query: query,
+        bytes: bytes,
+        contentType: contentType,
+        authorized: authorized,
+        bearer: bearer);
+    final streamed = await _client.send(request).timeout(_timeout);
+    final response = await http.Response.fromStream(streamed).timeout(_timeout);
+    return _decode(response);
+  }
+
+  /// Opens an authorized JSON request and hands back the response as it
+  /// streams, for endpoints that may answer with server-sent events.
+  /// The caller applies its own timeouts. Non-2xx responses throw
+  /// [ApiException] like [send].
+  Future<http.StreamedResponse> openStream(
+    String method,
+    String path, {
+    Map<String, dynamic>? json,
+    String accept = 'application/json',
+  }) async {
+    final request = await _build(method, path, json: json)
+      ..headers['Accept'] = accept;
+    final streamed = await _client.send(request);
+    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+      _decode(await http.Response.fromStream(streamed));
+    }
+    return streamed;
+  }
+
+  Future<http.Request> _build(
+    String method,
+    String path, {
+    Map<String, dynamic>? json,
+    Map<String, String>? query,
+    Uint8List? bytes,
+    String? contentType,
+    bool authorized = true,
+    String? bearer,
+  }) async {
     var token = bearer;
     if (token == null && authorized) {
       token = await accessToken?.call();
@@ -101,10 +142,7 @@ class ApiClient {
           contentType ?? 'application/octet-stream';
       request.bodyBytes = bytes;
     }
-
-    final streamed = await _client.send(request).timeout(_timeout);
-    final response = await http.Response.fromStream(streamed).timeout(_timeout);
-    return _decode(response);
+    return request;
   }
 
   /// Downloads raw bytes, e.g. a signed image URL from the API.
@@ -117,6 +155,8 @@ class ApiClient {
   }
 
   /// Returns the JSON body of a 2xx response, or throws [ApiException].
+  Map<String, dynamic> decode(http.Response response) => _decode(response);
+
   Map<String, dynamic> _decode(http.Response response) {
     Map<String, dynamic>? body;
     if (response.body.isNotEmpty) {

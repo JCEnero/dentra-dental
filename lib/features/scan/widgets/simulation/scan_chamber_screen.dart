@@ -80,12 +80,12 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
     final flow = ref.read(scanFlowProvider);
     _timeline = ChamberTimeline([
       for (final r in captureRegions)
-        if (flow.photos.containsKey(r.id)) r,
+        if (flow.usablePhotos.containsKey(r.id)) r,
     ]);
     // The same mock report the results will show, so the shades the scan
     // settles on match the map.
     _preview = ScanReport.generate(
-      captured: flow.photos.keys.toSet(),
+      captured: flow.usablePhotos.keys.toSet(),
       completedAt: DateTime.now(),
       sequence: flow.completedScans + 1,
     );
@@ -102,7 +102,7 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
   }
 
   Future<void> _prepare() async {
-    final photos = ref.read(scanFlowProvider).photos;
+    final photos = ref.read(scanFlowProvider).usablePhotos;
     final model = await ref.read(scanDentitionProvider.future);
     if (!mounted) return;
     _length = Duration(seconds: _reduced ? 6 : 13);

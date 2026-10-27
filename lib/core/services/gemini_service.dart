@@ -1,13 +1,19 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 /// Calls the Gemini REST API directly so we are not tied to any SDK version.
-/// Uses gemini-2.5-flash-lite — free tier, low latency, supports generateContent.
+/// Uses a flash-lite model for low latency, and streams the reply (SSE) so
+/// text shows as soon as the first words arrive.
 class GeminiService {
   static const _model = 'gemini-3.5-flash-lite';
   static const _baseUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent';
+      'https://generativelanguage.googleapis.com/v1beta/models/$_model:streamGenerateContent';
+
+  /// How long to wait for the first words, and then between chunks.
+  static const _firstChunkTimeout = Duration(seconds: 15);
+  static const _chunkTimeout = Duration(seconds: 12);
 
   /// Dental-focused system instruction so Gemini stays on topic.
   static const _systemInstruction = '''
@@ -17,10 +23,16 @@ common dental conditions, treatment options, and when to see a dentist.
 
 Guidelines:
 - Be warm, clear, and concise.
-- Always remind users that your answers are informational only and not a substitute
-  for a professional dental examination or diagnosis.
-- If a question is completely unrelated to oral/dental health, politely redirect the
-  user and offer to help with dental questions instead.
+- The app already shows a "general information, not a diagnosis" note, so don't
+  repeat a disclaimer in every answer. When symptoms sound urgent (severe pain,
+  swelling, fever, bleeding that won't stop, trauma), say to see a dentist soon.
+- If a question is not about oral or dental health, reply in one or two friendly
+  sentences that you focus on dental topics, and offer an example dental question
+  you can help with. Don't answer the off-topic question.
+- You don't know the user's location. If they ask for a clinic or dentist nearby,
+  suggest the Clinics tab in DENTRA, which lists nearby clinics once location is
+  turned on, or ask which city or area they are in. Never invent clinic names,
+  addresses or prices.
 - Use plain language — avoid heavy medical jargon unless the user asks for detail.
 - Keep answers short and scannable: a brief answer first, then short bullet
   points if useful. Use **bold** sparingly for key terms. No headings or tables.
@@ -54,17 +66,21 @@ Guidelines:
   }
 
   /// Sends [userMessage] to Gemini and returns the assistant reply.
+  /// [onPartial] receives the reply so far each time more text arrives.
   ///
   /// On failure the user turn is removed again, so a retry doesn't send
   /// the same question twice in the conversation context.
-  Future<String> chat(String userMessage) async {
+  Future<String> chat(
+    String userMessage, {
+    void Function(String textSoFar)? onPartial,
+  }) async {
     if (_apiKey.isEmpty) {
       throw const GeminiException(
         "Rabi isn't set up on this build yet. Please try again later.",
       );
     }
     try {
-      return await _send(userMessage);
+      return await _send(userMessage, onPartial);
     } catch (_) {
       if (_history.isNotEmpty && _history.last['role'] == 'user') {
         _history.removeLast();
@@ -73,7 +89,10 @@ Guidelines:
     }
   }
 
-  Future<String> _send(String userMessage) async {
+  Future<String> _send(
+    String userMessage,
+    void Function(String textSoFar)? onPartial,
+  ) async {
     // Add user turn to history.
     _history.add({
       'role': 'user',
@@ -82,7 +101,7 @@ Guidelines:
       ],
     });
 
-    final url = Uri.parse('$_baseUrl?key=$_apiKey');
+    final url = Uri.parse('$_baseUrl?alt=sse&key=$_apiKey');
 
     final body = jsonEncode({
       'system_instruction': {
@@ -98,28 +117,13 @@ Guidelines:
     });
 
     try {
-      final response = await _client
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: body,
-          )
-          .timeout(const Duration(seconds: 30));
+      final request = http.Request('POST', url)
+        ..headers['Content-Type'] = 'application/json'
+        ..body = body;
+      final response =
+          await _client.send(request).timeout(_firstChunkTimeout);
 
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final reply = _extractText(json);
-
-        // Add model turn to history so future messages have context.
-        _history.add({
-          'role': 'model',
-          'parts': [
-            {'text': reply}
-          ],
-        });
-
-        return reply;
-      } else {
+      if (response.statusCode != 200) {
         // Raw API messages can mention keys and quotas; keep them out of
         // the UI and explain by status instead.
         throw GeminiException(switch (response.statusCode) {
@@ -130,8 +134,44 @@ Guidelines:
           _ => 'Rabi had trouble answering. Please try again.',
         });
       }
+
+      // Each SSE event is a `data: {...}` line holding the next piece.
+      final reply = StringBuffer();
+      final lines = response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .timeout(_chunkTimeout);
+      await for (final line in lines) {
+        if (!line.startsWith('data:')) continue;
+        final chunk = _extractText(
+          jsonDecode(line.substring(5)) as Map<String, dynamic>,
+        );
+        if (chunk.isEmpty) continue;
+        reply.write(chunk);
+        onPartial?.call(reply.toString());
+      }
+
+      final text = reply.toString().trim();
+      if (text.isEmpty) {
+        throw const GeminiException(
+          "I'm sorry, I didn't get a response. Please try again.",
+        );
+      }
+
+      // Add model turn to history so future messages have context.
+      _history.add({
+        'role': 'model',
+        'parts': [
+          {'text': text}
+        ],
+      });
+      return text;
     } on GeminiException {
       rethrow;
+    } on TimeoutException {
+      throw const GeminiException(
+        'Rabi is taking too long to answer. Please try again.',
+      );
     } catch (e) {
       throw const GeminiException(
         "Couldn't reach Rabi. Check your connection and try again.",
@@ -139,16 +179,19 @@ Guidelines:
     }
   }
 
+  /// Text of one streamed chunk; empty when it carries none (e.g. the
+  /// final chunk with only usage data).
   String _extractText(Map<String, dynamic> json) {
     final candidates = json['candidates'] as List<dynamic>?;
-    if (candidates == null || candidates.isEmpty) {
-      return "I'm sorry, I didn't get a response. Please try again.";
-    }
+    if (candidates == null || candidates.isEmpty) return '';
     final content = candidates.first['content'] as Map<String, dynamic>?;
-    final parts = content?['parts'] as List<dynamic>?;
-    final text = parts?.firstOrNull?['text'] as String?;
-    return text?.trim() ??
-        "I'm sorry, I didn't get a response. Please try again.";
+    final parts = content?['parts'] as List<dynamic>? ?? const [];
+    return [
+      for (final part in parts.cast<Map<String, dynamic>>())
+        // Thinking models can stream their reasoning as `thought` parts.
+        if (part['thought'] != true && part['text'] is String)
+          part['text'] as String,
+    ].join();
   }
 
   /// Resets the conversation history, starting a fresh session.

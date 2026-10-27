@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../../shared/widgets/dentra_note_card.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../data/capture_regions.dart';
 import '../../providers/scan_flow_provider.dart';
@@ -43,6 +44,7 @@ class _RegionDetailSheetState extends ConsumerState<RegionDetailSheet> {
     final photo =
         ref.watch(scanFlowProvider.select((s) => s.photos[region.id]));
     final showingPhoto = photo != null && _showPhoto;
+    final rejected = photo?.check == PhotoCheck.rejected;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -112,6 +114,15 @@ class _RegionDetailSheetState extends ConsumerState<RegionDetailSheet> {
           ),
         ),
         const SizedBox(height: 12),
+        if (rejected) ...[
+          const DentraNoteCard(
+            icon: Icons.error_outline_rounded,
+            message: "We couldn't find teeth in this photo, so it won't be "
+                'used in the scan. Retake it close up, with your lips pulled '
+                'back and good light.',
+          ),
+          const SizedBox(height: 12),
+        ],
         Text(
           region.instruction,
           style: GoogleFonts.outfit(
@@ -163,7 +174,11 @@ class _RegionDetailSheetState extends ConsumerState<RegionDetailSheet> {
           ),
         const SizedBox(height: 10),
         GlowButton(
-          label: photo == null ? 'Add Photo' : 'Replace Photo',
+          label: photo == null
+              ? 'Add Photo'
+              : rejected
+                  ? 'Retake Photo'
+                  : 'Replace Photo',
           icon: photo == null
               ? Icons.add_a_photo_outlined
               : Icons.cached_rounded,
