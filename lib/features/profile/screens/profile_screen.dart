@@ -161,56 +161,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         );
         return;
       }
-      final enabled =
-          await showTwoFactorSetupSheet(context, email: profile.email);
-      if (enabled) _notify(NotificationEvents.twoFactorChanged(enabled: true));
-      if (enabled && mounted) {
-        showDentraSnack(context, 'Two-factor authentication is on.');
-      }
-      return;
+    } else {
+      final confirmed = await showGlassConfirmDialog(
+        context: context,
+        icon: Icons.shield_outlined,
+        title: 'Turn off two-factor authentication?',
+        message: 'Signing in will only need your password. Your account will '
+            'be less protected.',
+        confirmLabel: 'Turn off',
+        destructive: true,
+      );
+      if (!confirmed || !mounted) return;
     }
 
-    final confirmed = await showGlassConfirmDialog(
-      context: context,
-      icon: Icons.shield_outlined,
-      title: 'Turn off two-factor authentication?',
-      message: 'Signing in will only need your password. Your account will '
-          'be less protected.',
-      confirmLabel: 'Turn off',
-      destructive: true,
-    );
-    if (!confirmed || !mounted) return;
-    await _disableTwoFactor();
-  }
-
-  Future<void> _disableTwoFactor() async {
     setState(() => _twoFactorBusy = true);
-    String? error;
-    try {
-      final result = await ref.read(authServiceProvider).disableTwoFactor();
-      if (result.success) {
-        await ref
-            .read(profileProvider.notifier)
-            .setPreferences(twoFactorEnabled: false);
-      } else {
-        error = result.error;
-      }
-    } catch (_) {
-      error = "We couldn't reach DENTRA. Check your connection and try again.";
-    }
+    final changed = await showTwoFactorSheet(
+      context,
+      email: profile.email,
+      enable: enable,
+    );
     if (!mounted) return;
     setState(() => _twoFactorBusy = false);
-    if (error == null) {
-      _notify(NotificationEvents.twoFactorChanged(enabled: false));
-      showDentraSnack(context, 'Two-factor authentication is off.');
-    } else {
-      showDentraSnack(
-        context,
-        error,
-        tone: DentraFeedbackTone.error,
-        onRetry: _disableTwoFactor,
-      );
-    }
+    if (!changed) return;
+    _notify(NotificationEvents.twoFactorChanged(enabled: enable));
+    showDentraSnack(
+      context,
+      enable
+          ? 'Two-factor authentication is on.'
+          : 'Two-factor authentication is off.',
+    );
   }
 
   // ── Session ───────────────────────────────────────────────────

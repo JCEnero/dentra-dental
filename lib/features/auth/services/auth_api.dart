@@ -35,6 +35,26 @@ class AuthSession {
   }
 }
 
+/// Thrown by [AuthApi.login] when the password was right but the account
+/// has two-factor on: a code was emailed, and [AuthApi.verifyTwoFactor]
+/// with [challengeToken] and that code finishes the sign-in.
+class TwoFactorRequired implements Exception {
+  final String challengeToken;
+  final String email;
+
+  /// Seconds until another code can be requested.
+  final int resendAvailableIn;
+
+  const TwoFactorRequired({
+    required this.challengeToken,
+    required this.email,
+    required this.resendAvailableIn,
+  });
+
+  @override
+  String toString() => 'TwoFactorRequired($email)';
+}
+
 /// The DENTRA backend's `/api/auth` endpoints, plus account deletion.
 ///
 /// Errors are [ApiException]s; network failures surface as the usual
@@ -75,14 +95,67 @@ class AuthApi {
     return body['resend_available_in'] as int? ?? 60;
   }
 
+  /// Throws [TwoFactorRequired] when the account needs its emailed code.
   Future<AuthSession> login({
     required String email,
     required String password,
+  }) async {
+    final body = await _post('/api/auth/login', {
+      'email': email,
+      'password': password,
+    });
+    if (body['two_factor_required'] == true) {
+      throw TwoFactorRequired(
+        challengeToken: body['challenge_token'] as String,
+        email: body['email'] as String? ?? email,
+        resendAvailableIn: body['resend_available_in'] as int? ?? 60,
+      );
+    }
+    return AuthSession.fromJson(body);
+  }
+
+  /// Finishes a two-factor sign-in with the emailed code.
+  Future<AuthSession> verifyTwoFactor({
+    required String challengeToken,
+    required String code,
   }) async =>
-      AuthSession.fromJson(await _post('/api/auth/login', {
-        'email': email,
-        'password': password,
+      AuthSession.fromJson(await _post('/api/auth/2fa/verify', {
+        'challenge_token': challengeToken,
+        'code': code,
       }));
+
+  /// Emails another sign-in code. Returns seconds until the next one.
+  Future<int> resendTwoFactor(String challengeToken) async {
+    final body = await _post(
+      '/api/auth/2fa/resend',
+      {'challenge_token': challengeToken},
+    );
+    return body['resend_available_in'] as int? ?? 60;
+  }
+
+  /// Emails the signed-in user a code to confirm turning 2FA on or off.
+  /// Returns seconds until another may be requested.
+  Future<int> sendTwoFactorCode({required String accessToken}) async {
+    final body = await _api.send(
+      'POST',
+      '/api/auth/2fa/code',
+      bearer: accessToken,
+    );
+    return body['resend_available_in'] as int? ?? 60;
+  }
+
+  /// Turns two-factor on or off with the emailed code.
+  Future<void> setTwoFactor({
+    required String accessToken,
+    required String code,
+    required bool enabled,
+  }) =>
+      _api.send(
+        'POST',
+        enabled ? '/api/auth/2fa/enable' : '/api/auth/2fa/disable',
+        json: {'code': code},
+        bearer: accessToken,
+      );
 
   /// Exchanges a Google ID token (verified by the server) for a session.
   Future<AuthSession> loginWithGoogle(String idToken) async =>

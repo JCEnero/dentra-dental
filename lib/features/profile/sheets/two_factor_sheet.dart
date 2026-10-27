@@ -13,32 +13,38 @@ import '../providers/profile_provider.dart';
 import '../utils/profile_validators.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 
-/// Opens the two-factor setup sheet. Resolves to true once 2FA is on and
-/// saved to the profile.
-Future<bool> showTwoFactorSetupSheet(
+/// Opens the two-factor sheet: emails a code and, once it is entered,
+/// turns 2FA on ([enable]) or off. Resolves to true once the change is
+/// saved.
+Future<bool> showTwoFactorSheet(
   BuildContext context, {
   required String email,
+  required bool enable,
 }) async {
-  final enabled = await showGlassSheet<bool>(
+  final changed = await showGlassSheet<bool>(
     context: context,
-    title: 'Two-factor authentication',
-    subtitle: 'Add a second step to sign-in with a code sent to your email.',
-    builder: (_) => _TwoFactorForm(email: email),
+    title: enable
+        ? 'Two-factor authentication'
+        : 'Turn off two-factor authentication',
+    subtitle: enable
+        ? 'Add a second step to sign-in with a code sent to your email.'
+        : 'Confirm with a code sent to your email.',
+    builder: (_) => _TwoFactorForm(email: email, enable: enable),
   );
-  return enabled ?? false;
+  return changed ?? false;
 }
 
 class _TwoFactorForm extends ConsumerStatefulWidget {
-  const _TwoFactorForm({required this.email});
+  const _TwoFactorForm({required this.email, required this.enable});
 
   final String email;
+  final bool enable;
 
   @override
   ConsumerState<_TwoFactorForm> createState() => _TwoFactorFormState();
 }
 
 class _TwoFactorFormState extends ConsumerState<_TwoFactorForm> {
-  static const _resendCooldown = 30;
   static const _connectionError =
       "We couldn't reach DENTRA. Check your connection and try again.";
 
@@ -83,7 +89,7 @@ class _TwoFactorFormState extends ConsumerState<_TwoFactorForm> {
       _sending = false;
       if (result.success) {
         _codeSent = true;
-        _startCooldown();
+        _startCooldown(result.resendAvailableIn ?? 60);
       } else {
         _formError = result.error ?? _connectionError;
       }
@@ -91,9 +97,9 @@ class _TwoFactorFormState extends ConsumerState<_TwoFactorForm> {
     if (result.success) _codeFocus.requestFocus();
   }
 
-  void _startCooldown() {
+  void _startCooldown(int seconds) {
     _timer?.cancel();
-    _cooldown = _resendCooldown;
+    _cooldown = seconds;
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return t.cancel();
       setState(() => _cooldown--);
@@ -115,17 +121,17 @@ class _TwoFactorFormState extends ConsumerState<_TwoFactorForm> {
     }
 
     setState(() => _verifying = true);
+    // Outlives this sheet, which may be dismissed while the call runs.
+    final container = ProviderScope.containerOf(context, listen: false);
     AuthResult result;
     try {
-      result = await ref.read(authServiceProvider).enableTwoFactor(code: code);
-      if (result.success) {
-        await ref
-            .read(profileProvider.notifier)
-            .setPreferences(twoFactorEnabled: true);
-      }
+      result = await container
+          .read(authServiceProvider)
+          .setTwoFactor(code: code, enable: widget.enable);
     } catch (_) {
       result = const AuthResult(success: false, error: _connectionError);
     }
+    if (result.success) await _syncProfile(container);
     if (!mounted) return;
 
     if (result.success) {
@@ -137,6 +143,18 @@ class _TwoFactorFormState extends ConsumerState<_TwoFactorForm> {
       _codeError = result.error;
     });
     _codeFocus.requestFocus();
+  }
+
+  /// Mirrors the change on the profile. The account already changed, so
+  /// if saving the mirror fails the profile is reloaded instead.
+  Future<void> _syncProfile(ProviderContainer container) async {
+    try {
+      await container
+          .read(profileProvider.notifier)
+          .setPreferences(twoFactorEnabled: widget.enable);
+    } catch (_) {
+      container.invalidate(profileProvider);
+    }
   }
 
   @override
@@ -250,7 +268,7 @@ class _TwoFactorFormState extends ConsumerState<_TwoFactorForm> {
         ),
         const SizedBox(height: 14),
         DentraPillButton(
-          label: 'Verify and turn on',
+          label: widget.enable ? 'Verify and turn on' : 'Verify and turn off',
           loadingLabel: 'Verifying…',
           loading: _verifying,
           onPressed: _codeSent ? _verify : null,

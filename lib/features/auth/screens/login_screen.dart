@@ -14,6 +14,7 @@ import '../../../shared/widgets/dentra_glass_ui.dart';
 import 'registration_screen.dart';
 import 'reset_password_screen.dart';
 import 'sign_in_loading_screen.dart';
+import 'two_factor_screen.dart';
 import 'verify_email_screen.dart';
 
 /// Sign-in screen, built on the shared [AuthScaffold].
@@ -150,6 +151,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (result.needsVerification) {
       setState(() => _isSigningIn = false);
       _openVerification(email);
+      return;
+    }
+
+    // Right password, two-factor on: a sign-in code was just emailed.
+    if (result.twoFactorToken case final token?) {
+      setState(() => _isSigningIn = false);
+      Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => TwoFactorScreen(
+          email: result.email ?? email,
+          challengeToken: token,
+          resendAvailableIn: result.resendAvailableIn ?? 60,
+        ),
+      ));
       return;
     }
 

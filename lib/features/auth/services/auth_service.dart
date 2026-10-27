@@ -21,6 +21,10 @@ class AuthResult {
   /// Seconds until another verification code can be requested.
   final int? resendAvailableIn;
 
+  /// Set when the password was right but the account has two-factor on:
+  /// show the code screen and finish with [AuthService.verifyTwoFactorSignIn].
+  final String? twoFactorToken;
+
   const AuthResult({
     required this.success,
     this.error,
@@ -28,7 +32,10 @@ class AuthResult {
     this.email,
     this.needsVerification = false,
     this.resendAvailableIn,
+    this.twoFactorToken,
   });
+
+  bool get needsTwoFactor => twoFactorToken != null;
 }
 
 /// DENTRA Auth Service.
@@ -373,43 +380,94 @@ class AuthService extends ChangeNotifier {
   }
 
   // ── Two-Factor Authentication ─────────────────────────────────
-  // Not on the backend yet: demo-only. With the backend, say so instead
-  // of showing 2FA as on when nothing enforces it.
+  // Email codes on top of the password. Google sign-in skips the second
+  // step on the server, since Google already proves the same inbox.
 
-  static const _twoFactorUnavailable = AuthResult(
-    success: false,
-    error: "Two-factor authentication isn't available yet.",
-  );
-
-  /// Email a one-time code to the signed-in user to confirm 2FA setup.
-  Future<AuthResult> sendTwoFactorCode() async {
-    if (_api != null) return _twoFactorUnavailable;
-    await Future.delayed(const Duration(milliseconds: 800));
-    // TODO: POST '$baseUrl/api/auth/2fa/send'.
-    return const AuthResult(success: true);
+  /// Finishes a password sign-in that needed a code (see
+  /// [AuthResult.needsTwoFactor]).
+  Future<AuthResult> verifyTwoFactorSignIn({
+    required String challengeToken,
+    required String code,
+  }) async {
+    final api = _api;
+    if (api == null) return _demoCode(code, signInAs: 'stub-uid-001');
+    return _runSignIn(() => api.verifyTwoFactor(
+          challengeToken: challengeToken,
+          code: code,
+        ));
   }
 
-  /// Confirm the emailed code and turn on two-factor authentication.
-  Future<AuthResult> enableTwoFactor({required String code}) async {
-    if (_api != null) return _twoFactorUnavailable;
-    await Future.delayed(const Duration(milliseconds: 1000));
-    // TODO: POST '$baseUrl/api/auth/2fa/verify' with the code.
+  /// Emails another sign-in code for a pending two-factor sign-in.
+  Future<AuthResult> resendTwoFactorSignInCode({
+    required String challengeToken,
+  }) async {
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      return const AuthResult(success: true, resendAvailableIn: 60);
+    }
+    try {
+      final resendIn = await api.resendTwoFactor(challengeToken);
+      return AuthResult(success: true, resendAvailableIn: resendIn);
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    }
+  }
 
-    // Demo: '000000' plays the part of a wrong or expired code.
+  /// Emails the signed-in user a code that confirms turning 2FA on or off.
+  Future<AuthResult> sendTwoFactorCode() async {
+    final api = _api;
+    if (api == null) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      return const AuthResult(success: true, resendAvailableIn: 30);
+    }
+    final accessToken = await validAccessToken();
+    if (accessToken == null) {
+      return const AuthResult(success: false, error: _sessionEndedError);
+    }
+    try {
+      final resendIn = await api.sendTwoFactorCode(accessToken: accessToken);
+      return AuthResult(success: true, resendAvailableIn: resendIn);
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    }
+  }
+
+  /// Turns two-factor on ([enable]) or off with the emailed code.
+  Future<AuthResult> setTwoFactor({
+    required String code,
+    required bool enable,
+  }) async {
+    final api = _api;
+    if (api == null) return _demoCode(code);
+    final accessToken = await validAccessToken();
+    if (accessToken == null) {
+      return const AuthResult(success: false, error: _sessionEndedError);
+    }
+    try {
+      await api.setTwoFactor(
+        accessToken: accessToken,
+        code: code,
+        enabled: enable,
+      );
+      return const AuthResult(success: true);
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    }
+  }
+
+  /// Demo: '000000' plays the part of a wrong code. [signInAs] signs the
+  /// demo user in on success.
+  Future<AuthResult> _demoCode(String code, {String? signInAs}) async {
+    await Future.delayed(const Duration(milliseconds: 900));
     if (code == '000000') {
       return const AuthResult(
         success: false,
-        error: 'That code is incorrect or has expired. Request a new one.',
+        error: 'That code is incorrect. 4 tries left.',
       );
     }
-    return const AuthResult(success: true);
-  }
-
-  /// Turn off two-factor authentication.
-  Future<AuthResult> disableTwoFactor() async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    // TODO: DELETE '$baseUrl/api/auth/2fa'.
-    return const AuthResult(success: true);
+    if (signInAs != null) _setUser(signInAs, _currentEmail, null);
+    return AuthResult(success: true, userId: _currentUserId);
   }
 
   // ── Account ───────────────────────────────────────────────────
@@ -477,6 +535,14 @@ class AuthService extends ChangeNotifier {
         success: true,
         userId: session.userId,
         email: session.email,
+      );
+    } on TwoFactorRequired catch (e) {
+      // Right password, second step on: the server just emailed a code.
+      return AuthResult(
+        success: false,
+        email: e.email,
+        twoFactorToken: e.challengeToken,
+        resendAvailableIn: e.resendAvailableIn,
       );
     } on ApiException catch (e) {
       // Right password, unfinished sign-up: the server just emailed a code.
