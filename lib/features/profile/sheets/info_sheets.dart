@@ -74,7 +74,6 @@ Future<void> showAboutSheet(BuildContext context) {
           children: [
             _InfoRow(label: 'Version', value: ProfileContent.appVersion),
             _InfoRow(label: 'Developer', value: 'DENTRA Health, Inc.'),
-            _InfoRow(label: 'Website', value: ProfileContent.website),
             _InfoRow(label: 'Support', value: ProfileContent.supportEmail),
           ],
         ),

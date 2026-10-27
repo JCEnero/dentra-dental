@@ -1,8 +1,7 @@
 /// Static copy for the profile's help, policy and about sheets.
 abstract class ProfileContent {
-  static const supportEmail = 'support@dentra.health';
-  static const privacyEmail = 'privacy@dentra.health';
-  static const website = 'www.dentra.health';
+  /// The app's only contact, for support and privacy requests alike.
+  static const supportEmail = 'dentra.support@gmail.com';
 
   /// Keep in step with `version` in pubspec.yaml.
   static const appVersion = '1.0.0 (build 1)';
@@ -34,7 +33,8 @@ abstract class ProfileContent {
     (
       'How do I turn on two-factor authentication?',
       'Go to Profile and switch on Two-factor authentication. We will email '
-          'you a 6-digit code to confirm the setup.',
+          'you a 6-digit code to confirm the setup. After that, signing in '
+          'with your password also asks for a code sent to your email.',
     ),
   ];
 
@@ -168,7 +168,7 @@ abstract class ProfileContent {
           'obtained or misused personal information.\n'
           '• File a complaint with the National Privacy Commission '
           '(www.privacy.gov.ph).\n\n'
-          'To use any of these rights, email $privacyEmail. We may ask you to '
+          'To use any of these rights, email $supportEmail. We may ask you to '
           'verify your identity first, and we will respond within 30 days.',
     ),
     (
@@ -214,11 +214,8 @@ abstract class ProfileContent {
     ),
     (
       'Contact us',
-      'For privacy questions, requests or complaints, contact our Data '
-          'Protection Officer:\n\n'
-          'Email: $privacyEmail\n'
-          'Support: $supportEmail\n'
-          'Website: $website',
+      'For privacy questions, requests or complaints, email us at '
+          '$supportEmail.',
     ),
   ];
 
