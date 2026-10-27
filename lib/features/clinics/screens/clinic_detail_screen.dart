@@ -135,14 +135,26 @@ class _ClinicDetailScreenState extends State<ClinicDetailScreen> {
                   ),
                   sliver: SliverList.list(
                     children: [
-                      // Prices come from public listings, so label them
-                      // quietly as estimates rather than with a banner.
+                      // Prices are app estimates, not the clinic's own
+                      // rates, so every amount is labeled as one.
                       const _SectionTitle(
                         'Services',
-                        trailing: 'Est. public rates',
+                        trailing: 'Estimated prices',
                       ),
                       const SizedBox(height: 10),
                       _ServicesCard(services: services),
+                      if (services.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Estimates for reference only, not this '
+                          "clinic's rates. Call to confirm prices.",
+                          style: GoogleFonts.outfit(
+                            fontSize: 12.5,
+                            color: AppColors.secondaryText,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 28),
                       const _SectionTitle('Contact'),
                       const SizedBox(height: 10),
@@ -503,12 +515,11 @@ class _ServicesCardState extends State<_ServicesCard> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // "~" keeps the estimate hint subtle.
                     Semantics(
-                      label: 'about ${formatPeso(service.price)}',
+                      label: 'estimated ${formatPeso(service.price)}',
                       excludeSemantics: true,
                       child: Text(
-                        '~${formatPeso(service.price)}',
+                        'Est. ${formatPeso(service.price)}',
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,

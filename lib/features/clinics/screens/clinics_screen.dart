@@ -815,7 +815,7 @@ class _FilterSheetBody extends ConsumerWidget {
   static const _sortOptions = {
     ClinicSort.nearest: 'Nearest',
     ClinicSort.topRated: 'Top rated',
-    ClinicSort.lowestPrice: 'Lowest price',
+    ClinicSort.lowestPrice: 'Lowest est. price',
   };
 
   @override
@@ -870,7 +870,7 @@ class _FilterSheetBody extends ConsumerWidget {
         const SizedBox(height: 22),
         const _SheetLabel(
           icon: Icons.payments_rounded,
-          text: 'Budget (starting price)',
+          text: 'Budget (estimated starting price)',
         ),
         Wrap(
           spacing: 8,
@@ -878,7 +878,8 @@ class _FilterSheetBody extends ConsumerWidget {
           children: [
             for (final price in _priceOptions)
               DentraChoiceChip(
-                label: price == null ? 'Any' : 'Up to ${formatPeso(price)}',
+                label:
+                    price == null ? 'Any' : 'Est. up to ${formatPeso(price)}',
                 selected: filters.maxPrice == price,
                 onSelected: () => notifier.setMaxPrice(price),
               ),
