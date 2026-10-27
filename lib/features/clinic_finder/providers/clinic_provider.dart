@@ -147,8 +147,39 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
     return _fetchNearbyClinics(userLocation.latitude, userLocation.longitude);
   }
 
+  /// Places returns at most 20 results a call. Ranked by distance alone,
+  /// a busy city fills all 20 within a kilometre or two, so the wider
+  /// distance options changed nothing. A second call ranked by popularity
+  /// across the whole area adds clinics further out; the two are merged.
   Future<List<ClinicModel>> _fetchNearbyClinics(double lat, double lng) async {
-    final placesApiKey = dotenv.env['PLACES_API_KEY']!;
+    final popular = _searchNearby(lat, lng, rank: 'POPULARITY')
+        // Extra reach only: the nearest clinics are enough on their own.
+        .then<List<Map<String, dynamic>>?>((p) => p)
+        .catchError((Object _) => null);
+    final nearest = await _searchNearby(lat, lng, rank: 'DISTANCE');
+
+    final places = <String, Map<String, dynamic>>{
+      for (final p in [...nearest, ...?await popular]) p['id'] as String: p,
+    }.values;
+    final clinics = places.map((place) => _toClinic(place, lat, lng)).toList();
+
+    clinics.sort((a, b) {
+      final distanceA = Geolocator.distanceBetween(lat, lng, a.latitude, a.longitude);
+      final distanceB = Geolocator.distanceBetween(lat, lng, b.latitude, b.longitude);
+      return distanceA.compareTo(distanceB);
+    });
+
+    return clinics;
+  }
+
+  /// One Nearby Search over [kClinicFetchRadiusKm], ranked by [rank].
+  Future<List<Map<String, dynamic>>> _searchNearby(
+    double lat,
+    double lng, {
+    required String rank,
+  }) async {
+    // Same key as the web map; its project enables Places API (New) too.
+    final placesApiKey = dotenv.env['MAPS_API_KEY']!;
     final uri = Uri.parse('https://places.googleapis.com/v1/places:searchNearby');
     final response = await http.post(
       uri,
@@ -162,9 +193,8 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
       },
       body: jsonEncode({
         'includedTypes': ['dentist'],
-        // Nearest first, so the distance filter has a real spread to cut.
         'maxResultCount': 20,
-        'rankPreference': 'DISTANCE',
+        'rankPreference': rank,
         'locationRestriction': {
           'circle': {
             'center': {'latitude': lat, 'longitude': lng},
@@ -179,49 +209,43 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final places = (data['places'] as List<dynamic>?) ?? [];
+    return [
+      for (final p in (data['places'] as List<dynamic>?) ?? const [])
+        if (p is Map<String, dynamic> && p['id'] is String) p,
+    ];
+  }
 
-    final clinics = places.map((p) {
-      final place = p as Map<String, dynamic>;
-      final placeId = place['id'] as String;
-      
-      // Generate deterministic random subset of services based on place ID
-      final random = Random(placeId.hashCode);
-      final shuffled = [..._servicePool]..shuffle(random);
-      final count = 3 + random.nextInt(3); // 3 to 5 services
-      // Each clinic gets its own price level (0.7x to 1.8x), so the
-      // budget filter and price sort separate clinics instead of every
-      // clinic starting at the same ₱500 consultation.
-      final priceLevel = 0.7 + random.nextDouble() * 1.1;
-      final selectedServices = [
-        for (final s in shuffled.take(count))
-          ClinicService(
-            name: s.name,
-            price: ((s.price * priceLevel) / 50).round() * 50.0,
-          ),
-      ];
-      
-      return ClinicModel(
-        id: placeId,
-        name: (place['displayName']?['text'] as String?) ?? 'Unknown Clinic',
-        address: (place['formattedAddress'] as String?) ?? '',
-        latitude: (place['location']?['latitude'] as num?)?.toDouble() ?? lat,
-        longitude: (place['location']?['longitude'] as num?)?.toDouble() ?? lng,
-        rating: (place['rating'] as num?)?.toDouble() ?? 0.0,
-        reviewCount: (place['userRatingCount'] as num?)?.toInt() ?? 0,
-        services: selectedServices,
-        operatingHours: const [],
-        phoneNumber: (place['nationalPhoneNumber'] as String?) ?? 'Not available',
-      );
-    }).toList();
-
-    clinics.sort((a, b) {
-      final distanceA = Geolocator.distanceBetween(lat, lng, a.latitude, a.longitude);
-      final distanceB = Geolocator.distanceBetween(lat, lng, b.latitude, b.longitude);
-      return distanceA.compareTo(distanceB);
-    });
-
-    return clinics;
+  ClinicModel _toClinic(Map<String, dynamic> place, double lat, double lng) {
+    final placeId = place['id'] as String;
+    
+    // Generate deterministic random subset of services based on place ID
+    final random = Random(placeId.hashCode);
+    final shuffled = [..._servicePool]..shuffle(random);
+    final count = 3 + random.nextInt(3); // 3 to 5 services
+    // Each clinic gets its own price level (0.7x to 1.8x), so the
+    // budget filter and price sort separate clinics instead of every
+    // clinic starting at the same ₱500 consultation.
+    final priceLevel = 0.7 + random.nextDouble() * 1.1;
+    final selectedServices = [
+      for (final s in shuffled.take(count))
+        ClinicService(
+          name: s.name,
+          price: ((s.price * priceLevel) / 50).round() * 50.0,
+        ),
+    ];
+    
+    return ClinicModel(
+      id: placeId,
+      name: (place['displayName']?['text'] as String?) ?? 'Unknown Clinic',
+      address: (place['formattedAddress'] as String?) ?? '',
+      latitude: (place['location']?['latitude'] as num?)?.toDouble() ?? lat,
+      longitude: (place['location']?['longitude'] as num?)?.toDouble() ?? lng,
+      rating: (place['rating'] as num?)?.toDouble() ?? 0.0,
+      reviewCount: (place['userRatingCount'] as num?)?.toInt() ?? 0,
+      services: selectedServices,
+      operatingHours: const [],
+      phoneNumber: (place['nationalPhoneNumber'] as String?) ?? 'Not available',
+    );
   }
 
   Future<void> refresh() async {

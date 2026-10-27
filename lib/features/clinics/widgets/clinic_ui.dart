@@ -46,7 +46,6 @@ class ClinicGlassIconButton extends StatelessWidget {
     required this.tooltip,
     required this.onPressed,
     this.active = false,
-    this.badgeCount = 0,
     this.busy = false,
   });
 
@@ -54,25 +53,27 @@ class ClinicGlassIconButton extends StatelessWidget {
   final String tooltip;
   final VoidCallback? onPressed;
 
-  /// Filled teal, e.g. when filters are applied.
+  /// A quiet teal tint and rim, e.g. when filters are applied. No badge:
+  /// a count reads like an unread notification.
   final bool active;
-  final int badgeCount;
 
   /// Shows a spinner in place of the icon.
   final bool busy;
 
   @override
   Widget build(BuildContext context) {
-    final foreground = active ? AppColors.white : AppColors.navy;
     return IconButton(
       onPressed: busy ? null : onPressed,
       tooltip: tooltip,
       style: IconButton.styleFrom(
-        backgroundColor:
-            active ? AppColors.g2 : AppColors.white.withValues(alpha: 0.7),
+        backgroundColor: active
+            ? AppColors.lightLavender.withValues(alpha: 0.85)
+            : AppColors.white.withValues(alpha: 0.7),
         disabledBackgroundColor: AppColors.white.withValues(alpha: 0.7),
-        foregroundColor: foreground,
-        side: BorderSide(color: active ? AppColors.g2 : AppGlass.border),
+        foregroundColor: active ? AppColors.g2 : AppColors.navy,
+        side: BorderSide(
+          color: active ? AppColors.g2.withValues(alpha: 0.4) : AppGlass.border,
+        ),
         fixedSize: const Size(48, 48),
         minimumSize: const Size(48, 48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -85,12 +86,7 @@ class ClinicGlassIconButton extends StatelessWidget {
                 color: AppColors.g2,
               ),
             )
-          : Badge(
-              isLabelVisible: badgeCount > 0,
-              backgroundColor: AppColors.coral,
-              label: Text('$badgeCount'),
-              child: Icon(icon, size: 20),
-            ),
+          : Icon(icon, size: 20),
     );
   }
 }

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
@@ -21,12 +24,12 @@ const double _kDefaultRadiusKm = 5.0;
 /// the list keeps enough room.
 const double _kMinHeightForMap = 420;
 
-/// Number of filters (and a non-default sort) that differ from their defaults.
-int _activeFilterCount(ClinicFilterState f) =>
-    (f.radiusKm != _kDefaultRadiusKm ? 1 : 0) +
-    (f.minRating > 0 ? 1 : 0) +
-    (f.maxPrice != null ? 1 : 0) +
-    (f.sort != ClinicSort.nearest ? 1 : 0);
+/// Whether any filter (or the sort) differs from its default.
+bool _filtersActive(ClinicFilterState f) =>
+    f.radiusKm != _kDefaultRadiusKm ||
+    f.minRating > 0 ||
+    f.maxPrice != null ||
+    f.sort != ClinicSort.nearest;
 
 /// Clears distance, rating, budget and sort but keeps the search text,
 /// which [ClinicFilterNotifier.reset] would also wipe.
@@ -36,6 +39,75 @@ void _resetFilters(ClinicFilterNotifier notifier) {
     ..setMinRating(0)
     ..setMaxPrice(null)
     ..setSort(ClinicSort.nearest);
+}
+
+/// A fix this tight is GPS-grade; anything looser keeps listening a bit.
+const double _kGoodFixMeters = 50;
+
+/// Looser than this is a cell or Wi-Fi guess, worth telling the user about.
+const double _kApproximateFixMeters = 500;
+
+/// How long to wait for the first fix.
+const Duration _kFirstFixTimeout = Duration(seconds: 20);
+
+/// How long to keep listening for a sharper fix after a coarse one.
+const Duration _kRefineWindow = Duration(seconds: 12);
+
+/// Asks every platform for its most accurate, uncached position.
+///
+/// Without explicit settings the web plugin sends `enableHighAccuracy:
+/// false`, so browsers answer with a network guess that can be
+/// kilometres off.
+LocationSettings _locationSettings({Duration? timeLimit}) {
+  if (kIsWeb) {
+    return WebSettings(
+      accuracy: LocationAccuracy.best,
+      maximumAge: Duration.zero,
+      timeLimit: timeLimit,
+    );
+  }
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android => AndroidSettings(
+        accuracy: LocationAccuracy.best,
+        timeLimit: timeLimit,
+      ),
+    TargetPlatform.iOS || TargetPlatform.macOS => AppleSettings(
+        accuracy: LocationAccuracy.best,
+        timeLimit: timeLimit,
+      ),
+    _ => LocationSettings(
+        accuracy: LocationAccuracy.best,
+        timeLimit: timeLimit,
+      ),
+  };
+}
+
+/// Listens for up to [_kRefineWindow] for a fix sharper than [first],
+/// stopping early once one is GPS-grade. Returns null if none beat it.
+Future<Position?> _sharperFix(Position first) {
+  final done = Completer<Position?>();
+  Position? best;
+  StreamSubscription<Position>? sub;
+  Timer? timer;
+
+  void finish() {
+    if (done.isCompleted) return;
+    timer?.cancel();
+    sub?.cancel();
+    done.complete(best);
+  }
+
+  timer = Timer(_kRefineWindow, finish);
+  sub = Geolocator.getPositionStream(locationSettings: _locationSettings())
+      .listen(
+    (p) {
+      if (p.accuracy < (best ?? first).accuracy) best = p;
+      if (p.accuracy <= _kGoodFixMeters) finish();
+    },
+    onError: (Object _) => finish(),
+    onDone: finish,
+  );
+  return done.future;
 }
 
 double _distanceKm(UserLocation from, ClinicModel clinic) =>
@@ -91,6 +163,7 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
   Future<void> _getUserLocation({bool manual = false}) async {
     setState(() => _locating = true);
     String? problem;
+    var approximate = false;
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
         problem = 'Turn on location services to find clinics near you.';
@@ -108,25 +181,49 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
         return;
       }
 
-      final position = await Geolocator.getCurrentPosition();
+      var position = await Geolocator.getCurrentPosition(
+        locationSettings: _locationSettings(timeLimit: _kFirstFixTimeout),
+      );
       if (!mounted) return;
-      setState(() => _precise = true);
+      _applyPosition(position);
 
-      // Update the logic layer's location; the clinic list and map follow.
-      ref.read(userLocationProvider.notifier).setLocation(
-            latitude: position.latitude,
-            longitude: position.longitude,
-          );
+      // GPS often starts coarse and tightens over a few seconds. Apply
+      // the sharpest fix once, so Places is queried at most twice.
+      if (position.accuracy > _kGoodFixMeters) {
+        final sharper = await _sharperFix(position);
+        if (!mounted) return;
+        if (sharper != null) {
+          position = sharper;
+          _applyPosition(position);
+        }
+      }
+
+      if (position.accuracy > _kApproximateFixMeters) {
+        approximate = true;
+        problem = 'Your location is approximate. Turn on precise location '
+            'or GPS for a closer match.';
+      }
     } catch (_) {
       problem = 'Could not get your location. Try again in a moment.';
     } finally {
       if (mounted) {
         setState(() => _locating = false);
-        if (manual && problem != null) {
+        // A coarse fix explains a misplaced pin, so it's shown even on
+        // first load.
+        if ((manual || approximate) && problem != null) {
           showDentraSnack(context, problem, tone: DentraFeedbackTone.info);
         }
       }
     }
+  }
+
+  /// Moves the "you" dot and search center; the clinic list and map follow.
+  void _applyPosition(Position position) {
+    setState(() => _precise = true);
+    ref.read(userLocationProvider.notifier).setLocation(
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
   }
 
   void _setSearch(String value) {
@@ -145,7 +242,7 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
     showGlassSheet<void>(
       context: context,
       title: 'Filter clinics',
-      subtitle: 'Narrow and sort the list by distance, rating and budget.',
+      subtitle: 'Sort and narrow the clinics around you.',
       builder: (_) => const _FilterSheetBody(),
     );
   }
@@ -182,7 +279,7 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
     final filters = ref.watch(clinicFilterProvider);
     final location = ref.watch(userLocationProvider);
     final clinicsAsync = ref.watch(filteredClinicsProvider);
-    final filterCount = _activeFilterCount(filters);
+    final filtered = _filtersActive(filters);
 
     // One list, already filtered and sorted, drives both the pins and the cards.
     final sorted = clinicsAsync.valueOrNull ?? const <ClinicModel>[];
@@ -211,11 +308,8 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
                 const SizedBox(width: 10),
                 ClinicGlassIconButton(
                   icon: Icons.tune_rounded,
-                  tooltip: filterCount > 0
-                      ? 'Filters, $filterCount active'
-                      : 'Filters',
-                  active: filterCount > 0,
-                  badgeCount: filterCount,
+                  tooltip: filtered ? 'Filters, applied' : 'Filters',
+                  active: filtered,
                   onPressed: _openFilters,
                 ),
               ],
@@ -297,7 +391,7 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
                                   _toolbar(count: 0, filters: filters),
                                   SliverFillRemaining(
                                     hasScrollBody: false,
-                                    child: _emptyState(filters, filterCount),
+                                    child: _emptyState(filters, filtered),
                                   ),
                                 ]
                               : [
@@ -363,36 +457,61 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenH, 16, AppSpacing.screenH, 12),
-        child: Semantics(
-          liveRegion: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                summary,
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
+            AppSpacing.screenH, 16, AppSpacing.screenH - 4, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                liveRegion: true,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      summary,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    if (!_precise && !_locating)
+                      Text(
+                        'Approximate distances',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              if (!_precise && !_locating)
-                Text(
-                  'Approximate distances',
+            ),
+            // A plain text link: applied filters stay quiet, never a badge.
+            if (_filtersActive(filters))
+              TextButton(
+                onPressed: () =>
+                    _resetFilters(ref.read(clinicFilterProvider.notifier)),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.g2,
+                  minimumSize: const Size(44, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: const StadiumBorder(),
+                ),
+                child: Text(
+                  'Clear filters',
                   style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    color: AppColors.secondaryText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _emptyState(ClinicFilterState filters, int filterCount) {
+  Widget _emptyState(ClinicFilterState filters, bool filtered) {
     if (filters.searchQuery.isNotEmpty) {
       return _StatusView(
         icon: Icons.search_off_rounded,
@@ -402,7 +521,7 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
         onAction: _clearSearch,
       );
     }
-    if (filterCount > 0) {
+    if (filtered) {
       return _StatusView(
         icon: Icons.filter_alt_off_rounded,
         title: 'No clinics match your filters',
@@ -805,6 +924,8 @@ class _StatusView extends StatelessWidget {
 
 // ── Filter sheet ──────────────────────────────────────────────────
 
+/// Frosted segmented rows, one per filter. Changes apply as they are
+/// tapped, so the list and map behind the sheet follow along.
 class _FilterSheetBody extends ConsumerWidget {
   const _FilterSheetBody();
 
@@ -815,7 +936,7 @@ class _FilterSheetBody extends ConsumerWidget {
   static const _sortOptions = {
     ClinicSort.nearest: 'Nearest',
     ClinicSort.topRated: 'Top rated',
-    ClinicSort.lowestPrice: 'Lowest est. price',
+    ClinicSort.lowestPrice: 'Lowest price',
   };
 
   @override
@@ -826,73 +947,49 @@ class _FilterSheetBody extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _SheetLabel(icon: Icons.sort_rounded, text: 'Sort by'),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final entry in _sortOptions.entries)
-              DentraChoiceChip(
-                label: entry.value,
-                selected: filters.sort == entry.key,
-                onSelected: () => notifier.setSort(entry.key),
-              ),
-          ],
+        _GlassSegments<ClinicSort>(
+          label: 'Sort by',
+          options: _sortOptions,
+          selected: filters.sort,
+          onSelected: notifier.setSort,
         ),
-        const SizedBox(height: 22),
-        const _SheetLabel(icon: Icons.near_me_rounded, text: 'Distance'),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final km in _radiusOptions)
-              DentraChoiceChip(
-                label: 'Within ${km.toStringAsFixed(0)} km',
-                selected: filters.radiusKm == km,
-                onSelected: () => notifier.setRadiusKm(km),
-              ),
-          ],
+        const SizedBox(height: 20),
+        _GlassSegments<double>(
+          label: 'Distance',
+          options: {
+            for (final km in _radiusOptions) km: '${km.toStringAsFixed(0)} km',
+          },
+          selected: filters.radiusKm,
+          onSelected: notifier.setRadiusKm,
         ),
-        const SizedBox(height: 22),
-        const _SheetLabel(icon: Icons.star_rounded, text: 'Minimum rating'),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final rating in _ratingOptions)
-              DentraChoiceChip(
-                label: rating == 0 ? 'Any' : '${rating.toStringAsFixed(1)}+',
-                selected: filters.minRating == rating,
-                onSelected: () => notifier.setMinRating(rating),
-              ),
-          ],
+        const SizedBox(height: 20),
+        _GlassSegments<double>(
+          label: 'Minimum rating',
+          options: {
+            for (final r in _ratingOptions)
+              r: r == 0 ? 'Any' : '${r.toStringAsFixed(1)}+',
+          },
+          selected: filters.minRating,
+          onSelected: notifier.setMinRating,
         ),
-        const SizedBox(height: 22),
-        const _SheetLabel(
-          icon: Icons.payments_rounded,
-          text: 'Budget (estimated starting price)',
-        ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
+        const SizedBox(height: 20),
+        _GlassSegments<double?>(
+          label: 'Budget',
+          hint: 'Estimated starting price',
+          options: {
             for (final price in _priceOptions)
-              DentraChoiceChip(
-                label:
-                    price == null ? 'Any' : 'Est. up to ${formatPeso(price)}',
-                selected: filters.maxPrice == price,
-                onSelected: () => notifier.setMaxPrice(price),
-              ),
-          ],
+              price: price == null ? 'Any' : formatPeso(price),
+          },
+          selected: filters.maxPrice,
+          onSelected: notifier.setMaxPrice,
         ),
         const SizedBox(height: 28),
         DentraButtonRow(
           secondary: DentraPillButton(
             label: 'Reset',
             variant: DentraButtonVariant.outline,
-            onPressed: _activeFilterCount(filters) > 0
-                ? () => _resetFilters(notifier)
-                : null,
+            onPressed:
+                _filtersActive(filters) ? () => _resetFilters(notifier) : null,
           ),
           primary: DentraPillButton(
             label: 'Show clinics',
@@ -904,34 +1001,146 @@ class _FilterSheetBody extends ConsumerWidget {
   }
 }
 
-class _SheetLabel extends StatelessWidget {
-  const _SheetLabel({required this.icon, required this.text});
+/// A labelled row of equal segments on a frosted track. The picked one
+/// lifts into a white glass pill with a teal rim: no solid fills, checks
+/// or counts.
+class _GlassSegments<T> extends StatelessWidget {
+  const _GlassSegments({
+    required this.label,
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+    this.hint,
+  });
 
-  final IconData icon;
-  final String text;
+  final String label;
+
+  /// Quiet text after the label, e.g. what a price means.
+  final String? hint;
+  final Map<T, String> options;
+  final T selected;
+  final ValueChanged<T> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: AppColors.g2),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Semantics(
-              header: true,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          header: true,
+          child: Text.rich(
+            TextSpan(
+              text: label,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
+              ),
+              children: [
+                if (hint != null)
+                  TextSpan(
+                    text: '  ·  $hint',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: AppGlass.fillLow,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.g2.withValues(alpha: 0.12)),
+          ),
+          child: Row(
+            children: [
+              for (final entry in options.entries)
+                Expanded(
+                  child: _Segment(
+                    label: entry.value,
+                    selected: entry.key == selected,
+                    onTap: () => onSelected(entry.key),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Segment extends StatelessWidget {
+  const _Segment({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = BorderRadius.all(Radius.circular(12));
+    return Semantics(
+      button: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: AnimatedContainer(
+            duration: dentraMotion(context, 180),
+            curve: Curves.easeOutCubic,
+            constraints: const BoxConstraints(minHeight: 44),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              color: selected
+                  ? AppColors.white.withValues(alpha: 0.92)
+                  : Colors.transparent,
+              border: Border.all(
+                color: selected
+                    ? AppColors.g2.withValues(alpha: 0.32)
+                    : Colors.transparent,
+              ),
+              boxShadow: [
+                if (selected)
+                  BoxShadow(
+                    color: AppColors.g2.withValues(alpha: 0.10),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+              ],
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
               child: Text(
-                text,
+                label,
+                maxLines: 1,
                 style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  // Navy, not teal: teal text is under 4.5:1 on white. The
+                  // lifted pill and teal rim mark the pick.
+                  color: selected
+                      ? AppColors.navy
+                      : AppColors.navy.withValues(alpha: 0.7),
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
