@@ -420,13 +420,29 @@ class _Header extends StatelessWidget {
           _HeaderButton(
             icon: Icons.delete_outline_rounded,
             tooltip: 'Delete chat',
-            onPressed:
-                session == null ? null : () => ctrl.deleteSession(session.id),
+            onPressed: session == null
+                ? null
+                : () async {
+                    if (await _confirmDeleteChat(context)) {
+                      ctrl.deleteSession(session.id);
+                    }
+                  },
           ),
         ];
     }
   }
 }
+
+/// Asks before a single saved chat is deleted.
+Future<bool> _confirmDeleteChat(BuildContext context) => showGlassConfirmDialog(
+      context: context,
+      icon: Icons.delete_outline_rounded,
+      title: 'Delete this chat?',
+      message: "This conversation with Rabi will be removed. This can't be "
+          'undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    );
 
 class _HeaderButton extends StatelessWidget {
   const _HeaderButton({
@@ -533,7 +549,19 @@ class _ChatBodyState extends State<_ChatBody> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           itemCount: messages.length + extra,
           itemBuilder: (context, i) {
-            if (ctrl.isLoading && i == 0) return const _TypingBubble();
+            if (ctrl.isLoading && i == 0) {
+              final partial = ctrl.streamingText;
+              if (partial == null) return const _TypingBubble();
+              // The reply as it streams in; replaced by the saved message.
+              return _MessageTile(
+                message: ChatMessage(
+                  text: partial,
+                  isUser: false,
+                  sentAt: DateTime.now(),
+                ),
+                streaming: true,
+              );
+            }
             final index = messages.length - 1 - (i - extra);
             final m = messages[index];
             final isLast = index == messages.length - 1;
@@ -692,12 +720,20 @@ class _SuggestionTile extends StatelessWidget {
 // ── Messages ──────────────────────────────────────────────────────────────
 
 class _MessageTile extends StatelessWidget {
-  const _MessageTile({super.key, required this.message, this.onRetry});
+  const _MessageTile({
+    super.key,
+    required this.message,
+    this.onRetry,
+    this.streaming = false,
+  });
 
   final ChatMessage message;
 
   /// Shown on the latest error notice.
   final VoidCallback? onRetry;
+
+  /// A reply still arriving: no time or copy button yet.
+  final bool streaming;
 
   @override
   Widget build(BuildContext context) {
@@ -791,7 +827,8 @@ class _MessageTile extends StatelessWidget {
                       ),
                 const SizedBox(height: 2),
                 // Wraps instead of overflowing at very large text sizes.
-                Wrap(
+                if (!streaming)
+                  Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: 4,
                   children: [
@@ -1280,7 +1317,7 @@ class _InputBarState extends State<_InputBar> {
               children: [
                 Expanded(
                   child: Text(
-                    'Rabi can make mistakes. Not a diagnosis.',
+                    'General information only, not a diagnosis.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
                       fontSize: 11,
@@ -1419,6 +1456,7 @@ class _HistoryView extends StatelessWidget {
         return Dismissible(
           key: ValueKey('chat-${s.id}'),
           direction: DismissDirection.endToStart,
+          confirmDismiss: (_) => _confirmDeleteChat(context),
           onDismissed: (_) => ctrl.deleteSession(s.id),
           background: Container(
             alignment: Alignment.centerRight,
@@ -1434,8 +1472,11 @@ class _HistoryView extends StatelessWidget {
           ),
           child: Semantics(
             customSemanticsActions: {
-              const CustomSemanticsAction(label: 'Delete chat'): () =>
-                  ctrl.deleteSession(s.id),
+              const CustomSemanticsAction(label: 'Delete chat'): () async {
+                if (await _confirmDeleteChat(context)) {
+                  ctrl.deleteSession(s.id);
+                }
+              },
             },
             child: GlassCard(
               onTap: () => ctrl.selectSession(s),

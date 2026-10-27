@@ -180,6 +180,9 @@ class AiChatController extends ChangeNotifier {
   /// True while waiting for a reply.
   bool isLoading = false;
 
+  /// The reply so far while it streams in; null before the first words.
+  String? streamingText;
+
   ChatView view = ChatView.chat;
   ChatSession? selectedSession;
 
@@ -334,6 +337,11 @@ class AiChatController extends ChangeNotifier {
         message: question.text,
         prompt: question.prompt,
         context: _contextTurns(earlier).toList(),
+        onPartial: (text) {
+          if (sessionId != _sessionId) return;
+          streamingText = text;
+          notifyListeners();
+        },
       );
       reply = ChatMessage(text: text, isUser: false, sentAt: DateTime.now());
     } on GeminiException catch (e) {
@@ -356,6 +364,7 @@ class AiChatController extends ChangeNotifier {
     if (sessionId != _sessionId) return;
     messages.add(reply);
     isLoading = false;
+    streamingText = null;
     _saveActive();
     notifyListeners();
   }
@@ -417,6 +426,7 @@ class AiChatController extends ChangeNotifier {
     messages.clear();
     _sessionId = _newId();
     isLoading = false;
+    streamingText = null;
   }
 
   /// Answered turns only: failed questions and error notices are left

@@ -9,7 +9,8 @@ abstract class RabiService {
   /// Asks for a reply to [message] in conversation [sessionId]. [prompt]
   /// replaces [message] for the model when set. [context] holds the
   /// earlier answered turns as (isUser, text); only services that don't
-  /// keep the conversation themselves use it.
+  /// keep the conversation themselves use it. Services that stream call
+  /// [onPartial] with the reply so far as it arrives.
   ///
   /// Throws [GeminiException] with a message that is safe to show.
   Future<String> reply({
@@ -17,6 +18,7 @@ abstract class RabiService {
     required String message,
     String? prompt,
     required List<(bool, String)> context,
+    void Function(String textSoFar)? onPartial,
   });
 
   /// Whether conversations are saved by the service (the server), rather
@@ -46,6 +48,7 @@ class ApiRabiService implements RabiService {
     required String message,
     String? prompt,
     required List<(bool, String)> context,
+    void Function(String textSoFar)? onPartial,
   }) async {
     try {
       final body = await _api.send('POST', '/api/ai/chat', json: {
@@ -102,9 +105,10 @@ class DirectRabiService implements RabiService {
     required String message,
     String? prompt,
     required List<(bool, String)> context,
+    void Function(String textSoFar)? onPartial,
   }) {
     _gemini.restoreSession(context);
-    return _gemini.chat(prompt ?? message);
+    return _gemini.chat(prompt ?? message, onPartial: onPartial);
   }
 
   @override
