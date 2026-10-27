@@ -1,6 +1,47 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+// ── Tuning ────────────────────────────────────────────────────────
+// If real mouth photos get rejected, loosen these first: lower
+// [kToothCheckMinToothNearTissuePct] and [kToothCheckMinTissuePct], then
+// widen the color ranges. Percentages are shares of all pixels in the
+// shrunken photo. Hue is in degrees (0-360); saturation and brightness
+// (value) run from 0 to 1.
+
+/// Width the photo is shrunk to before checking. Small enough to be
+/// instant, large enough to see a row of teeth.
+const int kToothCheckSampleWidth = 96;
+
+/// How far (in shrunken pixels) a tooth pixel may be from gum or lip and
+/// still count as "in the mouth".
+const int kToothCheckNeighborhood = 3;
+
+/// At least this much of the photo must be tooth-colored...
+const double kToothCheckMinToothPct = 4;
+
+/// ...but not more: a photo that is nearly all white is a wall or paper.
+const double kToothCheckMaxToothPct = 80;
+
+/// At least this much must be gum, lip or tongue colored.
+const double kToothCheckMinTissuePct = 3;
+
+/// The deciding rule: tooth pixels that sit next to tissue.
+const double kToothCheckMinToothNearTissuePct = 2.5;
+
+/// Tooth color: bright, and either near-white or a pale ivory/yellow.
+const double kToothMinBrightness = 0.5;
+const double kToothMaxSaturationWhite = 0.12;
+const double kToothMaxSaturationIvory = 0.38;
+const double kToothIvoryHueMin = 18;
+const double kToothIvoryHueMax = 65;
+
+/// Gum, lip and tongue color: saturated pinks and reds. Skin sits at more
+/// orange hues (about 15-35°), so it's mostly left out.
+const double kTissueMinBrightness = 0.22;
+const double kTissueMinSaturation = 0.28;
+const double kTissueHueFrom = 330; // wraps through 0°
+const double kTissueHueTo = 14;
+
 /// On-device check that a photo plausibly shows teeth before it's used in
 /// a scan. A color heuristic, not a trained model: it looks for
 /// tooth-white areas sitting next to gum, lip or tongue pink. That's
@@ -11,25 +52,12 @@ import 'dart:ui' as ui;
 class ToothPhotoCheck {
   const ToothPhotoCheck._();
 
-  /// Width the photo is shrunk to before checking. Small enough to be
-  /// instant, large enough to see a row of teeth.
-  static const int _sampleWidth = 96;
-
-  /// How far (in sample pixels) a tooth pixel may be from soft tissue.
-  static const int _neighborhood = 3;
-
-  /// Share of all sample pixels, in percent.
-  static const double _minToothPct = 4;
-  static const double _maxToothPct = 80;
-  static const double _minTissuePct = 3;
-  static const double _minToothNearTissuePct = 2.5;
-
   static Future<bool> looksLikeTeeth(Uint8List bytes) async {
     final ByteData? rgba;
     final int width, height;
     try {
       final codec =
-          await ui.instantiateImageCodec(bytes, targetWidth: _sampleWidth);
+          await ui.instantiateImageCodec(bytes, targetWidth: kToothCheckSampleWidth);
       final frame = await codec.getNextFrame();
       codec.dispose();
       final image = frame.image;
@@ -67,8 +95,11 @@ class ToothPhotoCheck {
 
     final toothPct = toothCount * 100 / total;
     final tissuePct = tissueCount * 100 / total;
-    if (toothPct < _minToothPct || toothPct > _maxToothPct) return false;
-    if (tissuePct < _minTissuePct) return false;
+    if (toothPct < kToothCheckMinToothPct ||
+        toothPct > kToothCheckMaxToothPct) {
+      return false;
+    }
+    if (tissuePct < kToothCheckMinTissuePct) return false;
 
     // Teeth sit in the mouth: count tooth pixels with tissue close by.
     var nearTissue = 0;
@@ -78,24 +109,27 @@ class ToothPhotoCheck {
         if (_hasNeighbor(tissue, width, height, x, y)) nearTissue++;
       }
     }
-    return nearTissue * 100 / total >= _minToothNearTissuePct;
+    return nearTissue * 100 / total >= kToothCheckMinToothNearTissuePct;
   }
 
-  /// Bright and low in color: white to ivory or pale yellow.
   static bool _isTooth(double h, double s, double v) =>
-      v >= 0.5 && (s <= 0.12 || (s <= 0.38 && h >= 18 && h <= 65));
+      v >= kToothMinBrightness &&
+      (s <= kToothMaxSaturationWhite ||
+          (s <= kToothMaxSaturationIvory &&
+              h >= kToothIvoryHueMin &&
+              h <= kToothIvoryHueMax));
 
-  /// Gum, lip and tongue: saturated pinks and reds. Skin sits at more
-  /// orange hues, so it's mostly left out.
   static bool _isTissue(double h, double s, double v) =>
-      v >= 0.22 && s >= 0.28 && (h >= 330 || h <= 14);
+      v >= kTissueMinBrightness &&
+      s >= kTissueMinSaturation &&
+      (h >= kTissueHueFrom || h <= kTissueHueTo);
 
   static bool _hasNeighbor(
       Uint8List mask, int width, int height, int x, int y) {
-    for (var dy = -_neighborhood; dy <= _neighborhood; dy++) {
+    for (var dy = -kToothCheckNeighborhood; dy <= kToothCheckNeighborhood; dy++) {
       final ny = y + dy;
       if (ny < 0 || ny >= height) continue;
-      for (var dx = -_neighborhood; dx <= _neighborhood; dx++) {
+      for (var dx = -kToothCheckNeighborhood; dx <= kToothCheckNeighborhood; dx++) {
         final nx = x + dx;
         if (nx < 0 || nx >= width) continue;
         if (mask[ny * width + nx] == 1) return true;

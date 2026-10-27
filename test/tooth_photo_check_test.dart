@@ -46,6 +46,36 @@ void main() {
     expect(ToothPhotoCheck.evaluate(sheet, _w, _h), isFalse);
   });
 
+  test('rejects a plain pink image (gums or lips only, no teeth)', () {
+    final pink = _image((_, __) => _gum);
+    expect(ToothPhotoCheck.evaluate(pink, _w, _h), isFalse);
+  });
+
+  test('rejects plain gray, dark to light', () {
+    for (final v in [80, 128, 190]) {
+      final gray = _image((_, __) => (v, v, v));
+      expect(ToothPhotoCheck.evaluate(gray, _w, _h), isFalse, reason: 'gray $v');
+    }
+  });
+
+  test('rejects a face whose mouth is too small to check', () {
+    // A selfie from arm's length: mostly skin, a few pixels of teeth.
+    final face = _image((x, y) {
+      final dx = (x - 48).abs(), dy = (y - 50).abs();
+      if (dx < 10 && dy < 3) return _tooth;
+      if (dx < 14 && dy < 6) return _gum;
+      return (224, 172, 140); // skin
+    });
+    expect(ToothPhotoCheck.evaluate(face, _w, _h), isFalse);
+  });
+
+  // Known limit of a color heuristic: anything bright beside something
+  // pink passes. Kept as a test so a tuning change that alters it is seen.
+  test('accepts a white and pink split (known false positive)', () {
+    final split = _image((x, _) => x < _w / 2 ? (245, 245, 242) : _gum);
+    expect(ToothPhotoCheck.evaluate(split, _w, _h), isTrue);
+  });
+
   test('rejects white on a non-mouth background', () {
     // White text on a blue sign: tooth-white, but no gum or lip tissue.
     final sign = _image(
