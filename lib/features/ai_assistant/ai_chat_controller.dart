@@ -124,6 +124,10 @@ class AiChatController extends ChangeNotifier {
   final _rng = Random();
 
   static const maxInputLength = 1000;
+
+  /// Earlier turns sent with each question. Older ones are dropped: they
+  /// slow every request down and rarely matter to the next answer.
+  static const maxContextTurns = 8;
   static const _maxSessions = 30;
 
   static const _questionPool = [
@@ -336,7 +340,7 @@ class AiChatController extends ChangeNotifier {
         sessionId: sessionId,
         message: question.text,
         prompt: question.prompt,
-        context: _contextTurns(earlier).toList(),
+        context: contextFor(earlier),
         onPartial: (text) {
           if (sessionId != _sessionId) return;
           streamingText = text;
@@ -427,6 +431,18 @@ class AiChatController extends ChangeNotifier {
     _sessionId = _newId();
     isLoading = false;
     streamingText = null;
+  }
+
+  /// The latest [maxContextTurns] answered turns of [all], as
+  /// (isUser, text), starting on a user turn as the models expect.
+  @visibleForTesting
+  static List<(bool, String)> contextFor(List<ChatMessage> all) {
+    final turns = _contextTurns(all).toList();
+    var from = (turns.length - maxContextTurns).clamp(0, turns.length);
+    while (from < turns.length && !turns[from].$1) {
+      from++;
+    }
+    return turns.sublist(from);
   }
 
   /// Answered turns only: failed questions and error notices are left

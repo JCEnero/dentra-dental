@@ -11,10 +11,6 @@ class GeminiService {
   static const _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/$_model:streamGenerateContent';
 
-  /// Earlier turns sent with each question. Older ones are dropped: they
-  /// slow every request down and rarely matter to the next answer.
-  static const _maxHistoryTurns = 8;
-
   /// How long to wait for the first words, and then between chunks.
   static const _firstChunkTimeout = Duration(seconds: 15);
   static const _chunkTimeout = Duration(seconds: 12);
@@ -204,16 +200,10 @@ Guidelines:
   /// Replaces the conversation context, e.g. to continue a saved chat.
   /// [turns] are (isUser, text) pairs in order.
   void restoreSession(Iterable<(bool, String)> turns) {
-    final list = turns.toList();
-    // Keep the latest turns, starting on a user turn as Gemini expects.
-    var from = (list.length - _maxHistoryTurns).clamp(0, list.length);
-    while (from < list.length && !list[from].$1) {
-      from++;
-    }
     _history
       ..clear()
       ..addAll([
-        for (final (isUser, text) in list.skip(from))
+        for (final (isUser, text) in turns)
           {
             'role': isUser ? 'user' : 'model',
             'parts': [
