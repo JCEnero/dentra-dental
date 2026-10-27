@@ -29,6 +29,7 @@ abstract class RabiService {
   bool get savesHistory;
 
   Future<List<ChatSession>> loadSessions();
+  Future<void> renameSession(String sessionId, String title);
   Future<void> deleteSession(String sessionId);
   Future<void> deleteAll();
 
@@ -167,6 +168,13 @@ class ApiRabiService implements RabiService {
   }
 
   @override
+  Future<void> renameSession(String sessionId, String title) => _api.send(
+        'PATCH',
+        '/api/ai/sessions/${Uri.encodeComponent(sessionId)}',
+        json: {'title': title},
+      );
+
+  @override
   Future<void> deleteSession(String sessionId) => _api.send(
         'DELETE',
         '/api/ai/sessions/${Uri.encodeComponent(sessionId)}',
@@ -204,6 +212,9 @@ class DirectRabiService implements RabiService {
 
   @override
   Future<List<ChatSession>> loadSessions() async => const [];
+
+  @override
+  Future<void> renameSession(String sessionId, String title) async {}
 
   @override
   Future<void> deleteSession(String sessionId) async {}

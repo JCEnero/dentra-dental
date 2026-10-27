@@ -51,7 +51,8 @@ class ChatMessage {
 class ChatSession {
   final String id;
 
-  /// The first user question, used as the title in the history list.
+  /// Shown in the history list: the first user question until the user
+  /// renames the chat.
   final String title;
   final List<ChatMessage> messages;
 
@@ -66,6 +67,13 @@ class ChatSession {
   });
 
   int get questionCount => messages.where((m) => m.isUser).length;
+
+  ChatSession copyWith({String? title}) => ChatSession(
+        id: id,
+        title: title ?? this.title,
+        messages: messages,
+        savedAt: savedAt,
+      );
 
   /// Last assistant reply, for the history preview.
   String? get preview => messages
@@ -129,6 +137,9 @@ class AiChatController extends ChangeNotifier {
   /// slow every request down and rarely matter to the next answer.
   static const maxContextTurns = 8;
   static const _maxSessions = 30;
+
+  /// Longest chat title; matches the server's limit.
+  static const maxTitleLength = 120;
 
   static const _questionPool = [
     'What are the early signs of tooth decay?',
@@ -396,6 +407,44 @@ class AiChatController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Renames a saved chat. Shows the new title straight away and puts the
+  /// old one back if the server refuses. Returns false on failure.
+  Future<bool> renameSession(String id, String title) async {
+    final trimmed = title.trim();
+    final index = _sessions.indexWhere((s) => s.id == id);
+    if (trimmed.isEmpty || index < 0) return false;
+    final clipped = trimmed.length > maxTitleLength
+        ? trimmed.substring(0, maxTitleLength)
+        : trimmed;
+    final previous = _sessions[index];
+    if (clipped == previous.title) return true;
+
+    _replaceSession(previous.copyWith(title: clipped));
+    _persist();
+    notifyListeners();
+    if (!_rabi.savesHistory) return true;
+
+    try {
+      await _rabi.renameSession(id, clipped);
+      return true;
+    } catch (_) {
+      // Only undo if nothing else changed the chat meanwhile.
+      final now = _sessions.indexWhere((s) => s.id == id);
+      if (now >= 0 && _sessions[now].title == clipped) {
+        _replaceSession(_sessions[now].copyWith(title: previous.title));
+        notifyListeners();
+      }
+      return false;
+    }
+  }
+
+  /// Swaps in [session] where its id is, keeping the open view in step.
+  void _replaceSession(ChatSession session) {
+    final index = _sessions.indexWhere((s) => s.id == session.id);
+    if (index >= 0) _sessions[index] = session;
+    if (selectedSession?.id == session.id) selectedSession = session;
+  }
+
   void deleteSession(String id) {
     _sessions.removeWhere((s) => s.id == id);
     if (_rabi.savesHistory) unawaited(_rabi.deleteSession(id).catchError((_) {}));
@@ -461,9 +510,11 @@ class AiChatController extends ChangeNotifier {
 
   void _saveActive() {
     if (!messages.any((m) => m.isUser)) return;
+    final saved = _sessions.where((s) => s.id == _sessionId).firstOrNull;
     final session = ChatSession(
       id: _sessionId,
-      title: messages.firstWhere((m) => m.isUser).text,
+      // A renamed chat keeps its name as the conversation goes on.
+      title: saved?.title ?? messages.firstWhere((m) => m.isUser).text,
       messages: List.unmodifiable(messages),
       savedAt: DateTime.now(),
     );

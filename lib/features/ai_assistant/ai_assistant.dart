@@ -418,6 +418,13 @@ class _Header extends StatelessWidget {
         final session = ctrl.selectedSession;
         return [
           _HeaderButton(
+            icon: Icons.edit_outlined,
+            tooltip: 'Rename chat',
+            onPressed: session == null
+                ? null
+                : () => _renameChat(context, ctrl, session),
+          ),
+          _HeaderButton(
             icon: Icons.delete_outline_rounded,
             tooltip: 'Delete chat',
             onPressed: session == null
@@ -443,6 +450,139 @@ Future<bool> _confirmDeleteChat(BuildContext context) => showGlassConfirmDialog(
       confirmLabel: 'Delete',
       destructive: true,
     );
+
+/// Asks for a new name for [session] and saves it. Says so if the save
+/// fails, since the old name comes back.
+Future<void> _renameChat(
+  BuildContext context,
+  AiChatController ctrl,
+  ChatSession session,
+) async {
+  final title = await showGlassDialog<String>(
+    context: context,
+    builder: (_) => _RenameChatDialog(initial: session.title),
+  );
+  if (title == null) return;
+  final saved = await ctrl.renameSession(session.id, title);
+  if (!saved && context.mounted) {
+    showDentraSnack(
+      context,
+      "Couldn't rename this chat. Check your connection and try again.",
+      tone: DentraFeedbackTone.error,
+    );
+  }
+}
+
+/// Pops with the trimmed new name, or null when cancelled.
+class _RenameChatDialog extends StatefulWidget {
+  const _RenameChatDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_RenameChatDialog> createState() => _RenameChatDialogState();
+}
+
+class _RenameChatDialogState extends State<_RenameChatDialog> {
+  late final _controller = TextEditingController(text: widget.initial)
+    // Selected, so typing replaces the old name in one go.
+    ..selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: widget.initial.length,
+    );
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final title = _controller.text.trim();
+    if (title.isEmpty) {
+      setState(() => _error = 'Give the chat a name.');
+      return;
+    }
+    Navigator.of(context).pop(title);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassDialogFrame(
+      icon: Icons.edit_outlined,
+      title: 'Rename chat',
+      message: 'Pick a name that helps you find this conversation later.',
+      children: [
+        TextField(
+          controller: _controller,
+          autofocus: true,
+          maxLength: AiChatController.maxTitleLength,
+          textCapitalization: TextCapitalization.sentences,
+          textInputAction: TextInputAction.done,
+          onChanged: (_) {
+            if (_error != null) setState(() => _error = null);
+          },
+          onSubmitted: (_) => _submit(),
+          style: GoogleFonts.outfit(fontSize: 15, color: AppColors.navy),
+          cursorColor: AppColors.g2,
+          decoration: InputDecoration(
+            labelText: 'Chat name',
+            labelStyle: GoogleFonts.outfit(
+              fontSize: 14,
+              color: AppColors.secondaryText,
+            ),
+            floatingLabelStyle: GoogleFonts.outfit(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.g2,
+            ),
+            errorText: _error,
+            errorStyle: GoogleFonts.outfit(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.dangerInk,
+            ),
+            counterStyle: GoogleFonts.outfit(
+              fontSize: 11,
+              color: AppColors.secondaryText,
+            ),
+            filled: true,
+            fillColor: AppColors.white.withValues(alpha: 0.8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: AppColors.g2.withValues(alpha: 0.2)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.g2, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.dangerBorder),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide:
+                  const BorderSide(color: AppColors.dangerInk, width: 1.5),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        DentraButtonRow(
+          secondary: DentraPillButton(
+            label: 'Cancel',
+            variant: DentraButtonVariant.outline,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          primary: DentraPillButton(label: 'Save', onPressed: _submit),
+        ),
+      ],
+    );
+  }
+}
 
 class _HeaderButton extends StatelessWidget {
   const _HeaderButton({
@@ -1472,6 +1612,8 @@ class _HistoryView extends StatelessWidget {
           ),
           child: Semantics(
             customSemanticsActions: {
+              const CustomSemanticsAction(label: 'Rename chat'): () =>
+                  _renameChat(context, ctrl, s),
               const CustomSemanticsAction(label: 'Delete chat'): () async {
                 if (await _confirmDeleteChat(context)) {
                   ctrl.deleteSession(s.id);
@@ -1526,7 +1668,18 @@ class _HistoryView extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: () => _renameChat(context, ctrl, s),
+                      tooltip: 'Rename chat',
+                      style: IconButton.styleFrom(
+                        foregroundColor: AppColors.navy.withValues(alpha: 0.55),
+                        highlightColor: AppColors.lightLavender,
+                        fixedSize: const Size(44, 44),
+                        minimumSize: const Size(44, 44),
+                      ),
+                      icon: const Icon(Icons.edit_outlined, size: 19),
+                    ),
                     Icon(
                       Icons.chevron_right_rounded,
                       color: AppColors.navy.withValues(alpha: 0.35),

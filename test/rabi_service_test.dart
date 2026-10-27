@@ -67,6 +67,8 @@ Future<String> _ask(ApiRabiService rabi,
     );
 
 void main() {
+  renameTests();
+
   group('history trimming', () {
     test('keeps every turn of a short chat', () {
       final turns = AiChatController.contextFor(_pairs(2));
@@ -172,6 +174,91 @@ void main() {
             'Rabi is taking too long to answer. Please try again.')),
       );
       await stalled.close();
+    });
+  });
+}
+
+/// Answers every question and records renames; [failRename] makes the
+/// server refuse them.
+class _FakeRabi implements RabiService {
+  final renamed = <(String, String)>[];
+  bool failRename = false;
+
+  @override
+  bool get savesHistory => true;
+
+  @override
+  Future<String> reply({
+    required String sessionId,
+    required String message,
+    String? prompt,
+    required List<(bool, String)> context,
+    void Function(String textSoFar)? onPartial,
+  }) async =>
+      'Answer to $message';
+
+  @override
+  Future<List<ChatSession>> loadSessions() async => const [];
+
+  @override
+  Future<void> renameSession(String sessionId, String title) async {
+    if (failRename) throw const ApiException(500, 'unknown', 'Nope');
+    renamed.add((sessionId, title));
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {}
+
+  @override
+  Future<void> deleteAll() async {}
+
+  @override
+  void close() {}
+}
+
+void renameTests() {
+  /// A controller with one saved chat in history.
+  Future<(AiChatController, _FakeRabi)> withSavedChat() async {
+    final rabi = _FakeRabi();
+    final ctrl = AiChatController(rabi: rabi);
+    await ctrl.bindUser('user-1');
+    await ctrl.sendMessage('Why do my gums bleed?');
+    ctrl.newChat();
+    return (ctrl, rabi);
+  }
+
+  group('renaming chats', () {
+    test('saves the trimmed name to the server', () async {
+      final (ctrl, rabi) = await withSavedChat();
+      final id = ctrl.history.single.id;
+
+      expect(await ctrl.renameSession(id, '  Gum bleeding  '), isTrue);
+      expect(ctrl.history.single.title, 'Gum bleeding');
+      expect(rabi.renamed, [(id, 'Gum bleeding')]);
+    });
+
+    test('keeps the new name when the chat continues', () async {
+      final (ctrl, _) = await withSavedChat();
+      await ctrl.renameSession(ctrl.history.single.id, 'Gum bleeding');
+
+      ctrl.continueSession(ctrl.history.single);
+      await ctrl.sendMessage('Is that serious?');
+      ctrl.newChat();
+      expect(ctrl.history.single.title, 'Gum bleeding');
+    });
+
+    test('ignores an empty name', () async {
+      final (ctrl, rabi) = await withSavedChat();
+      expect(await ctrl.renameSession(ctrl.history.single.id, '   '), isFalse);
+      expect(ctrl.history.single.title, 'Why do my gums bleed?');
+      expect(rabi.renamed, isEmpty);
+    });
+
+    test('puts the old name back when the server refuses', () async {
+      final (ctrl, rabi) = await withSavedChat();
+      rabi.failRename = true;
+      expect(await ctrl.renameSession(ctrl.history.single.id, 'Gums'), isFalse);
+      expect(ctrl.history.single.title, 'Why do my gums bleed?');
     });
   });
 }
