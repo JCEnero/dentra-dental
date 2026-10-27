@@ -196,7 +196,7 @@ class _ClinicMapState extends State<ClinicMap> {
         markerId: MarkerId(clinic.id),
         position: _latLng(clinic),
         icon: icon,
-        anchor: const Offset(0.5, 0.5),
+        anchor: _pinAnchor(selected),
         zIndexInt: selected ? 2 : 1,
         // The list card is the info view, so skip the native info window
         // and camera jump, which differ between platforms.
@@ -321,32 +321,68 @@ class _MapUnavailable extends StatelessWidget {
 /// Room around each pin for its soft shadow, in logical pixels.
 const double _kPinShadow = 4;
 
-/// Rounded-square pin with the clinic's initials, matching its list tile: soft
-/// mint, or the teal card gradient when selected. Sized in logical
-/// pixels and drawn at [pixelRatio].
+/// Distance from the pin head's center to its tip, in head radii.
+const double _kPinTip = 1.55;
+
+/// Head size (diameter) of a pin, in logical pixels.
+double _pinHead(bool selected) => selected ? 38.0 : 32.0;
+
+/// Where the pin's tip sits in its image, as a marker anchor, so the
+/// tip (not the middle of the icon) points at the clinic.
+Offset _pinAnchor(bool selected) {
+  final r = _pinHead(selected) / 2;
+  final height = r + r * _kPinTip + _kPinShadow * 2;
+  return Offset(0.5, (_kPinShadow + r + r * _kPinTip) / height);
+}
+
+/// Teardrop around a round head of radius [r] at [center], tapering to
+/// a point [tip] below it.
+Path _teardrop(Offset center, double r, double tip) {
+  // The sides meet the head where they're tangent to it.
+  final cosB = r / tip;
+  final sinB = math.sqrt(1 - cosB * cosB);
+  final point = center + Offset(0, tip);
+  return Path.combine(
+    PathOperation.union,
+    Path()..addOval(Rect.fromCircle(center: center, radius: r)),
+    Path()
+      ..moveTo(center.dx - r * sinB, center.dy + r * cosB)
+      ..lineTo(point.dx, point.dy)
+      ..lineTo(center.dx + r * sinB, center.dy + r * cosB)
+      ..close(),
+  );
+}
+
+/// Map marker with the clinic's initials in its head, matching its list
+/// tile: soft mint, or the teal card gradient when selected. Sized in
+/// logical pixels and drawn at [pixelRatio].
 Future<BitmapDescriptor> _renderPin(
   String label,
   bool selected,
   double pixelRatio,
 ) {
-  final side = selected ? 38.0 : 32.0;
-  return _paintIcon(side + _kPinShadow * 2, pixelRatio, (canvas, c) {
-    RRect tile(double inset) => RRect.fromRectAndRadius(
-          Rect.fromCenter(center: c, width: side, height: side).deflate(inset),
-          Radius.circular(side * 0.32 - inset),
-        );
-    final inner = tile(2);
+  final r = _pinHead(selected) / 2;
+  final size = Size(
+    r * 2 + _kPinShadow * 2,
+    r + r * _kPinTip + _kPinShadow * 2,
+  );
+  return _paintIcon(size, pixelRatio, (canvas, _) {
+    final head = Offset(size.width / 2, _kPinShadow + r);
+    final outer = _teardrop(head, r, r * _kPinTip);
+    // Inset by the rim width, keeping the same tip angle.
+    const rim = 2.0;
+    final inner = _teardrop(head, r - rim, (r - rim) * _kPinTip);
 
     canvas
-      ..drawRRect(
-        tile(0).shift(const Offset(0, 1.5)),
+      ..drawPath(
+        outer.shift(const Offset(0, 1.5)),
         Paint()
-          ..color = AppColors.navy.withValues(alpha: 0.22)
+          ..color = AppColors.navy.withValues(alpha: 0.25)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
       )
       // White rim keeps the pin readable on any part of the map.
-      ..drawRRect(tile(0), Paint()..color = AppColors.white)
-      ..drawRRect(
+      ..drawPath(outer, Paint()..color = AppColors.white)
+      ..drawPath(
         inner,
         Paint()
           ..shader = (selected
@@ -359,7 +395,7 @@ Future<BitmapDescriptor> _renderPin(
                         AppColors.mintGreen.withValues(alpha: 0.75),
                       ],
                     ))
-              .createShader(inner.outerRect),
+              .createShader(inner.getBounds()),
       );
 
     final text = TextPainter(
@@ -374,14 +410,14 @@ Future<BitmapDescriptor> _renderPin(
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    text.paint(canvas, c - Offset(text.width / 2, text.height / 2));
+    text.paint(canvas, head - Offset(text.width / 2, text.height / 2));
     text.dispose();
   });
 }
 
 /// "You are here" dot: navy center, white rim and a soft mint halo.
 Future<BitmapDescriptor> _renderUserDot(double pixelRatio) {
-  return _paintIcon(32, pixelRatio, (canvas, c) {
+  return _paintIcon(const Size.square(32), pixelRatio, (canvas, c) {
     canvas
       ..drawCircle(c, 15, Paint()..color = AppColors.g1.withValues(alpha: 0.28))
       ..drawCircle(c, 8.5, Paint()..color = AppColors.white)
@@ -397,25 +433,27 @@ Future<BitmapDescriptor> _renderUserDot(double pixelRatio) {
   });
 }
 
-/// Paints a square icon of [size] logical pixels and wraps it as a
-/// marker bitmap that keeps that logical size on every platform.
+/// Paints an icon of [size] logical pixels and wraps it as a marker
+/// bitmap that keeps that logical size on every platform.
 Future<BitmapDescriptor> _paintIcon(
-  double size,
+  Size size,
   double pixelRatio,
   void Function(Canvas canvas, Offset center) paint,
 ) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder)..scale(pixelRatio);
-  paint(canvas, Offset(size / 2, size / 2));
+  paint(canvas, size.center(Offset.zero));
 
-  final pixels = (size * pixelRatio).ceil();
-  final image = await recorder.endRecording().toImage(pixels, pixels);
+  final image = await recorder.endRecording().toImage(
+        (size.width * pixelRatio).ceil(),
+        (size.height * pixelRatio).ceil(),
+      );
   final png = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();
 
   return BitmapDescriptor.bytes(
     png!.buffer.asUint8List(),
-    width: size,
-    height: size,
+    width: size.width,
+    height: size.height,
   );
 }
