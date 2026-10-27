@@ -51,3 +51,6 @@ app.*.map.json
 .env
 # API
 lib/core/constants/api_keys.dart
+
+# Local Claude skill packages
+.skills/
