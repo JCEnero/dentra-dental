@@ -245,17 +245,25 @@ class _DentalExplorerScreenState extends State<DentalExplorerScreen> {
 
   Widget _viewer(DentitionAssets assets) {
     final c = _controller;
+    // Desktop (including desktop browsers) has a mouse, not pinch.
+    final touch = switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
     final String? hint = c.selected != null
         ? null
         : (!_interacted
-            ? 'Drag to rotate · pinch to zoom'
+            ? (touch
+                ? 'Drag to rotate · pinch to zoom'
+                : 'Drag to rotate · scroll to zoom')
             : 'Tap any tooth to learn about it');
 
     return LayoutBuilder(builder: (context, constraints) {
-      // Short viewers (small phones with the panel open) keep only the
-      // reset button; pinch still zooms. A very short viewer (panel
-      // expanded) shows just the model, still fully interactive.
-      final compact = constraints.maxHeight < 340;
+      // Short touch viewers (small phones with the panel open) keep only
+      // the reset button; pinch still zooms. With a mouse the zoom buttons
+      // stay. A very short viewer (panel expanded) shows just the model,
+      // still fully interactive.
+      final compact = touch && constraints.maxHeight < 340;
       final tiny = constraints.maxHeight < 220;
       return Stack(
         children: [

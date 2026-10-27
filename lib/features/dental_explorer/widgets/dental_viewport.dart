@@ -185,12 +185,22 @@ class _DentalViewportState extends State<DentalViewport>
     _pointers = 0;
   }
 
+  /// Mouse wheel, and trackpad pinch or Ctrl+wheel in desktop browsers
+  /// (which arrive as [PointerScaleEvent]). Claimed through the resolver,
+  /// so a scrollable around the viewer doesn't scroll at the same time.
   void _onPointerSignal(PointerSignalEvent event) {
+    final double factor;
     if (event is PointerScrollEvent) {
-      final factor = math.exp(-event.scrollDelta.dy / 400);
+      factor = math.exp(-event.scrollDelta.dy / 400);
+    } else if (event is PointerScaleEvent) {
+      factor = event.scale;
+    } else {
+      return;
+    }
+    GestureBinding.instance.pointerSignalResolver.register(event, (_) {
       widget.camera.zoomBy(factor);
       widget.onInteract?.call();
-    }
+    });
   }
 
   void _onTapUp(TapUpDetails d) {
@@ -222,8 +232,8 @@ class _DentalViewportState extends State<DentalViewport>
   Widget build(BuildContext context) {
     return Semantics(
       label: 'Interactive 3D model of the upper and lower teeth',
-      hint: 'Drag to rotate and pinch to zoom. The tooth chart lists every '
-          'tooth for selection.',
+      hint: 'Drag to rotate, and pinch or scroll to zoom. The tooth chart '
+          'lists every tooth for selection.',
       child: LayoutBuilder(builder: (context, constraints) {
         final size = constraints.biggest;
         return Listener(
