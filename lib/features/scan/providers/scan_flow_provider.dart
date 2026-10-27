@@ -6,12 +6,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/capture_regions.dart';
 import '../data/mock_scan_report.dart';
 import '../rendering/scan_scene.dart';
+import '../services/tooth_photo_check.dart';
 
 /// The simulated scan: device → capture → (3D scan) → results. The 3D
 /// scan runs as a full-screen route between capture and results.
 enum ScanFlowStage { device, capture, results }
 
-enum PhotoCheck { checking, passed }
+enum PhotoCheck {
+  checking,
+  passed,
+
+  /// No teeth found. Shown so the user can retake it, but never scanned.
+  rejected,
+}
 
 class RegionPhoto {
   const RegionPhoto({
@@ -24,8 +31,8 @@ class RegionPhoto {
   final bool isSample;
   final PhotoCheck check;
 
-  RegionPhoto _passed() =>
-      RegionPhoto(bytes: bytes, isSample: isSample, check: PhotoCheck.passed);
+  RegionPhoto _checked(PhotoCheck check) =>
+      RegionPhoto(bytes: bytes, isSample: isSample, check: check);
 }
 
 const Object _unset = Object();
@@ -41,7 +48,7 @@ class ScanFlowState {
 
   final ScanFlowStage stage;
 
-  /// By region id.
+  /// By region id, including rejected photos so their card can say why.
   final Map<String, RegionPhoto> photos;
   final ScanReport? report;
   final int completedScans;
@@ -49,10 +56,20 @@ class ScanFlowState {
   /// Sample photos are being rendered.
   final bool preparingSamples;
 
-  int get capturedCount => photos.length;
-  int get skippedCount => captureRegions.length - photos.length;
+  /// Photos that can go into the scan: everything not rejected.
+  Map<String, RegionPhoto> get usablePhotos => {
+        for (final e in photos.entries)
+          if (e.value.check != PhotoCheck.rejected) e.key: e.value,
+      };
+
+  int get capturedCount => usablePhotos.length;
+  int get skippedCount => captureRegions.length - capturedCount;
   bool get allCaptured => skippedCount == 0;
-  bool get canStartScan => photos.isNotEmpty;
+
+  /// At least one usable photo, and none still being checked.
+  bool get canStartScan =>
+      usablePhotos.isNotEmpty &&
+      !photos.values.any((p) => p.check == PhotoCheck.checking);
 
   ScanFlowState copyWith({
     ScanFlowStage? stage,
@@ -72,56 +89,62 @@ class ScanFlowState {
 }
 
 /// Runs the simulation. Nothing leaves the device: photos stay in
-/// memory, the quality check is a short timer and the report is mock
-/// data shaped by which regions were captured.
+/// memory, [ToothPhotoCheck] turns away photos without teeth, and the
+/// report is demo data shaped by which regions were captured.
 class ScanFlowNotifier extends Notifier<ScanFlowState> {
+  /// Shortest time the "checking" strip shows, so the check reads as a step.
   static const Duration qualityCheck = Duration(milliseconds: 1100);
 
   /// Gap between sample photos landing, so the grid fills in sequence.
   static const Duration sampleStagger = Duration(milliseconds: 90);
 
-  final _checks = <String, Timer>{};
-
   @override
-  ScanFlowState build() {
-    ref.onDispose(_cancelChecks);
-    return const ScanFlowState();
-  }
+  ScanFlowState build() => const ScanFlowState();
 
   void openCapture() => state = state.copyWith(stage: ScanFlowStage.capture);
 
   void backToDevice() => state = state.copyWith(stage: ScanFlowStage.device);
 
-  void setPhoto(String regionId, Uint8List bytes, {bool sample = false}) {
+  /// Adds a photo and checks it for teeth. Sample photos are rendered
+  /// teeth, so they skip the check. Returns the outcome, or null when the
+  /// photo was replaced or removed before the check finished.
+  Future<PhotoCheck?> setPhoto(
+    String regionId,
+    Uint8List bytes, {
+    bool sample = false,
+  }) async {
     final photo = RegionPhoto(bytes: bytes, isSample: sample);
     state = state.copyWith(photos: {...state.photos, regionId: photo});
-    _checks[regionId]?.cancel();
-    _checks[regionId] = Timer(qualityCheck, () {
-      _checks.remove(regionId);
-      // Only if this photo wasn't replaced or removed meanwhile.
-      if (!identical(state.photos[regionId], photo)) return;
-      state = state.copyWith(
-        photos: {...state.photos, regionId: photo._passed()},
-      );
-    });
+
+    final (hasTeeth, _) = await (
+      sample ? Future.value(true) : ToothPhotoCheck.looksLikeTeeth(bytes),
+      Future<void>.delayed(qualityCheck),
+    ).wait;
+
+    // Only if this photo wasn't replaced or removed meanwhile.
+    if (!identical(state.photos[regionId], photo)) return null;
+    final check = hasTeeth ? PhotoCheck.passed : PhotoCheck.rejected;
+    state = state.copyWith(
+      photos: {...state.photos, regionId: photo._checked(check)},
+    );
+    return check;
   }
 
   void removePhoto(String regionId) {
-    _checks.remove(regionId)?.cancel();
     state = state.copyWith(photos: {...state.photos}..remove(regionId));
   }
 
   void clearPhotos() {
-    _cancelChecks();
     state = state.copyWith(photos: const {});
   }
 
   /// Fills every empty region with a sample photo.
   Future<void> useSamplePhotos() async {
     if (state.preparingSamples) return;
+    // Rejected photos count as missing, so samples replace them.
     final missing = [
       for (final r in captureRegions)
-        if (!state.photos.containsKey(r.id)) r,
+        if (!state.usablePhotos.containsKey(r.id)) r,
     ];
     if (missing.isEmpty) return;
     state = state.copyWith(preparingSamples: true);
@@ -131,8 +154,8 @@ class ScanFlowNotifier extends Notifier<ScanFlowState> {
       for (final r in missing) {
         if (state.stage != ScanFlowStage.capture) return;
         // A photo the user added meanwhile wins.
-        if (!state.photos.containsKey(r.id)) {
-          setPhoto(r.id, samples[r.id]!, sample: true);
+        if (!state.usablePhotos.containsKey(r.id)) {
+          unawaited(setPhoto(r.id, samples[r.id]!, sample: true));
         }
         await Future<void>.delayed(sampleStagger);
       }
@@ -149,7 +172,7 @@ class ScanFlowNotifier extends Notifier<ScanFlowState> {
       stage: ScanFlowStage.results,
       completedScans: sequence,
       report: ScanReport.generate(
-        captured: state.photos.keys.toSet(),
+        captured: state.usablePhotos.keys.toSet(),
         completedAt: DateTime.now(),
         sequence: sequence,
       ),
@@ -158,15 +181,7 @@ class ScanFlowNotifier extends Notifier<ScanFlowState> {
 
   /// Back to the device screen with nothing captured.
   void restart() {
-    _cancelChecks();
     state = ScanFlowState(completedScans: state.completedScans);
-  }
-
-  void _cancelChecks() {
-    for (final t in _checks.values) {
-      t.cancel();
-    }
-    _checks.clear();
   }
 }
 
