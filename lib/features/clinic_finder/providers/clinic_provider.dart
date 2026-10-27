@@ -36,6 +36,13 @@ final userLocationProvider =
   UserLocationNotifier.new,
 );
 
+/// How the Clinic Finder list is ordered.
+enum ClinicSort { nearest, topRated, lowestPrice }
+
+/// Places is queried once over this radius; the distance filter then
+/// narrows it client-side, so every distance option can change the list.
+const double kClinicFetchRadiusKm = 10.0;
+
 /// Active filter selections for the Clinic Finder list/map views.
 class ClinicFilterState {
   final double radiusKm;
@@ -43,6 +50,7 @@ class ClinicFilterState {
   final double minRating;
   final bool openNowOnly;
   final String searchQuery; // <-- ADDED BY CLAUDE
+  final ClinicSort sort;
 
   const ClinicFilterState({
     this.radiusKm = 5.0,
@@ -50,6 +58,7 @@ class ClinicFilterState {
     this.minRating = 0.0,
     this.openNowOnly = false,
     this.searchQuery = '', // <-- ADDED BY CLAUDE
+    this.sort = ClinicSort.nearest,
   });
 
   ClinicFilterState copyWith({
@@ -59,6 +68,7 @@ class ClinicFilterState {
     double? minRating,
     bool? openNowOnly,
     String? searchQuery, // <-- ADDED BY CLAUDE
+    ClinicSort? sort,
   }) {
     return ClinicFilterState(
       radiusKm: radiusKm ?? this.radiusKm,
@@ -66,6 +76,7 @@ class ClinicFilterState {
       minRating: minRating ?? this.minRating,
       openNowOnly: openNowOnly ?? this.openNowOnly,
       searchQuery: searchQuery ?? this.searchQuery, // <-- ADDED BY CLAUDE
+      sort: sort ?? this.sort,
     );
   }
 }
@@ -97,6 +108,10 @@ class ClinicFilterNotifier extends Notifier<ClinicFilterState> {
   // <-- ADDED BY CLAUDE
   void setSearchQuery(String query) {
     state = state.copyWith(searchQuery: query);
+  }
+
+  void setSort(ClinicSort sort) {
+    state = state.copyWith(sort: sort);
   }
 
   void reset() {
@@ -147,11 +162,13 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
       },
       body: jsonEncode({
         'includedTypes': ['dentist'],
-        'maxResultCount': 10,
+        // Nearest first, so the distance filter has a real spread to cut.
+        'maxResultCount': 20,
+        'rankPreference': 'DISTANCE',
         'locationRestriction': {
           'circle': {
             'center': {'latitude': lat, 'longitude': lng},
-            'radius': 5000.0,
+            'radius': kClinicFetchRadiusKm * 1000,
           },
         },
       }),
@@ -172,7 +189,17 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
       final random = Random(placeId.hashCode);
       final shuffled = [..._servicePool]..shuffle(random);
       final count = 3 + random.nextInt(3); // 3 to 5 services
-      final selectedServices = shuffled.take(count).toList();
+      // Each clinic gets its own price level (0.7x to 1.8x), so the
+      // budget filter and price sort separate clinics instead of every
+      // clinic starting at the same ₱500 consultation.
+      final priceLevel = 0.7 + random.nextDouble() * 1.1;
+      final selectedServices = [
+        for (final s in shuffled.take(count))
+          ClinicService(
+            name: s.name,
+            price: ((s.price * priceLevel) / 50).round() * 50.0,
+          ),
+      ];
       
       return ClinicModel(
         id: placeId,
@@ -223,7 +250,14 @@ final filteredClinicsProvider = Provider<AsyncValue<List<ClinicModel>>>((ref) {
   return clinicsAsync.whenData((clinics) {
     final now = DateTime.now();
 
-    return clinics.where((clinic) {
+    double distanceTo(ClinicModel c) => Geolocator.distanceBetween(
+          userLocation.latitude,
+          userLocation.longitude,
+          c.latitude,
+          c.longitude,
+        );
+
+    final matches = clinics.where((clinic) {
       // <-- ADDED BY CLAUDE: Search query filter
       if (filters.searchQuery.isNotEmpty) {
         final query = filters.searchQuery.toLowerCase();
@@ -233,13 +267,7 @@ final filteredClinicsProvider = Provider<AsyncValue<List<ClinicModel>>>((ref) {
       }
 
       // Radius filter: distance between user and clinic, in kilometers.
-      final distanceMeters = Geolocator.distanceBetween(
-        userLocation.latitude,
-        userLocation.longitude,
-        clinic.latitude,
-        clinic.longitude,
-      );
-      final withinRadius = (distanceMeters / 1000) <= filters.radiusKm;
+      final withinRadius = (distanceTo(clinic) / 1000) <= filters.radiusKm;
       if (!withinRadius) return false;
 
       // Rating filter.
@@ -261,5 +289,26 @@ final filteredClinicsProvider = Provider<AsyncValue<List<ClinicModel>>>((ref) {
 
       return true;
     }).toList();
+
+    // Ties fall back to distance, so the order is always stable.
+    int byDistance(ClinicModel a, ClinicModel b) =>
+        distanceTo(a).compareTo(distanceTo(b));
+    switch (filters.sort) {
+      case ClinicSort.nearest:
+        matches.sort(byDistance);
+      case ClinicSort.topRated:
+        matches.sort((a, b) {
+          final r = b.rating.compareTo(a.rating);
+          return r != 0 ? r : byDistance(a, b);
+        });
+      case ClinicSort.lowestPrice:
+        matches.sort((a, b) {
+          final pa = a.lowestServicePrice ?? double.infinity;
+          final pb = b.lowestServicePrice ?? double.infinity;
+          final p = pa.compareTo(pb);
+          return p != 0 ? p : byDistance(a, b);
+        });
+    }
+    return matches;
   });
 });

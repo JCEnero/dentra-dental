@@ -21,19 +21,21 @@ const double _kDefaultRadiusKm = 5.0;
 /// the list keeps enough room.
 const double _kMinHeightForMap = 420;
 
-/// Number of filters that differ from their defaults.
+/// Number of filters (and a non-default sort) that differ from their defaults.
 int _activeFilterCount(ClinicFilterState f) =>
     (f.radiusKm != _kDefaultRadiusKm ? 1 : 0) +
     (f.minRating > 0 ? 1 : 0) +
-    (f.maxPrice != null ? 1 : 0);
+    (f.maxPrice != null ? 1 : 0) +
+    (f.sort != ClinicSort.nearest ? 1 : 0);
 
-/// Clears distance, rating and budget but keeps the search text, which
-/// [ClinicFilterNotifier.reset] would also wipe.
+/// Clears distance, rating, budget and sort but keeps the search text,
+/// which [ClinicFilterNotifier.reset] would also wipe.
 void _resetFilters(ClinicFilterNotifier notifier) {
   notifier
     ..setRadiusKm(_kDefaultRadiusKm)
     ..setMinRating(0)
-    ..setMaxPrice(null);
+    ..setMaxPrice(null)
+    ..setSort(ClinicSort.nearest);
 }
 
 double _distanceKm(UserLocation from, ClinicModel clinic) =>
@@ -143,7 +145,7 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
     showGlassSheet<void>(
       context: context,
       title: 'Filter clinics',
-      subtitle: 'Narrow the list by distance, rating and budget.',
+      subtitle: 'Narrow and sort the list by distance, rating and budget.',
       builder: (_) => const _FilterSheetBody(),
     );
   }
@@ -175,11 +177,6 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
     );
   }
 
-  /// Nearest first.
-  List<ClinicModel> _sorted(List<ClinicModel> clinics, UserLocation from) =>
-      [...clinics]..sort(
-          (a, b) => _distanceKm(from, a).compareTo(_distanceKm(from, b)));
-
   @override
   Widget build(BuildContext context) {
     final filters = ref.watch(clinicFilterProvider);
@@ -187,10 +184,8 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
     final clinicsAsync = ref.watch(filteredClinicsProvider);
     final filterCount = _activeFilterCount(filters);
 
-    // One sorted list drives both the pins and the cards.
-    final clinics = clinicsAsync.valueOrNull;
-    final sorted =
-        clinics == null ? const <ClinicModel>[] : _sorted(clinics, location);
+    // One list, already filtered and sorted, drives both the pins and the cards.
+    final sorted = clinicsAsync.valueOrNull ?? const <ClinicModel>[];
 
     // The app shell keeps hidden tabs built. Only mount the map while
     // this tab shows, so it never lingers behind other tabs on web.
@@ -325,7 +320,7 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
     );
   }
 
-  /// Cards in a plain column: Places returns at most 10 clinics, and
+  /// Cards in a plain column: Places returns at most 20 clinics, and
   /// building them all lets a pin tap scroll to any card.
   Widget _clinicList(List<ClinicModel> sorted, UserLocation location) {
     return SliverPadding(
@@ -813,9 +808,15 @@ class _StatusView extends StatelessWidget {
 class _FilterSheetBody extends ConsumerWidget {
   const _FilterSheetBody();
 
-  static const _radiusOptions = [1.0, 2.0, 3.0, 5.0];
+  /// Tops out at [kClinicFetchRadiusKm], the area Places is searched over.
+  static const _radiusOptions = [1.0, 3.0, 5.0, kClinicFetchRadiusKm];
   static const _ratingOptions = [0.0, 3.5, 4.0, 4.5];
-  static const _priceOptions = <double?>[null, 1000, 2000, 5000];
+  static const _priceOptions = <double?>[null, 500, 1000, 1500];
+  static const _sortOptions = {
+    ClinicSort.nearest: 'Nearest',
+    ClinicSort.topRated: 'Top rated',
+    ClinicSort.lowestPrice: 'Lowest price',
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -825,6 +826,20 @@ class _FilterSheetBody extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const _SheetLabel(icon: Icons.sort_rounded, text: 'Sort by'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final entry in _sortOptions.entries)
+              DentraChoiceChip(
+                label: entry.value,
+                selected: filters.sort == entry.key,
+                onSelected: () => notifier.setSort(entry.key),
+              ),
+          ],
+        ),
+        const SizedBox(height: 22),
         const _SheetLabel(icon: Icons.near_me_rounded, text: 'Distance'),
         Wrap(
           spacing: 8,
