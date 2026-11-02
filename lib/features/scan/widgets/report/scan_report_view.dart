@@ -176,10 +176,13 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
           ),
         ),
       _Section(
-        heading: const ReportHeading(
+        heading: ReportHeading(
           'Your photos',
-          subtitle: 'Back molars and inner sides first: the teeth you can\'t '
-              'easily see yourself.',
+          subtitle: report.photoIds
+                  .any((id) => hardToSeeViews.contains(baseRegionId(id)))
+              ? 'Back molars and inner sides first: the teeth you can\'t '
+                  'easily see yourself.'
+              : null,
         ),
         child: ReportPhotoRow(
           photoIds: report.photoIds,
