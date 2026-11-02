@@ -280,8 +280,9 @@ class _MouthMotion extends ChangeNotifier {
 
   CameraPose _goal(DentitionModel model, Size size) {
     final spot = focus;
-    if (spot != null)
+    if (spot != null) {
       return cachedRegionPose(model, spot.photo, size, fill: 0.74);
+    }
     return fitPose(
       model,
       yaw: 0,
