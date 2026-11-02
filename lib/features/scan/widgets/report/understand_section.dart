@@ -302,8 +302,8 @@ class WhatItReads extends StatelessWidget {
               VerticalDivider(width: 25, thickness: 1, color: ReportColors.rule),
               column(
                 'It can\'t read yet',
-                'Plaque, tartar, gums, inner sides, and decay hidden between '
-                    'teeth.',
+                'Plaque, tartar, gums and inner sides. It also misses many small '
+                    'cavities and decay between teeth.',
               ),
             ],
           ),

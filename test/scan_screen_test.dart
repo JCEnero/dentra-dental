@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:dentra_mobile/features/scan/data/models/captured_image.dart';
 import 'package:dentra_mobile/features/scan/data/scan_outcomes.dart';
 import 'package:dentra_mobile/features/scan/data/scan_regions.dart';
@@ -971,6 +972,32 @@ void main() {
   });
 
   group('measuring a photo on the device', () {
+    Future<Uint8List> png(int width, int height) async {
+      final recorder = ui.PictureRecorder();
+      ui.Canvas(recorder).drawColor(const Color(0xFF888888), BlendMode.src);
+      final image =
+          await recorder.endRecording().toImage(width, height);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      return data!.buffer.asUint8List();
+    }
+
+    testWidgets('a photo too small to read is called out before it is sent',
+        (tester) async {
+      await tester.runAsync(() async {
+        Future<bool?> tooSmall(int w, int h) async =>
+            (await PhotoQuality.measure(await png(w, h)))?.tooSmall;
+        expect(await tooSmall(225, 225), isTrue);
+        expect(await tooSmall(200, 800), isTrue);
+        expect(await tooSmall(600, 200), isTrue);
+        expect(await tooSmall(240, 240), isFalse);
+        expect(await tooSmall(1920, 1080), isFalse);
+        // Wide enough to be scaled down thin, but really tall enough.
+        expect(await tooSmall(2600, 300), isFalse);
+      });
+    });
+
+
     Uint8List pixels(int w, int h, int Function(int x, int y) gray) {
       final out = Uint8List(w * h * 4);
       for (var y = 0; y < h; y++) {

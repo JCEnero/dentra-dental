@@ -286,6 +286,21 @@ void main() {
     });
   });
 
+  group('a clear result', () {
+    test('never reads as a clean bill of health', () {
+      final report = ScreeningReport(_analysis(), _allViews);
+      expect(report.sentence, contains('can miss early decay'));
+      expect(report.sentence, contains('regular check-ups'));
+      expect(report.sentence, isNot(contains('No signs')));
+    });
+
+    test('the wording on signs gives no figures', () {
+      for (final text in signMeaning.values) {
+        expect(text, isNot(contains(RegExp(r'\d'))));
+      }
+    });
+  });
+
   group('the report', () {
     test('the headline follows the most pressing advice, never the note on braces',
         () {

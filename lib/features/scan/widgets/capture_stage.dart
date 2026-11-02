@@ -387,12 +387,30 @@ class _QualityRow extends StatelessWidget {
     };
     return Semantics(
       liveRegion: true,
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _QualityChip(ok: lightOk, text: lightText),
-          _QualityChip(ok: focusOk, text: focusText),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              if (q.tooSmall) const _QualityChip(ok: false, text: 'Too small'),
+              _QualityChip(ok: lightOk, text: lightText),
+              _QualityChip(ok: focusOk, text: focusText),
+            ],
+          ),
+          if (q.tooSmall) ...[
+            const SizedBox(height: 6),
+            Text(
+              "This photo is too small to check, so it won't be read. Use the "
+              'original full-size photo instead.',
+              style: GoogleFonts.outfit(
+                fontSize: 12.5,
+                height: 1.4,
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ],
         ],
       ),
     );

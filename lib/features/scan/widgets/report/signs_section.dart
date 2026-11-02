@@ -11,15 +11,15 @@ import '../scan_theme.dart';
 import 'report_style.dart';
 import 'spot_photo.dart';
 
-/// How often signs at each strength matched decay dentists had marked, on
-/// held-out photos with and without decay. Keep in step with
-/// ml/inference/models/caries/report.json.
+/// What each strength means, in words. No figures: on a second, outside set of
+/// photos signs were right less often than on the set the model trained on, so
+/// a number here would claim more than has been shown.
 const Map<SignStrength, String> signMeaning = {
-  SignStrength.strong: 'In our tests, about 9 in 10 of these were real decay.',
+  SignStrength.strong: 'The model is fairly sure. Worth showing a dentist.',
   SignStrength.possible:
-      'In our tests, about 6 in 10 of these were real decay.',
-  SignStrength.faint: 'In our tests, about 5 in 10 of these were real decay. '
-      'Mention it to a dentist if it keeps showing up.',
+      'The model leans yes, but it could be a stain or a shadow.',
+  SignStrength.faint:
+      'Often a false alarm. Mention it to a dentist if it keeps showing up.',
 };
 
 /// The real photos, in close on each sign, above how sure the model was about

@@ -86,7 +86,7 @@ class _CareScale extends StatelessWidget {
   final ReportLevel level;
 
   String get _label => switch (level) {
-        ReportLevel.none => 'Nothing to do now',
+        ReportLevel.none => 'Your regular check-ups',
         ReportLevel.nextVisit => 'At your next check-up',
         ReportLevel.soon => 'Book soon',
         ReportLevel.prompt => 'See one promptly',

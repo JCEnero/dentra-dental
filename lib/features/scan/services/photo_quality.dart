@@ -1,13 +1,21 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 /// How one photo measured on the device, right after it was taken. Only
 /// advice: the server's checks decide what gets analyzed.
 class PhotoQuality {
-  const PhotoQuality({required this.light, required this.focus});
+  const PhotoQuality({
+    required this.light,
+    required this.focus,
+    this.tooSmall = false,
+  });
 
   final PhotoLight light;
   final PhotoFocus focus;
+
+  /// Smaller than the analysis can read, whatever its light and focus.
+  final bool tooSmall;
 
   /// Same thresholds as ml/inference's quality.py, so what this says here is
   /// close to what the analysis will say later. Checked at about the same size.
@@ -16,6 +24,7 @@ class PhotoQuality {
   static const double maxMean = 225;
   static const double maxClipped = 0.25;
   static const double minSharpness = 15;
+  static const int minSide = 240;
 
   /// Decodes [bytes] small and measures them, or returns null when the photo
   /// can't be read here. A codec quirk must never hold up a scan.
@@ -33,10 +42,29 @@ class PhotoQuality {
       image.dispose();
       codec.dispose();
       if (data == null) return null;
-      return fromRgba(data.buffer.asUint8List(), width, height);
+      final quality = fromRgba(data.buffer.asUint8List(), width, height);
+      return PhotoQuality(
+        light: quality.light,
+        focus: quality.focus,
+        tooSmall: await _isTooSmall(bytes, width, height),
+      );
     } catch (_) {
       return null;
     }
+  }
+
+  /// Whether a photo's real shorter side is under [minSide]. A photo no wider
+  /// than [checkSide] was decoded as it is, so [width] and [height] are real. A
+  /// wider one was scaled down, so only a thin one needs its real size looked up.
+  static Future<bool> _isTooSmall(Uint8List bytes, int width, int height) async {
+    if (math.min(width, height) >= minSide) return false;
+    if (width < checkSide) return true;
+    final codec = await ui.instantiateImageCodec(bytes);
+    final image = (await codec.getNextFrame()).image;
+    final side = math.min(image.width, image.height);
+    image.dispose();
+    codec.dispose();
+    return side < minSide;
   }
 
   /// Measures raw RGBA pixels: BT.601 brightness, the share of near-white

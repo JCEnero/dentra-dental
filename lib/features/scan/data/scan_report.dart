@@ -310,9 +310,9 @@ class ScreeningReport {
       return '$faintCount faint ${faintCount == 1 ? 'sign' : 'signs'}, too '
           'unsure to act on. We\'ll compare next scan.';
     }
-    return 'No signs of decay in the $photosRead '
-        '${photosRead == 1 ? 'photo' : 'photos'} we could read. Keep up your '
-        'regular check-ups.';
+    return 'Nothing flagged in the $photosRead '
+        '${photosRead == 1 ? 'photo' : 'photos'} we could read. This check can '
+        'miss early decay, so keep your regular check-ups.';
   }
 
   /// Each area against each surface, or null for an old five-region scan.
