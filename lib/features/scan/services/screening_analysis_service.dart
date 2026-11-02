@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show ValueChanged;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
@@ -48,8 +49,11 @@ class ScreeningAnalysisResult {
 /// Contract for AI image analysis of a finished scan.
 abstract class ScreeningAnalysisService {
   /// Analyzes the photos already uploaded for [sessionId]. Throws
-  /// [AnalysisException].
-  Future<ScreeningAnalysisResult> analyze(String sessionId);
+  /// [AnalysisException]. [onProgress] hears how far the server has got.
+  Future<ScreeningAnalysisResult> analyze(
+    String sessionId, {
+    ValueChanged<ScreeningAnalysisProgress>? onProgress,
+  });
 }
 
 /// Server-side analysis: asks the API to analyze the uploaded photos,
@@ -57,19 +61,25 @@ abstract class ScreeningAnalysisService {
 class ApiScreeningAnalysisService implements ScreeningAnalysisService {
   ApiScreeningAnalysisService(
     this._api, {
-    this.pollEvery = const Duration(seconds: 2),
+    this.pollEvery = const Duration(seconds: 1),
   });
 
   final ApiClient _api;
   final Duration pollEvery;
 
   @override
-  Future<ScreeningAnalysisResult> analyze(String sessionId) async {
+  Future<ScreeningAnalysisResult> analyze(
+    String sessionId, {
+    ValueChanged<ScreeningAnalysisProgress>? onProgress,
+  }) async {
     final path = '/api/screenings/${Uri.encodeComponent(sessionId)}';
     try {
       var session = await _request('POST', '$path/analyze');
       // The caller's timeout ends this loop if the server never finishes.
       while (session.analysis?.status == AnalysisStatus.pending) {
+        if (session.analysis?.progress case final progress?) {
+          onProgress?.call(progress);
+        }
         await Future<void>.delayed(pollEvery);
         session = await _request('GET', path);
       }

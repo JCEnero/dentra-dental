@@ -10,80 +10,83 @@ import '../../../dental_explorer/geometry/dentition_builder.dart';
 import '../../../dental_explorer/geometry/mesh.dart';
 import '../../../dental_explorer/rendering/dentition_renderer.dart';
 import '../../../dental_explorer/rendering/orbit_camera.dart';
-import '../../data/capture_regions.dart';
-import '../../data/mock_scan_report.dart';
-import 'scan_sim_theme.dart';
+import '../../data/scan_outcomes.dart';
+import '../../data/scan_regions.dart';
+import '../../data/scan_steps.dart';
+import '../scan_theme.dart';
 
-/// When each part of the scan animation happens, as fractions (0–1) of
-/// its run time. The painter and the HUD widgets read the same timings.
+/// Where each part of the scan sits on its 0-1 progress. Progress follows the
+/// real run: sending photos builds the model, each photo the server finishes
+/// lands on it, and the results reveal only once they're in.
 class ChamberTimeline {
-  ChamberTimeline(this.captured);
+  ChamberTimeline(this.photos);
 
-  /// Captured regions, in guided order.
-  final List<CaptureRegion> captured;
+  /// The photos in the run, in capture order.
+  final List<ScanRegion> photos;
 
-  /// Where each part of the animation starts: point cloud, wireframe,
-  /// solid model, photo projection, area check, report.
-  static const phaseStarts = [0.0, 0.15, 0.35, 0.55, 0.75, 0.90];
+  static const double buildEnd = 0.36;
+  static const double readEnd = 0.84;
+  static const double revealEnd = 0.955;
 
-  /// The steps the status panel shows: one per phase, so the steps
-  /// advance at an even pace.
-  static const stepStarts = phaseStarts;
-  static int get stepCount => stepStarts.length;
+  /// Point cloud, wireframe, solid model, photos, reveal, settle.
+  static const phaseStarts = [0.0, 0.08, 0.22, buildEnd, readEnd, revealEnd];
 
-  String labelOf(int step) => switch (step) {
-        0 => 'Initializing scanner…',
-        1 => 'Mapping dental arches…',
-        2 => 'Refining surface details…',
-        3 => 'Analyzing ${captured.length} '
-            'region${captured.length == 1 ? '' : 's'}…',
-        4 => 'Checking each area…',
-        _ => 'Generating report…',
-      };
-
-  int stepAt(double p) {
-    for (var i = stepStarts.length - 1; i > 0; i--) {
-      if (p >= stepStarts[i]) return i;
-    }
-    return 0;
-  }
-
-  /// 0–1 through animation [phase] at [p].
+  /// 0-1 through animation [phase] at [p].
   double within(int phase, double p) {
     final start = phaseStarts[phase];
-    final end =
-        phase + 1 < phaseStarts.length ? phaseStarts[phase + 1] : 1.0;
+    final end = phase + 1 < phaseStarts.length ? phaseStarts[phase + 1] : 1.0;
     return ((p - start) / (end - start)).clamp(0.0, 1.0);
   }
 
-  static const _flightLength = 0.06;
+  double get _slot => (readEnd - buildEnd) / math.max(1, photos.length);
 
-  /// Progress of the [i]-th captured photo's flight onto the model. It
-  /// lands near 1 and keeps glowing a little past it.
-  double flight(int i, double p) {
-    final n = captured.length;
-    final step = n > 1 ? (0.17 - _flightLength) / (n - 1) : 0.0;
-    return (p - (0.56 + i * step)) / _flightLength;
-  }
+  /// Progress of the [i]-th photo: on stage from 0 to 1, with a ripple on the
+  /// model carrying on a little past that.
+  double flight(int i, double p) => (p - (buildEnd + i * _slot)) / _slot;
+
+  /// A photo waits at this point of its flight, being read, until the server
+  /// says it's finished. Only then does it fly to the model.
+  static const double readingHold = 0.7;
 
   bool landed(int i, double p) => flight(i, p) >= 0.92;
 
   int landedCount(double p) {
     var n = 0;
-    for (var i = 0; i < captured.length; i++) {
+    for (var i = 0; i < photos.length; i++) {
       if (landed(i, p)) n++;
     }
     return n;
   }
 
-  /// How far a tooth has filled in solid. [rank] is its place along the
-  /// arches, 0–1.
-  static double solid(double rank, double p) =>
-      ((p - (0.36 + 0.15 * rank)) / 0.035).clamp(0.0, 1.0);
+  /// The photo on stage at [p], if any.
+  int? activeIndex(double p) {
+    for (var i = 0; i < photos.length; i++) {
+      final f = flight(i, p);
+      if (f >= 0 && f < 1) return i;
+    }
+    return null;
+  }
 
-  /// How far an area's check has run; 0 before it starts.
-  static double checked(MouthArea area, double p) =>
-      ((p - (0.755 + 0.11 * area.index / (MouthArea.values.length - 1))) /
+  /// The step to explain at [p]: saving and sending while the model builds,
+  /// what happens to each photo while they're read, then the results.
+  static int stepAt(double p) {
+    final sending = sendingSteps.length, reading = readingSteps.length;
+    if (p < buildEnd) return p < buildEnd / 2 ? 0 : 1;
+    if (p < readEnd) {
+      final part = (p - buildEnd) / (readEnd - buildEnd);
+      return sending + math.min((part * reading).floor(), reading - 1);
+    }
+    return sending + reading + (p < (readEnd + revealEnd) / 2 ? 0 : 1);
+  }
+
+  /// How far a tooth has filled in solid. [rank] is its place along the
+  /// arches, 0-1.
+  static double solid(double rank, double p) =>
+      ((p - (0.225 + 0.1 * rank)) / 0.03).clamp(0.0, 1.0);
+
+  /// How far an area's reveal has run; 0 before it starts.
+  static double revealed(MouthArea area, double p) =>
+      ((p - (readEnd + 0.008 + 0.085 * area.index / (MouthArea.values.length - 1))) /
               0.03)
           .clamp(0.0, 1.0);
 }
@@ -100,8 +103,6 @@ class ChamberGeometry {
     required this.edgeStart,
     required this.revealRank,
     required this.regionAnchors,
-    required this.areaPins,
-    required this.areaFacing,
   });
 
   static final _cache = Expando<ChamberGeometry>();
@@ -127,13 +128,8 @@ class ChamberGeometry {
   /// By tooth index: place along the arches, left to right, 0–31.
   final Int32List revealRank;
 
-  /// By [captureRegions] index: where that region's photo lands.
-  final List<Vec3> regionAnchors;
-
-  /// By [MouthArea] index: where its marker sits, just outside the gums,
-  /// and the direction that side of the area faces.
-  final List<Vec3> areaPins;
-  final List<Vec3> areaFacing;
+  /// By view id: where that view's photo lands.
+  final Map<String, Vec3> regionAnchors;
 
   static ChamberGeometry _build(DentitionModel model) {
     final mesh = model.mesh;
@@ -232,60 +228,36 @@ class ChamberGeometry {
       edges: Int32List.fromList(edges),
       edgeStart: edgeStart,
       revealRank: rank,
-      regionAnchors: [
-        for (final region in captureRegions)
-          average([
+      regionAnchors: {
+        for (final region in [...scanRegions, ...legacyScanRegions])
+          region.id: average([
             for (final t in ToothCatalog.all)
-              if (region.covers(t) && region.arches.shows(t.arch))
-                anchors[t.index].crownCenter,
+              if (region.covers(t)) anchors[t.index].crownCenter,
           ]),
-      ],
-      areaPins: [
-        for (final area in MouthArea.values)
-          average([
-            for (final t in ToothCatalog.all)
-              if (area.contains(t)) anchors[t.index].label,
-          ]),
-      ],
-      areaFacing: [
-        for (final area in MouthArea.values)
-          average([
-            for (final t in ToothCatalog.all)
-              if (area.contains(t)) anchors[t.index].buccal,
-          ]).normalized(),
-      ],
+      },
     );
   }
 }
 
 /// Draws one frame of the scan over the light backdrop.
 ///
-/// Layers, back to front: a soft glow and the pad the model stands on,
-/// the progress ring; the model as a point cloud, wireframe, then solid;
-/// photo projections, area markers and the scanning light.
+/// Layers, back to front: a soft glow and the pad the model stands on, the
+/// progress ring; the model as a point cloud, wireframe, then solid; the
+/// user's photos being read, area markers and the scanning light.
+///
+/// The camera and light run on the clock, so the scene stays alive while
+/// waiting for the server, but nothing it shows as done is ahead of the run.
 class ChamberScene {
   ChamberScene({
     required this.model,
     required this.timeline,
-    required this.report,
     required this.thumbs,
     required this.reduced,
-    required this.seconds,
   })  : _renderer = DentitionRenderer(model),
         _geo = ChamberGeometry.of(model),
         _sx = Float32List(model.mesh.vertexCount),
         _sy = Float32List(model.mesh.vertexCount),
         _sd = Float32List(model.mesh.vertexCount) {
-    final rnd = math.Random(11);
-    _motes = List.generate(
-      26,
-      (_) => (
-        rnd.nextDouble(),
-        rnd.nextDouble(),
-        4 + rnd.nextDouble() * 10,
-        2 + rnd.nextDouble() * 4,
-      ),
-    );
     final maxEdges =
         List.generate(32, (i) => _geo.edgeStart[i + 1] - _geo.edgeStart[i])
             .reduce(math.max);
@@ -296,16 +268,17 @@ class ChamberScene {
   final DentitionModel model;
   final ChamberTimeline timeline;
 
-  /// The report the scan settles on, revealed area by area.
-  final ScanReport report;
+  /// What the real results say about each area of the mouth, revealed area
+  /// by area. Empty until the analysis finishes.
+  Map<MouthArea, ViewOutcome?> areas = const {};
 
-  /// Decoded photo thumbnails by region id. Filled in while the scan
-  /// runs; a photo still decoding is drawn as a plain card.
+  /// The photos with findings, by id. Empty until the analysis finishes.
+  Map<String, ViewOutcome> flagged = const {};
+
+  /// Decoded photos by region id. Filled in while the scan runs; a photo
+  /// still decoding is drawn as a plain card.
   final Map<String, ui.Image> thumbs;
   final bool reduced;
-
-  /// Run time, used for motion that is timed in seconds.
-  final double seconds;
 
   final DentitionRenderer _renderer;
   final ChamberGeometry _geo;
@@ -313,7 +286,6 @@ class ChamberScene {
   final Float32List _sx, _sy, _sd;
   late final Float32List _lines;
   late final Float32List _points;
-  late final List<(double, double, double, double)> _motes;
 
   static const _homeYaw = -0.34;
 
@@ -323,60 +295,70 @@ class ChamberScene {
   double _tx = 0, _ty = 0, _tz = 0, _dist = 1, _f = 1, _cx = 0, _cy = 0;
   double _ox = 0, _oy = 0;
 
+  // Where the free-running camera was when the reveal began.
+  double? _settleFrom;
+
+  static const double _orbitPerSecond = 2 * math.pi / 26;
+  static const double _lightPassSeconds = 3.2;
+
   double get _fit =>
       model.radius / math.sin(DentitionRenderer.fov / 2) * 0.84;
 
-  /// The camera at [p]: one slow turn that settles on the same view the
-  /// results map opens with, pulling in a little at the end.
-  CameraPose poseAt(double p) {
-    final settle = timeline.within(5, p);
-    final x = math.min(p / 0.95, 1.0);
-    final spin = reduced ? 1.0 : 1 - math.pow(1 - x, 1.8).toDouble();
-    final approach = reduced
-        ? 1.0
-        : Curves.easeOutCubic.transform(math.min(p / 0.2, 1.0));
+  /// The camera: orbiting on the clock, then easing round to the home view as
+  /// the results come in, pulling in a little.
+  CameraPose poseAt(double p, double t) {
+    final settle = Curves.easeInOutCubic.transform(timeline.within(4, p));
+    final free = _homeYaw + _orbitPerSecond * t - math.pi * 0.5;
+    var yaw = reduced ? _homeYaw : free;
+    if (!reduced && settle > 0) {
+      final from = _settleFrom ??= free;
+      yaw = from + wrapAngle(_homeYaw - from) * settle;
+    }
+    final approach =
+        reduced ? 1.0 : Curves.easeOutCubic.transform(math.min(p / 0.14, 1.0));
     return CameraPose(
-      yaw: _homeYaw + 2 * math.pi * (spin - 1),
-      pitch: 0.2 +
-          (reduced ? 0 : 0.1 * math.sin(p * 2 * math.pi) * (1 - settle)),
-      distance: _fit *
-          1.3 *
-          (1.5 - 0.5 * approach) *
-          (1 - 0.15 * Curves.easeInOutCubic.transform(settle)),
+      yaw: yaw,
+      pitch: 0.2 + (reduced ? 0 : 0.08 * math.sin(t * 0.45) * (1 - settle)),
+      distance: _fit * 1.3 * (1.5 - 0.5 * approach) * (1 - 0.1 * settle),
       target: model.center,
     );
   }
 
-  void paint(Canvas canvas, Size size, Rect stage, double p) {
-    final t = p * seconds;
-    final pose = poseAt(p);
+  /// [p] is the run's progress, [t] the seconds since the scan opened.
+  void paint(Canvas canvas, Size size, Rect stage, double p, double t) {
+    final pose = poseAt(p, t);
     _setProjection(pose, stage.size);
     // Rough on-screen half-width of the arches.
     final radius = model.radius * _f / pose.distance * 0.7;
+    final lightY = _lightY(_cy, radius, t);
 
-    _paintMotes(canvas, size, t);
     canvas.save();
     canvas.translate(stage.left, stage.top);
     final center = Offset(_cx, _cy);
-    _paintStage(canvas, center, radius, p, t);
+    _paintStage(canvas, center, radius, p);
 
-    if (p > 0.355) {
-      _applyStyle(p, t);
+    if (p > 0.215) {
+      _applyStyle(p, t, lightY, radius);
       _renderer.paint(canvas, stage.size, pose, _style);
     }
-    if (p > 0.12 && p < 0.58) _paintWireframe(canvas, center, radius, p);
-    if (p < 0.3) _paintPointCloud(canvas, p);
-    _paintFlights(canvas, stage.size, p);
-    if (p > 0.75) _paintMarkers(canvas, stage.size, p, t);
-    if (!reduced) _paintScanLight(canvas, center, radius, p, t);
+    if (p > 0.07 && p < 0.4) _paintWireframe(canvas, center, radius, p);
+    if (p < 0.2) _paintPointCloud(canvas, p);
+    if (!reduced) _paintScanLight(canvas, center, radius, p, t, lightY);
+    if (p > ChamberTimeline.readEnd) _paintMarkers(canvas, stage.size, p, t);
+    _paintPhotos(canvas, stage.size, p, t);
     canvas.restore();
 
     // The last moment washes to the mint of the results page.
-    if (p > 0.965) {
-      final q = Curves.easeIn.transform(((p - 0.965) / 0.035).clamp(0, 1));
+    if (p > 0.975) {
+      final q = Curves.easeIn.transform(((p - 0.975) / 0.025).clamp(0, 1));
       canvas.drawRect(Offset.zero & size,
           Paint()..color = AppColors.lightLavender.withValues(alpha: 0.85 * q));
     }
+  }
+
+  double _lightY(double cy, double radius, double t) {
+    final phase = (t % _lightPassSeconds) / _lightPassSeconds;
+    return cy - radius * 1.05 + radius * 2.1 * phase;
   }
 
   // ── Projection ─────────────────────────────────────────────────
@@ -414,27 +396,11 @@ class ChamberScene {
 
   bool _projectVec(Vec3 v) => _project(v.x, v.y, v.z);
 
-  /// How much a direction faces the viewer (view-space z).
-  double _facing(Vec3 dir) => _r6 * dir.x + _r7 * dir.y + _r8 * dir.z;
-
   // ── Surroundings ───────────────────────────────────────────────
 
-  /// Soft glass bubbles drifting up behind everything.
-  void _paintMotes(Canvas canvas, Size size, double t) {
-    for (final (x, y, speed, r) in _motes) {
-      final py = (y * size.height - (reduced ? 0 : t * speed)) % size.height;
-      canvas.drawCircle(
-        Offset(x * size.width, py),
-        r,
-        Paint()..color = AppColors.white.withValues(alpha: 0.55),
-      );
-    }
-  }
-
-  /// A white glow behind the model, the pad it stands on, a slow dashed
-  /// ring and a ring that fills with progress.
-  void _paintStage(
-      Canvas canvas, Offset c, double radius, double p, double t) {
+  /// A white glow behind the model, the pad it stands on, and a ring that
+  /// fills with progress.
+  void _paintStage(Canvas canvas, Offset c, double radius, double p) {
     final appear = (p / 0.08).clamp(0.0, 1.0);
     canvas.drawCircle(
       c,
@@ -466,18 +432,6 @@ class ChamberScene {
 
     final settle = timeline.within(5, p);
     final rings = appear * (1 - 0.4 * settle);
-    final dash = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..strokeCap = StrokeCap.round
-      ..color = AppColors.g2.withValues(alpha: 0.28 * rings);
-    final r1 = radius * 1.28;
-    final spin = reduced ? 0.0 : t * 0.15;
-    for (var i = 0; i < 48; i++) {
-      canvas.drawArc(Rect.fromCircle(center: c, radius: r1),
-          i / 48 * 2 * math.pi + spin, 0.05, false, dash);
-    }
-
     final r2 = radius * 1.14;
     final ring = Rect.fromCircle(center: c, radius: r2);
     canvas.drawCircle(
@@ -526,56 +480,63 @@ class ChamberScene {
 
   // ── The model ──────────────────────────────────────────────────
 
-  void _applyStyle(double p, double t) {
+  void _applyStyle(double p, double t, double lightY, double radius) {
     final s = _style
       ..hideRoots = true
       ..rootReveal = 0;
 
     // Each landed photo lights up the teeth its view covers, briefly.
     final photoGlow = List<double>.filled(32, 0);
-    for (var i = 0; i < timeline.captured.length; i++) {
+    final photos = timeline.photos;
+    for (var i = 0; i < photos.length; i++) {
       final f = timeline.flight(i, p);
-      if (f < 0.8 || f > 1.4) continue;
-      final bump = math.sin(math.pi * ((f - 0.8) / 0.6));
-      final region = timeline.captured[i];
+      if (f < 0.8 || f > 1.6) continue;
+      final bump = math.sin(math.pi * ((f - 0.8) / 0.8));
       for (final tooth in ToothCatalog.all) {
-        if (region.covers(tooth) && region.arches.shows(tooth.arch)) {
+        if (photos[i].covers(tooth)) {
           photoGlow[tooth.index] = math.max(photoGlow[tooth.index], bump);
         }
       }
     }
 
+    // The scanning light wakes the teeth it's passing over.
+    final lightFade = reduced ? 0.0 : 1 - timeline.within(4, p);
+
     for (final tooth in ToothCatalog.all) {
       final i = tooth.index;
       final rank = _geo.revealRank[i] / 31;
       final solid = reduced
-          ? ((p - 0.35) / 0.2).clamp(0.0, 1.0)
+          ? ((p - 0.22) / 0.14).clamp(0.0, 1.0)
           : ChamberTimeline.solid(rank, p);
       // A teal flash as the tooth fills in, fading as it settles.
-      final filledAt = 0.36 + 0.15 * rank + 0.035;
+      final filledAt = 0.225 + 0.1 * rank + 0.03;
       final flash =
-          solid <= 0 ? 0.0 : 1 - ((p - filledAt) / 0.05).clamp(0.0, 1.0);
+          solid <= 0 ? 0.0 : 1 - ((p - filledAt) / 0.04).clamp(0.0, 1.0);
 
-      var glow = 0.8 * flash + 0.6 * photoGlow[i];
-      var tint = 0.4 * flash + 0.25 * photoGlow[i];
+      var near = 0.0;
+      if (lightFade > 0 && _projectVec(model.anchors[i].crownCenter)) {
+        near = (1 - (_oy - lightY).abs() / (radius * 0.26)).clamp(0.0, 1.0);
+      }
+      var glow = 0.8 * flash + 0.6 * photoGlow[i] + 0.55 * near * lightFade;
+      var tint = 0.4 * flash + 0.25 * photoGlow[i] + 0.22 * near * lightFade;
       var color = AppColors.g1;
       var desaturate = 0.0, brightness = 1.0;
 
-      // Each area flashes as it is checked, then settles into the shade
-      // of its result.
+      // Each area flashes as it's revealed, then settles into the shade of
+      // what the real results said about it.
       final area = MouthArea.of(tooth);
-      final u = ChamberTimeline.checked(area, p);
+      final u = ChamberTimeline.revealed(area, p);
       if (u > 0) {
-        final h = report.areaHealth[area]!;
+        final outcome = areas[area];
         final e = Curves.easeOutCubic.transform(u);
         glow += 0.8 * (1 - u);
-        if (h == AreaHealth.notChecked) {
+        if (outcome == null || !outcome.checked) {
           desaturate = 0.8 * e;
           brightness = 1 - 0.1 * e;
         } else {
-          color = HealthColors.modelOf(h);
-          tint = HealthColors.tintOf(h) * e;
-          if (h == AreaHealth.attention && !reduced) {
+          color = _modelColor(outcome);
+          tint = _modelTint(outcome) * e;
+          if (outcome != ViewOutcome.clear && !reduced) {
             glow += 0.25 * (0.5 + 0.5 * math.sin(t * 5));
           }
         }
@@ -592,7 +553,7 @@ class ChamberScene {
     }
 
     // Glass gums come in once most teeth are solid.
-    final gums = ((p - 0.46) / 0.12).clamp(0.0, 1.0) * 0.45;
+    final gums = ((p - 0.3) / 0.08).clamp(0.0, 1.0) * 0.45;
     for (final o in const [kUpperGumOwner, kLowerGumOwner]) {
       s
         ..alpha[o] = gums
@@ -603,10 +564,24 @@ class ChamberScene {
     }
   }
 
+  /// Shade used on the model. Lighter than the dots, so a mouth with several
+  /// findings still looks calm.
+  static Color _modelColor(ViewOutcome outcome) => switch (outcome) {
+        ViewOutcome.urgent => const Color(0xFF215E61), // g2 toward navy
+        ViewOutcome.finding => AppColors.g2,
+        _ => AppColors.g1,
+      };
+
+  static double _modelTint(ViewOutcome outcome) => switch (outcome) {
+        ViewOutcome.urgent => 0.58,
+        ViewOutcome.finding => 0.5,
+        _ => 0.18,
+      };
+
   void _paintPointCloud(Canvas canvas, double p) {
-    final fade = 1 - ((p - 0.18) / 0.1).clamp(0.0, 1.0);
+    final fade = 1 - ((p - 0.12) / 0.07).clamp(0.0, 1.0);
     if (fade <= 0) return;
-    final converge = (p / 0.17).clamp(0.0, 1.0);
+    final converge = (p / 0.11).clamp(0.0, 1.0);
     final pos = model.mesh.positions;
     final from = _geo.pointFrom;
     final out = _points;
@@ -646,11 +621,11 @@ class ChamberScene {
   }
 
   void _paintWireframe(Canvas canvas, Offset c, double radius, double p) {
-    final appear = ((p - 0.12) / 0.05).clamp(0.0, 1.0);
+    final appear = ((p - 0.07) / 0.04).clamp(0.0, 1.0);
     // While mapping, the wireframe is revealed by the scanning light's
     // first pass.
     final sweep = timeline.within(1, p);
-    final revealY = p < 0.35
+    final revealY = p < 0.22
         ? c.dy - radius * 1.05 + radius * 2.1 * sweep
         : double.infinity;
 
@@ -670,7 +645,7 @@ class ChamberScene {
     for (var tooth = 0; tooth < 32; tooth++) {
       final rank = _geo.revealRank[tooth] / 31;
       final solid = reduced
-          ? ((p - 0.35) / 0.2).clamp(0.0, 1.0)
+          ? ((p - 0.22) / 0.14).clamp(0.0, 1.0)
           : ChamberTimeline.solid(rank, p);
       final alpha = appear * (1 - solid);
       if (alpha < 0.02) continue;
@@ -692,101 +667,24 @@ class ChamberScene {
     }
   }
 
-  /// Photo cards fly in from the sides and project onto the part of the
-  /// model their view covers.
-  void _paintFlights(Canvas canvas, Size s, double p) {
-    final captured = timeline.captured;
-    final n = captured.length;
-    for (var i = 0; i < n; i++) {
+  /// The user's own photos, one at a time: each comes up large and is read,
+  /// with a line of light passing over it until the server has finished with
+  /// it, then flies to the part of the model its view covers.
+  void _paintPhotos(Canvas canvas, Size s, double p, double t) {
+    final photos = timeline.photos;
+    for (var i = 0; i < photos.length; i++) {
       final f = timeline.flight(i, p);
-      if (f <= 0 || f >= 1.4) continue;
-      final region = captured[i];
-      if (!_projectVec(_geo.regionAnchors[captureRegions.indexOf(region)])) {
-        continue;
-      }
+      if (f <= 0 || f >= 1.6) continue;
+      final region = photos[i];
+      final anchor = _geo.regionAnchors[baseRegionId(region.id)];
+      if (anchor == null || !_projectVec(anchor)) continue;
       final target = Offset(_ox, _oy);
 
-      if (f < 1) {
-        final e = reduced ? 1.0 : Curves.easeInOutCubic.transform(f);
-        final left = i.isEven;
-        final rows = math.max(1, (n - 1) ~/ 2);
-        final start = Offset(
-          left ? -50 : s.width + 50,
-          s.height * (0.14 + 0.72 * ((i ~/ 2) / rows)),
-        );
-        final control = Offset(
-          start.dx + (target.dx - start.dx) * 0.3,
-          math.min(start.dy, target.dy) - 60,
-        );
-        final u = 1 - e;
-        final pos = start * (u * u) + control * (2 * u * e) + target * (e * e);
-        final shrink = math.pow(e, 1.6).toDouble();
-        final w = 92 - 76 * shrink;
-        final h = w * 0.75;
-        final alpha = (f / 0.12).clamp(0.0, 1.0) *
-            (1 - ((f - 0.82) / 0.18).clamp(0.0, 1.0));
-        final rect = Rect.fromCenter(center: pos, width: w, height: h);
-        final rrect = RRect.fromRectAndRadius(rect, Radius.circular(w * 0.12));
-
-        // A soft beam from the card onto the model.
-        if (f > 0.18) {
-          final beamAlpha = alpha * ((f - 0.18) / 0.2).clamp(0.0, 1.0);
-          final near = left ? rect.right : rect.left;
-          final beam = Path()
-            ..moveTo(near, rect.top)
-            ..lineTo(target.dx, target.dy)
-            ..lineTo(near, rect.bottom)
-            ..close();
-          canvas.drawPath(
-            beam,
-            Paint()
-              ..shader = ui.Gradient.linear(
-                Offset(near, pos.dy),
-                target,
-                [
-                  AppColors.g1.withValues(alpha: 0.32 * beamAlpha),
-                  AppColors.g1.withValues(alpha: 0.04 * beamAlpha),
-                ],
-              ),
-          );
-        }
-
-        // Glass card: soft shadow, white rim, the photo inside.
-        canvas.drawRRect(
-          rrect.shift(const Offset(0, 4)),
-          Paint()
-            ..color = AppColors.navy.withValues(alpha: 0.16 * alpha)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
-        );
-        final image = thumbs[region.id];
-        canvas.save();
-        canvas.clipRRect(rrect);
-        if (image != null) {
-          canvas.drawImageRect(
-            image,
-            _coverSource(image, rect.size),
-            rect,
-            Paint()
-              ..filterQuality = FilterQuality.medium
-              ..color = AppColors.white.withValues(alpha: alpha),
-          );
-        } else {
-          canvas.drawRect(rect,
-              Paint()..color = AppColors.lavender.withValues(alpha: alpha));
-        }
-        canvas.restore();
-        canvas.drawRRect(
-          rrect,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2
-            ..color = AppColors.white.withValues(alpha: 0.95 * alpha),
-        );
-      }
+      if (f < 1) _paintPhotoCard(canvas, s, region, f, target, t);
 
       // Landing ripple.
-      if (f > 0.8) {
-        final q = ((f - 0.8) / 0.6).clamp(0.0, 1.0);
+      if (f > 0.9 && !reduced) {
+        final q = ((f - 0.9) / 0.7).clamp(0.0, 1.0);
         canvas.drawCircle(
           target,
           4 + 34 * q,
@@ -801,6 +699,134 @@ class ChamberScene {
     }
   }
 
+  void _paintPhotoCard(Canvas canvas, Size s, ScanRegion region, double f,
+      Offset target, double t) {
+    final width = math.min(s.width * 0.6, 250.0);
+    final home = Offset(s.width / 2, s.height * 0.42);
+
+    // In, read, then away to the model.
+    const flyFrom = 0.74;
+    final fly = reduced
+        ? 0.0
+        : Curves.easeInOutCubic
+            .transform(((f - flyFrom) / (1 - flyFrom)).clamp(0.0, 1.0));
+    final entrance = Curves.easeOutCubic.transform((f / 0.12).clamp(0.0, 1.0));
+    final alpha = entrance * (1 - ((f - 0.94) / 0.06).clamp(0.0, 1.0));
+    if (alpha <= 0) return;
+    final arc = Offset(0, -24 * math.sin(math.pi * fly));
+    final pos = Offset.lerp(home, target, fly)! + arc;
+    final w = (width + (16 - width) * math.pow(fly, 1.3).toDouble()) *
+        (0.94 + 0.06 * entrance);
+    final rect = Rect.fromCenter(center: pos, width: w, height: w * 0.75);
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(w * 0.09));
+
+    // A soft beam from the card onto the model as it leaves.
+    if (fly > 0.02) {
+      final beam = Path()
+        ..moveTo(rect.left, rect.bottom)
+        ..lineTo(target.dx, target.dy)
+        ..lineTo(rect.right, rect.bottom)
+        ..close();
+      canvas.drawPath(
+        beam,
+        Paint()
+          ..shader = ui.Gradient.linear(
+            pos,
+            target,
+            [
+              AppColors.g1.withValues(alpha: 0.3 * alpha),
+              AppColors.g1.withValues(alpha: 0.04 * alpha),
+            ],
+          ),
+      );
+    }
+
+    // Glass card: soft shadow, white rim, the photo inside.
+    canvas.drawRRect(
+      rrect.shift(const Offset(0, 6)),
+      Paint()
+        ..color = AppColors.navy.withValues(alpha: 0.18 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+    );
+    final image = thumbs[region.id];
+    canvas.save();
+    canvas.clipRRect(rrect);
+    if (image != null) {
+      canvas.drawImageRect(
+        image,
+        _coverSource(image, rect.size),
+        rect,
+        Paint()
+          ..filterQuality = FilterQuality.medium
+          ..color = AppColors.white.withValues(alpha: alpha),
+      );
+    } else {
+      canvas.drawRect(rect,
+          Paint()..color = AppColors.lavender.withValues(alpha: alpha));
+    }
+
+    // The reading light passes over the photo for as long as it's being read.
+    if (!reduced && fly <= 0 && region.checked) {
+      const passSeconds = 1.25;
+      final q = (t % passSeconds) / passSeconds;
+      final a = math.sin(math.pi * q) * alpha;
+      final y = rect.top + rect.height * q;
+      final trail = Rect.fromLTRB(rect.left, y - 50, rect.right, y);
+      canvas.drawRect(
+        trail,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.g1.withValues(alpha: 0),
+              AppColors.g1.withValues(alpha: 0.34 * a),
+            ],
+          ).createShader(trail),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(rect.left, y - 1, rect.width, 2),
+        Paint()..color = AppColors.white.withValues(alpha: 0.95 * a),
+      );
+    }
+    canvas.restore();
+
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..color = AppColors.white.withValues(alpha: 0.95 * alpha),
+    );
+    if (fly < 0.3) {
+      _paintCorners(canvas, rect.deflate(9), alpha * (1 - fly / 0.3));
+    }
+  }
+
+  /// Camera framing on the photo being read.
+  static void _paintCorners(Canvas canvas, Rect r, double alpha) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..color = AppColors.white.withValues(alpha: 0.9 * alpha);
+    const arm = 14.0;
+    for (final (corner, dx, dy) in [
+      (r.topLeft, 1.0, 1.0),
+      (r.topRight, -1.0, 1.0),
+      (r.bottomLeft, 1.0, -1.0),
+      (r.bottomRight, -1.0, -1.0),
+    ]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(corner.dx, corner.dy + dy * arm)
+          ..lineTo(corner.dx, corner.dy)
+          ..lineTo(corner.dx + dx * arm, corner.dy),
+        paint,
+      );
+    }
+  }
+
   /// Source rect that crops [image] to cover [box] like BoxFit.cover.
   static Rect _coverSource(ui.Image image, Size box) {
     final iw = image.width.toDouble(), ih = image.height.toDouble();
@@ -809,25 +835,27 @@ class ChamberScene {
     return Rect.fromLTWH((iw - w) / 2, (ih - h) / 2, w, h);
   }
 
-  /// A soft dot pops in on each area with a finding as it is checked.
-  /// No numbers: results describe areas, not individual teeth.
+  /// A soft dot pops in for each view with a real finding, where that view
+  /// looks. One per view, however many areas it shows, since a finding says
+  /// which photo, not which tooth. No numbers.
   void _paintMarkers(Canvas canvas, Size s, double p, double t) {
-    for (final finding in report.findings) {
-      final area = finding.area;
-      final u = ChamberTimeline.checked(area, p);
-      if (u <= 0) continue;
-      final facing = _facing(_geo.areaFacing[area.index]);
-      if (facing < -0.35) continue;
-      if (!_projectVec(_geo.areaPins[area.index])) continue;
+    final u = timeline.within(4, p);
+    if (u <= 0) return;
+    var n = 0;
+    for (final entry in flagged.entries) {
+      n++;
+      final anchor = _geo.regionAnchors[baseRegionId(entry.key)];
+      if (anchor == null || !_projectVec(anchor)) continue;
       final at = Offset(_ox, _oy);
       if (!(Offset.zero & s).contains(at)) continue;
-      final alpha =
-          (u * 3).clamp(0.0, 1.0) * ((facing + 0.35) / 0.3).clamp(0.0, 1.0);
+      final alpha = (u * 3).clamp(0.0, 1.0);
       final scale = reduced
           ? 1.0
           : Curves.easeOutBack.transform((u * 1.6).clamp(0.0, 1.0));
-      final pulse = reduced ? 0.5 : 0.5 + 0.5 * math.sin(t * 4 + area.index);
-      final color = HealthColors.of(finding.health);
+      final pulse = reduced ? 0.5 : 0.5 + 0.5 * math.sin(t * 4 + n);
+      final color = entry.value == ViewOutcome.urgent
+          ? ScanColors.urgent
+          : ScanColors.check;
       canvas.drawCircle(
         at,
         (11 + 3 * pulse) * scale,
@@ -843,34 +871,29 @@ class ChamberScene {
   }
 
   /// The scanning light: a soft teal line sweeping top to bottom with a
-  /// glow trailing behind. Its pass during mapping reveals the wireframe.
-  void _paintScanLight(
-      Canvas canvas, Offset c, double radius, double p, double t) {
-    final settle = timeline.within(5, p);
+  /// glow trailing behind. It runs on the clock, so it keeps moving while the
+  /// server is working.
+  void _paintScanLight(Canvas canvas, Offset c, double radius, double p,
+      double t, double y) {
+    final settle = timeline.within(4, p);
     final fade = (p / 0.05).clamp(0.0, 1.0) * (1 - settle);
     if (fade <= 0) return;
-    final period = (ChamberTimeline.phaseStarts[2] -
-            ChamberTimeline.phaseStarts[1]) *
-        seconds;
-    final phase =
-        (((t - ChamberTimeline.phaseStarts[1] * seconds) / period) % 1 + 1) % 1;
+    final phase = (t % _lightPassSeconds) / _lightPassSeconds;
     final a = math.sqrt(math.sin(math.pi * phase)) * fade;
-    final top = c.dy - radius * 1.05, bottom = c.dy + radius * 1.05;
-    final y = top + (bottom - top) * phase;
     final x0 = c.dx - radius * 1.3, x1 = c.dx + radius * 1.3;
 
-    final trail = Rect.fromLTRB(x0, y - 48, x1, y);
-    canvas.drawRect(
-      trail,
+    final glow = Rect.fromCenter(
+      center: Offset(c.dx, y - 16),
+      width: radius * 2.7,
+      height: 76,
+    );
+    canvas.drawOval(
+      glow,
       Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppColors.g1.withValues(alpha: 0),
-            AppColors.g1.withValues(alpha: 0.2 * a),
-          ],
-        ).createShader(trail),
+        ..shader = RadialGradient(colors: [
+          AppColors.g1.withValues(alpha: 0.26 * a),
+          AppColors.g1.withValues(alpha: 0),
+        ]).createShader(glow),
     );
     final across = ui.Gradient.linear(
       Offset(x0, y),
@@ -907,16 +930,20 @@ class ChamberScene {
   }
 }
 
-/// Repaints the scan whenever [progress] moves.
+/// Repaints the scan on every tick of the chamber's clock.
 class ChamberPainter extends CustomPainter {
   ChamberPainter({
     required this.scene,
+    required this.clock,
     required this.progress,
+    required this.seconds,
     required this.stageInsets,
-  }) : super(repaint: progress);
+  }) : super(repaint: clock);
 
   final ChamberScene scene;
-  final ValueNotifier<double> progress;
+  final Listenable clock;
+  final double Function() progress;
+  final double Function() seconds;
 
   /// Room taken by the top bar and the bottom panel; the model is
   /// centered in what remains.
@@ -926,7 +953,7 @@ class ChamberPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
     scene.paint(canvas, size, stageInsets.deflateRect(Offset.zero & size),
-        progress.value);
+        progress(), seconds());
   }
 
   @override

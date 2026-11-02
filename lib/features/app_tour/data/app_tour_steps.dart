@@ -97,8 +97,8 @@ const List<AppTourStep> appTourSteps = [
     spot: TourSpot.scan,
     chapter: 'Getting around',
     title: 'Scan your smile',
-    body: 'Use your DENTRA device or phone camera and capture each '
-        'region. We guide every shot.',
+    body: 'Use your DENTRA NIR device and capture each region. '
+        'We guide every shot.',
   ),
   AppTourStep(
     spot: TourSpot.history,

@@ -52,10 +52,12 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
   /// Uploads the session's photos one region at a time, then any paired
   /// NIR frames, keeping the history entry in step with the stored image
   /// URLs. Throws on the first failure; earlier uploads are kept.
+  /// [onUploaded] hears each region and modality as it lands.
   Future<void> uploadImages(
     String sessionId,
     Map<String, Uint8List> imagesByRegion, {
     Map<String, Uint8List> nirByRegion = const {},
+    void Function(String regionId, String modality)? onUploaded,
   }) async {
     final uploads = [
       for (final e in imagesByRegion.entries) (e.key, e.value, 'rgb'),
@@ -69,6 +71,7 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
         bytes,
         modality: modality,
       );
+      onUploaded?.call(regionId, modality);
       if (updated == null) continue;
       // The analysis may have been saved while this upload was in flight;
       // don't let the older server copy hide it.

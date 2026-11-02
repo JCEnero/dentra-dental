@@ -149,7 +149,7 @@ const Map<DentalQuestionId, DentalQuestion> dentalQuestions = {
     id: DentalQuestionId.difficultAreas,
     title: 'Are any areas of your mouth hard for you to see or check?',
     reviewLabel: 'Hard-to-check areas',
-    helper: 'This helps us tailor camera tips. It doesn’t mean anything '
+    helper: 'This helps us tailor scan tips. It doesn’t mean anything '
         'is wrong there.',
     options: DifficultArea.values,
     multiple: true,
@@ -204,7 +204,7 @@ const List<DentalStep> dentalSteps = [
   DentalStep(
     eyebrow: 'Your screening',
     title: 'What to focus on',
-    summary: 'This helps us organize your results and camera tips.',
+    summary: 'This helps us organize your results and scan tips.',
     questions: [
       DentalQuestionId.screeningGoals,
       DentalQuestionId.difficultAreas,

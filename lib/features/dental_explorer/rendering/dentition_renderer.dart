@@ -19,6 +19,9 @@ class SceneStyle {
   /// Overall lightness multiplier.
   final brightness = Float32List(kOwnerCount)..fillRange(0, kOwnerCount, 1);
 
+  /// Evens out the shading toward full light (0–1), softening dark faces.
+  final lift = Float32List(kOwnerCount);
+
   /// Loss of colour (0–1), used to recede unselected teeth.
   final desaturate = Float32List(kOwnerCount);
 
@@ -154,7 +157,9 @@ class DentitionRenderer {
       final rim = edge * edge * edge * (gum ? 0.24 : 0.16);
       // Key + fill, plus a soft headlight so faces turned toward the
       // viewer stay readable from any angle.
-      final light = ambient + 0.55 * diffuse + 0.18 * fill + 0.16 * facing;
+      var light = ambient + 0.55 * diffuse + 0.18 * fill + 0.16 * facing;
+      final lift = style.lift[o];
+      if (lift > 0 && light < 1) light += (1 - light) * lift;
 
       // Owner styling: tint, desaturation, brightness, glow.
       var br = alb[i3], bg = alb[i3 + 1], bb = alb[i3 + 2];

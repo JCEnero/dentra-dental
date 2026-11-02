@@ -6,6 +6,10 @@
 /// by arch, side and tooth type only.
 library;
 
+import 'dart:math' as math;
+
+import '../../dental_explorer/data/tooth_catalog.dart';
+
 enum DentalArch { upper, lower }
 
 /// The user's own left/right. Visuals are drawn mirror-style (the user's
@@ -27,7 +31,17 @@ enum ToothKind {
 }
 
 /// Which arches a region's visual shows.
-enum ArchView { upper, lower, both }
+enum ArchView {
+  upper,
+  lower,
+  both;
+
+  bool shows(ToothArch arch) => switch (this) {
+        ArchView.upper => arch == ToothArch.upper,
+        ArchView.lower => arch == ToothArch.lower,
+        ArchView.both => true,
+      };
+}
 
 class ScanRegion {
   const ScanRegion({
@@ -39,13 +53,20 @@ class ScanRegion {
     required this.arches,
     required this.sides,
     required this.kinds,
+    this.shortLabel,
     this.tips = const [],
     this.checked = true,
+    this.yaw = 0,
+    this.pitch = 0.06,
+    this.zoom = 1,
     this.renderAsset,
   });
 
   final String id;
   final String label;
+
+  /// Compact name for tiles and chips. Falls back to [label].
+  final String? shortLabel;
   final String description;
 
   /// One-line positioning instruction shown before capture.
@@ -65,6 +86,13 @@ class ScanRegion {
   final Set<DentalSide> sides;
   final Set<ToothKind> kinds;
 
+  /// The 3D guide's camera (radians): what the phone should see.
+  final double yaw;
+  final double pitch;
+
+  /// Below 1 moves the guide camera closer than the fitted framing.
+  final double zoom;
+
   /// Optional rendered image that replaces the built-in illustration.
   ///
   /// The built-in visual is a vector drawing with 3D-style lighting, not a
@@ -74,13 +102,24 @@ class ScanRegion {
   /// A missing file falls back to the illustration.
   final String? renderAsset;
 
+  String get short => shortLabel ?? label;
+
   bool highlights(DentalArch arch, DentalSide side, ToothKind kind) =>
       arches.contains(arch) && sides.contains(side) && kinds.contains(kind);
+
+  /// Whether this view is the one meant to show [tooth]. Third molars
+  /// count with the second molars next to them.
+  bool covers(ToothInfo tooth) => highlights(
+        tooth.arch == ToothArch.upper ? DentalArch.upper : DentalArch.lower,
+        tooth.side == ToothSide.left ? DentalSide.left : DentalSide.right,
+        ToothKind.values[math.min(tooth.position, ToothKind.values.length) - 1],
+      );
 
   /// This view's optional second photo: a closer shot of the same teeth.
   ScanRegion get secondPhoto => ScanRegion(
         id: secondPhotoId(id),
         label: '$label, photo 2',
+        shortLabel: shortLabel,
         description: description,
         instruction: 'Move closer to the part you most want a clear look at',
         tips: tips,
@@ -89,6 +128,9 @@ class ScanRegion {
         sides: sides,
         kinds: kinds,
         checked: checked,
+        yaw: yaw,
+        pitch: pitch,
+        zoom: zoom * 0.8,
         renderAsset: renderAsset,
       );
 }
@@ -126,13 +168,15 @@ const Set<ToothKind> _molars = {ToothKind.firstMolar, ToothKind.secondMolar};
 const List<ScanRegion> scanRegions = [
   ScanRegion(
     id: 'front',
+    shortLabel: 'Front',
+    pitch: 0.06,
+    zoom: 1.2,
     label: 'Front Teeth',
     description: 'The front of your upper and lower teeth',
-    instruction: 'Smile with your teeth together, camera straight on',
+    instruction: 'Smile with your teeth together, device straight on',
     tips: [
-      'Bite your back teeth together so your lips pull back',
-      'Hold the camera level with your front teeth, about 10 cm away',
-      'Use bright, even light. Skip the flash if it causes glare',
+      'Hold the device level with your front teeth, close but not touching',
+      'The built-in lights do the work. Tilt it slightly if you see glare',
     ],
     view: ArchView.both,
     arches: _bothArches,
@@ -141,12 +185,13 @@ const List<ScanRegion> scanRegions = [
   ),
   ScanRegion(
     id: 'upper-occlusal',
+    shortLabel: 'Upper Biting',
+    pitch: -math.pi / 2,
     label: 'Upper Biting Surface',
     description: 'The chewing surfaces of your upper teeth',
-    instruction: 'Tilt your head back and open wide',
+    instruction: 'Open wide and point the device up at your upper teeth',
     tips: [
-      'Point the camera up at your upper teeth',
-      'A small mirror helps: photograph the reflection',
+      'Keep the head just under your teeth, without touching them',
       'Fit every upper tooth, front to back, in the frame',
     ],
     view: ArchView.upper,
@@ -156,12 +201,13 @@ const List<ScanRegion> scanRegions = [
   ),
   ScanRegion(
     id: 'lower-occlusal',
+    shortLabel: 'Lower Biting',
+    pitch: math.pi / 2,
     label: 'Lower Biting Surface',
     description: 'The chewing surfaces of your lower teeth',
-    instruction: 'Tilt your head down and open wide',
+    instruction: 'Open wide and point the device down at your lower teeth',
     tips: [
-      'Rest your tongue behind your lower front teeth, out of the way',
-      'Point the camera down at your lower teeth',
+      'Rest your tongue behind your lower front teeth',
       'Fit every lower tooth, front to back, in the frame',
     ],
     view: ArchView.lower,
@@ -171,12 +217,14 @@ const List<ScanRegion> scanRegions = [
   ),
   ScanRegion(
     id: 'left',
+    shortLabel: 'Left Side',
+    yaw: -math.pi / 2 + 0.22,
+    pitch: 0.06,
     label: 'Left Side',
     description: 'The outside of your left teeth',
-    instruction: 'Pull your left cheek back and bite together',
+    instruction: 'Pull your left cheek back with a clean finger and bite together',
     tips: [
-      'Use a clean finger to hold your cheek away from your teeth',
-      'Hold the camera at your side, level with your teeth',
+      'Hold the device beside your teeth, level with them',
       'Get the last tooth you can see into the frame',
     ],
     view: ArchView.both,
@@ -186,12 +234,14 @@ const List<ScanRegion> scanRegions = [
   ),
   ScanRegion(
     id: 'right',
+    shortLabel: 'Right Side',
+    yaw: math.pi / 2 - 0.22,
+    pitch: 0.06,
     label: 'Right Side',
     description: 'The outside of your right teeth',
-    instruction: 'Pull your right cheek back and bite together',
+    instruction: 'Pull your right cheek back with a clean finger and bite together',
     tips: [
-      'Use a clean finger to hold your cheek away from your teeth',
-      'Hold the camera at your side, level with your teeth',
+      'Hold the device beside your teeth, level with them',
       'Get the last tooth you can see into the frame',
     ],
     view: ArchView.both,
@@ -201,13 +251,15 @@ const List<ScanRegion> scanRegions = [
   ),
   ScanRegion(
     id: 'upper-lingual',
+    shortLabel: 'Upper Inner',
+    yaw: math.pi,
+    pitch: -0.62,
     label: 'Back of Upper Teeth',
     description: 'The roof-of-mouth side of your upper teeth',
-    instruction: 'Open wide and angle the camera up toward the roof of your mouth',
+    instruction: 'Open wide and angle the device up toward the roof of your mouth',
     tips: [
-      'Tilt your head back a little',
-      'Hold the camera just below your lower front teeth',
-      "Use a mirror if the camera can't reach the angle",
+      'Hold it just below your lower front teeth',
+      'The slim head reaches this angle, so no mirror is needed',
     ],
     view: ArchView.upper,
     arches: {DentalArch.upper},
@@ -217,13 +269,15 @@ const List<ScanRegion> scanRegions = [
   ),
   ScanRegion(
     id: 'lower-lingual',
+    shortLabel: 'Lower Inner',
+    yaw: math.pi,
+    pitch: 0.62,
     label: 'Back of Lower Teeth',
     description: 'The tongue side of your lower teeth',
-    instruction: 'Open, lift your tongue and angle the camera down',
+    instruction: 'Open, lift your tongue and angle the device down',
     tips: [
-      'Rest your tongue on the roof of your mouth',
-      'Hold the camera just above your upper front teeth',
-      "Use a mirror if the camera can't reach the angle",
+      'Hold it just above your upper front teeth',
+      'The slim head reaches this angle, so no mirror is needed',
     ],
     view: ArchView.lower,
     arches: {DentalArch.lower},
@@ -233,11 +287,14 @@ const List<ScanRegion> scanRegions = [
   ),
   ScanRegion(
     id: 'back-left',
+    shortLabel: 'Left Molars',
+    yaw: -0.82,
+    pitch: 0.3,
+    zoom: 1.4,
     label: 'Back Molars, Left',
     description: 'Your rearmost teeth on the left',
-    instruction: 'Open wide and move the camera to the left corner of your mouth',
+    instruction: 'Open wide and move the device to the left corner of your mouth',
     tips: [
-      'Relax your jaw',
       'Fill the frame with your last two or three teeth',
       'Include the wisdom tooth area if you have one',
     ],
@@ -248,11 +305,14 @@ const List<ScanRegion> scanRegions = [
   ),
   ScanRegion(
     id: 'back-right',
+    shortLabel: 'Right Molars',
+    yaw: 0.82,
+    pitch: 0.3,
+    zoom: 1.4,
     label: 'Back Molars, Right',
     description: 'Your rearmost teeth on the right',
-    instruction: 'Open wide and move the camera to the right corner of your mouth',
+    instruction: 'Open wide and move the device to the right corner of your mouth',
     tips: [
-      'Relax your jaw',
       'Fill the frame with your last two or three teeth',
       'Include the wisdom tooth area if you have one',
     ],
@@ -269,7 +329,7 @@ const List<ScanRegion> legacyScanRegions = [
     id: 'ul',
     label: 'Upper Left',
     description: 'Left side of the upper dental arch',
-    instruction: 'Position the camera toward the upper-left teeth',
+    instruction: 'Position the device toward the upper-left teeth',
     view: ArchView.upper,
     arches: {DentalArch.upper},
     sides: {DentalSide.left},
@@ -280,7 +340,7 @@ const List<ScanRegion> legacyScanRegions = [
     id: 'ur',
     label: 'Upper Right',
     description: 'Right side of the upper dental arch',
-    instruction: 'Position the camera toward the upper-right teeth',
+    instruction: 'Position the device toward the upper-right teeth',
     view: ArchView.upper,
     arches: {DentalArch.upper},
     sides: {DentalSide.right},

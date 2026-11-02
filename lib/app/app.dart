@@ -145,7 +145,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final screens = <Widget>[
       HomeScreen(onNavigate: _navigate, tourTargets: _tour),
-      const ScanScreen(),
+      ScanScreen(onNavigate: _navigate),
       HistoryScreen(onNavigate: _navigate),
       const ClinicsScreen(),
       ProfileScreen(onNavigate: _navigate),

@@ -173,7 +173,7 @@ class HomeScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   _ServiceButton(
                     key: tourTargets?.treatment,
                     glyph: _ServiceGlyph.clipboard,
@@ -188,7 +188,7 @@ class HomeScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   _ServiceButton(
                     key: tourTargets?.comparison,
                     glyph: _ServiceGlyph.compare,
@@ -206,7 +206,7 @@ class HomeScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   _ServiceButton(
                     key: tourTargets?.rabi,
                     glyph: _ServiceGlyph.chat,
@@ -219,10 +219,20 @@ class HomeScreen extends ConsumerWidget {
 
             const SizedBox(height: 28),
 
-            // ── SCREENING HISTORY GRAPH ───────────────────────
+            // ── DAILY TIP ─────────────────────────────────────
             Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+              child: _DailyTipCard(tip: tip),
+            ),
+
+            const SizedBox(height: 28),
+            const GradientDivider(),
+
+            // ── SCREENING HISTORY GRAPH ───────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -230,21 +240,11 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: 2),
                   // Full history and reports live on the History tab.
                   _LinkButton(
-                    label: 'View Full Reports',
+                    label: 'View Full History',
                     onTap: () => onNavigate(2),
                   ),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 28),
-            const GradientDivider(),
-
-            // ── DAILY TIP ─────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: _DailyTipCard(tip: tip),
             ),
 
             const SizedBox(height: AppSpacing.sectionGap),

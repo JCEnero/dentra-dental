@@ -33,7 +33,7 @@ class ScanHeader extends StatelessWidget {
     final duration = ScanMotion.of(context, ScanMotion.medium);
 
     return DentraPageHeader(
-      title: 'Dental Scan',
+      title: showProgress ? 'Guided Views' : 'Scan Results',
       onBack: onBack,
       trailing: onStartOver == null
           ? null
@@ -81,19 +81,6 @@ class ScanHeader extends StatelessWidget {
                         ),
                       ],
                     ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    done == total
-                        ? 'All $total views captured'
-                        : '$done of $total views captured',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: done == total
-                          ? AppColors.primary
-                          : AppColors.secondaryText,
-                    ),
                   ),
                 ],
               ),

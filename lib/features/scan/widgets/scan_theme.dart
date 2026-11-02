@@ -4,65 +4,47 @@ import 'dart:ui' show FontFeature, PathMetric;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../data/mock_scan_report.dart';
-import '../scan_motion.dart';
+import '../../../core/constants/app_colors.dart';
+import 'scan_motion.dart';
 
-// Shared look for the scan simulation: status colours from the brand
-// palette, figures in the app font, the glowing CTA and entrance motion.
+// Shared look for the scan: status colours from the brand palette, figures
+// in the app font, the glowing CTA and entrance motion.
 
-/// Status colours, all shades of the brand palette: a ramp from bright
-/// mint (healthy) through deep teal (monitor) to navy (needs attention),
-/// so the more serious a finding, the deeper its colour.
-abstract class HealthColors {
-  static const Color healthy = AppColors.g1;
-  static const Color monitor = Color(0xFF267C7D); // g2 toward navy
-  static const Color attention = AppColors.navy;
+/// Status colours, all shades of the brand palette: a ramp from bright mint
+/// (clear) through deep teal (worth checking) to navy (see someone soon), so
+/// the more serious a result, the deeper its colour.
+abstract class ScanColors {
+  static const Color clear = AppColors.g1;
+  static const Color check = Color(0xFF267C7D); // g2 toward navy
+  static const Color urgent = AppColors.navy;
   static const Color muted = Color(0xFFB7C3C5); // border toward grey
 
   /// Text and icons on light glass, kept above 4.5:1 contrast.
-  static const Color healthyInk = Color(0xFF17807D); // deeper g2
-  static const Color monitorInk = monitor;
-  static const Color attentionInk = AppColors.navy;
+  static const Color clearInk = Color(0xFF17807D); // deeper g2
+}
 
-  static Color of(AreaHealth health) => switch (health) {
-        AreaHealth.healthy => healthy,
-        AreaHealth.monitor => monitor,
-        AreaHealth.attention => attention,
-        AreaHealth.notChecked => muted,
-      };
+/// An icon in the button color on a white disc.
+class ScanIconDisc extends StatelessWidget {
+  const ScanIconDisc(this.icon, {super.key, this.size = 34, this.iconSize = 18});
 
-  static Color ink(AreaHealth health) => switch (health) {
-        AreaHealth.healthy => healthyInk,
-        AreaHealth.monitor => monitorInk,
-        AreaHealth.attention => attentionInk,
-        AreaHealth.notChecked => AppColors.secondaryText,
-      };
+  final IconData icon;
+  final double size;
+  final double iconSize;
 
-  /// Shade used on the 3D model. Lighter than the dots, so a mouth with
-  /// several findings still looks calm: white-mint, light teal, slate
-  /// teal.
-  static Color modelOf(AreaHealth health) => switch (health) {
-        AreaHealth.healthy => AppColors.g1,
-        AreaHealth.monitor => AppColors.g2,
-        AreaHealth.attention => const Color(0xFF215E61), // g2 toward navy
-        AreaHealth.notChecked => muted,
-      };
-
-  /// How strongly the 3D model is tinted with [modelOf].
-  static double tintOf(AreaHealth health) => switch (health) {
-        AreaHealth.healthy => 0.18,
-        AreaHealth.monitor => 0.5,
-        AreaHealth.attention => 0.58,
-        AreaHealth.notChecked => 0,
-      };
-
-  /// Region and metric scores, on the same three-step scale.
-  static AreaHealth forScore(int score) => score >= 80
-      ? AreaHealth.healthy
-      : score >= 65
-          ? AreaHealth.monitor
-          : AreaHealth.attention;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.white,
+        border: Border.all(color: AppColors.g2.withValues(alpha: 0.16)),
+      ),
+      child: Icon(icon, size: iconSize, color: AppColors.primary),
+    );
+  }
 }
 
 /// Figures (scores, percentages, counts) in the app font, with tabular
@@ -82,52 +64,6 @@ TextStyle figureText({
       height: height,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
-
-/// Status pill: pale tint, rim and ink.
-class HealthChip extends StatelessWidget {
-  const HealthChip({super.key, required this.health, this.label});
-
-  final AreaHealth health;
-
-  /// Defaults to the status label.
-  final String? label;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = HealthColors.of(health);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              label ?? health.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: HealthColors.ink(health),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// The hero call to action: the brand gradient with a slow breathing
 /// glow. [intensity] (0–1) sets how bright it glows; at full strength a
@@ -194,7 +130,6 @@ class _GlowButtonState extends State<GlowButton>
     final enabled = _enabled;
     final intensity = widget.intensity.clamp(0.0, 1.0);
     final duration = ScanMotion.of(context, ScanMotion.slow);
-
     return Semantics(
       button: true,
       enabled: enabled,
@@ -319,8 +254,8 @@ class _GlowButtonState extends State<GlowButton>
 }
 
 /// Fades and lifts its child in once, after [delay]. The delay runs on
-/// the same ticker, so content built off screen (e.g. under the scan
-/// route) still staggers in once it shows.
+/// the same ticker, so content built off screen (e.g. under the scan route)
+/// still staggers in once it shows.
 class Reveal extends StatefulWidget {
   const Reveal({super.key, required this.child, this.delay = Duration.zero});
 
@@ -486,8 +421,8 @@ class _CheckPainter extends CustomPainter {
 }
 
 /// Section heading on the light pages, with an optional trailing widget.
-class SimSectionTitle extends StatelessWidget {
-  const SimSectionTitle(this.text, {super.key, this.trailing});
+class ScanSectionTitle extends StatelessWidget {
+  const ScanSectionTitle(this.text, {super.key, this.trailing});
 
   final String text;
   final Widget? trailing;
@@ -516,7 +451,7 @@ class SimSectionTitle extends StatelessWidget {
   }
 }
 
-/// Small caps label above values ("ORAL HEALTH SCORE").
+/// Small caps label above values ("VIEW 3 OF 9").
 TextStyle capsLabel({Color color = AppColors.secondaryText}) =>
     GoogleFonts.outfit(
       fontSize: 10,
@@ -524,56 +459,3 @@ TextStyle capsLabel({Color color = AppColors.secondaryText}) =>
       letterSpacing: 1.3,
       color: color,
     );
-
-/// Confidence as a thin bar that fills in, with the percentage.
-class ConfidenceBar extends StatelessWidget {
-  const ConfidenceBar({super.key, required this.value, required this.color});
-
-  final double value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final percent = (value * 100).round();
-    return Semantics(
-      label: '$percent percent confidence',
-      excludeSemantics: true,
-      child: Row(
-        children: [
-          Text('CONFIDENCE', style: capsLabel()),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: value),
-              duration:
-                  ScanMotion.of(context, const Duration(milliseconds: 900)),
-              curve: ScanMotion.curve,
-              builder: (context, v, _) => Container(
-                height: 6,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(3),
-                  color: AppColors.navy.withValues(alpha: 0.07),
-                ),
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: v,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(3),
-                      gradient: LinearGradient(colors: [
-                        color.withValues(alpha: 0.55),
-                        color,
-                      ]),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text('$percent%', style: figureText(size: 12.5)),
-        ],
-      ),
-    );
-  }
-}

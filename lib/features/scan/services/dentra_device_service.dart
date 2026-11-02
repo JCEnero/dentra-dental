@@ -45,9 +45,9 @@ abstract class DentraDeviceService {
   Future<CapturedImage> capture({ValueChanged<double>? onProgress});
 }
 
-/// PLACEHOLDER: the project has no DENTRA device driver yet (no BLE/Wi-Fi
-/// protocol, SDK or image-transfer code), so this reports the device as
-/// unsupported instead of pretending to connect.
+/// PLACEHOLDER: the project has no DENTRA device driver yet (no Wi-Fi protocol,
+/// SDK or image-transfer code), so this reports the device as unsupported
+/// instead of pretending to connect.
 ///
 /// To integrate the hardware, implement [DentraDeviceService] and override
 /// [dentraDeviceServiceProvider] with it.

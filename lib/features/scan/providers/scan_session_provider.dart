@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../notifications/data/notification_events.dart';
@@ -9,6 +10,7 @@ import '../data/models/captured_image.dart';
 import '../data/scan_regions.dart';
 import '../services/dentra_device_service.dart';
 import '../services/phone_camera_service.dart';
+import '../services/photo_quality.dart';
 import '../services/screening_analysis_service.dart';
 
 enum CapturePhase {
@@ -40,10 +42,12 @@ const Object _unset = Object();
 class ScanSessionState {
   const ScanSessionState({
     required this.selectedRegionId,
+    this.started = false,
     this.captures = const {},
     this.capturePhase = CapturePhase.idle,
     this.transferProgress,
     this.pending,
+    this.pendingQuality,
     this.pendingSource,
     this.captureFailure,
     this.lastSavedRegionId,
@@ -53,9 +57,16 @@ class ScanSessionState {
     this.analysis,
     this.analysisFailure,
     this.historySaveFailed = false,
+    this.uploadedCount = 0,
+    this.uploadTotal = 0,
+    this.uploadsDone = false,
+    this.analysisProgress,
   });
 
   final String selectedRegionId;
+
+  /// Past the intro, into the guided views.
+  final bool started;
 
   /// Accepted images by region id. A region is complete only once its
   /// image is here.
@@ -66,6 +77,9 @@ class ScanSessionState {
   /// Device transfer progress (0–1), null while unknown.
   final double? transferProgress;
   final CapturedImage? pending;
+
+  /// How the image under review measured on the device, once it has.
+  final PhotoQuality? pendingQuality;
 
   /// Source of the capture in progress or under review, for retakes.
   final CaptureSource? pendingSource;
@@ -82,6 +96,20 @@ class ScanSessionState {
   final ScreeningAnalysisResult? analysis;
   final AnalysisFailure? analysisFailure;
   final bool historySaveFailed;
+
+  /// Real progress of the run: photos sent, and how far the server has got.
+  final int uploadedCount;
+  final int uploadTotal;
+  final bool uploadsDone;
+  final ScreeningAnalysisProgress? analysisProgress;
+
+  /// Photos in the run, in capture order: each view, then its second photo.
+  List<String> get photoIds => [
+        for (final r in scanRegions) ...[
+          if (isCaptured(r.id)) r.id,
+          if (isCaptured(secondPhotoId(r.id))) secondPhotoId(r.id),
+        ],
+      ];
 
   ScanRegion get selectedRegion => scanRegionById(selectedRegionId);
   bool isCaptured(String regionId) => captures.containsKey(regionId);
@@ -108,10 +136,12 @@ class ScanSessionState {
 
   ScanSessionState copyWith({
     String? selectedRegionId,
+    bool? started,
     Map<String, CapturedImage>? captures,
     CapturePhase? capturePhase,
     Object? transferProgress = _unset,
     Object? pending = _unset,
+    Object? pendingQuality = _unset,
     Object? pendingSource = _unset,
     Object? captureFailure = _unset,
     Object? lastSavedRegionId = _unset,
@@ -121,15 +151,23 @@ class ScanSessionState {
     Object? analysis = _unset,
     Object? analysisFailure = _unset,
     bool? historySaveFailed,
+    int? uploadedCount,
+    int? uploadTotal,
+    bool? uploadsDone,
+    Object? analysisProgress = _unset,
   }) {
     return ScanSessionState(
       selectedRegionId: selectedRegionId ?? this.selectedRegionId,
+      started: started ?? this.started,
       captures: captures ?? this.captures,
       capturePhase: capturePhase ?? this.capturePhase,
       transferProgress: transferProgress == _unset
           ? this.transferProgress
           : transferProgress as double?,
       pending: pending == _unset ? this.pending : pending as CapturedImage?,
+      pendingQuality: pendingQuality == _unset
+          ? this.pendingQuality
+          : pendingQuality as PhotoQuality?,
       pendingSource: pendingSource == _unset
           ? this.pendingSource
           : pendingSource as CaptureSource?,
@@ -150,6 +188,12 @@ class ScanSessionState {
           ? this.analysisFailure
           : analysisFailure as AnalysisFailure?,
       historySaveFailed: historySaveFailed ?? this.historySaveFailed,
+      uploadedCount: uploadedCount ?? this.uploadedCount,
+      uploadTotal: uploadTotal ?? this.uploadTotal,
+      uploadsDone: uploadsDone ?? this.uploadsDone,
+      analysisProgress: analysisProgress == _unset
+          ? this.analysisProgress
+          : analysisProgress as ScreeningAnalysisProgress?,
     );
   }
 }
@@ -161,7 +205,7 @@ class ScanSessionState {
 /// analysis phase runs only while a real analysis request is in flight.
 class ScanSessionNotifier extends Notifier<ScanSessionState> {
   static const Duration deviceCaptureTimeout = Duration(seconds: 45);
-  /// Covers uploading and analyzing a full scan, up to 18 photos in batches.
+  /// Covers uploading and analyzing a full scan, up to 18 photos.
   /// The server gives up on a run at 5 minutes.
   static const Duration analysisTimeout = Duration(minutes: 4);
 
@@ -177,9 +221,24 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
   /// Photo uploads for [_recorded]. Server-side analysis waits for them.
   Future<void>? _upload;
 
+  /// What's already stored for [_recorded], so a retake only sends new photos.
+  final Map<String, Uint8List> _uploaded = {};
+
+  /// Set while retaking: the run saves over this session instead of adding one.
+  String? _resumeId;
+
   @override
   ScanSessionState build() =>
       ScanSessionState(selectedRegionId: scanRegions.first.id);
+
+  /// Leaves the intro for the guided views.
+  void start() => state = state.copyWith(started: true);
+
+  /// Back to the intro. Photos taken so far stay.
+  void showIntro() {
+    if (!state.canChangeRegion) return;
+    state = state.copyWith(started: false);
+  }
 
   void selectRegion(String id) {
     if (!state.canChangeRegion || id == state.selectedRegionId) return;
@@ -200,6 +259,7 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
           ? CapturePhase.receiving
           : CapturePhase.awaitingCamera,
       pending: null,
+      pendingQuality: null,
       pendingSource: source,
       captureFailure: null,
       transferProgress: null,
@@ -253,6 +313,15 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
         pending: image,
         transferProgress: null,
       );
+      unawaited(_measure(image));
+    }
+  }
+
+  /// Measures the photo under review. Ignored if it has moved on meanwhile.
+  Future<void> _measure(CapturedImage image) async {
+    final quality = await PhotoQuality.measure(image.bytes);
+    if (quality != null && identical(state.pending, image)) {
+      state = state.copyWith(pendingQuality: quality);
     }
   }
 
@@ -270,6 +339,7 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
       selectedRegionId: _nextOpenRegion(after: region, captures: captures),
       capturePhase: CapturePhase.idle,
       pending: null,
+      pendingQuality: null,
       pendingSource: null,
       lastSavedRegionId: region,
       savedCount: state.savedCount + 1,
@@ -280,7 +350,11 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
   Future<void> retake() async {
     final source = state.pendingSource;
     if (state.capturePhase != CapturePhase.reviewing || source == null) return;
-    state = state.copyWith(capturePhase: CapturePhase.idle, pending: null);
+    state = state.copyWith(
+      capturePhase: CapturePhase.idle,
+      pending: null,
+      pendingQuality: null,
+    );
     await capture(source);
   }
 
@@ -297,16 +371,18 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     if (!state.canFinish) return;
     final token = _token;
     final now = DateTime.now();
-    state = state.copyWith(finishPhase: FinishPhase.saving, finishedAt: now);
+    state = state.copyWith(
+      finishPhase: FinishPhase.saving,
+      finishedAt: now,
+      uploadedCount: 0,
+      uploadTotal: 0,
+      uploadsDone: false,
+      analysisProgress: null,
+    );
 
-    final captured = [
-      for (final r in scanRegions) ...[
-        if (state.isCaptured(r.id)) r.id,
-        if (state.isCaptured(secondPhotoId(r.id))) secondPhotoId(r.id),
-      ],
-    ];
+    final captured = state.photoIds;
     final session = ScreeningSession(
-      id: now.microsecondsSinceEpoch.toString(),
+      id: _resumeId ?? now.microsecondsSinceEpoch.toString(),
       completedAt: now,
       capturedRegions: captured,
       totalRegions: scanRegions.length,
@@ -378,24 +454,68 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     _recorded = null;
     _saved = false;
     _upload = null;
+    _uploaded.clear();
+    _resumeId = null;
     state = ScanSessionState(selectedRegionId: scanRegions.first.id);
   }
 
+  /// Back to the guided views to take again only the photos the analysis
+  /// couldn't use. The good ones stay, and finishing updates this screening
+  /// rather than adding another to the history.
+  void retakeFlagged() {
+    final flagged = {
+      for (final i in state.analysis?.analysis?.qualityIssues ??
+          const <ScreeningQualityIssue>[])
+        if (i.modality == 'rgb') i.regionId,
+    };
+    if (flagged.isEmpty) return;
+    final first = scanRegions.firstWhere(
+      (r) => flagged.contains(r.id) || flagged.contains(secondPhotoId(r.id)),
+      orElse: () => scanRegions.first,
+    );
+    _token++;
+    _resumeId = _recorded?.id;
+    _upload = null;
+    state = ScanSessionState(
+      selectedRegionId: flagged.contains(first.id)
+          ? first.id
+          : secondPhotoId(first.id),
+      started: true,
+      captures: Map.unmodifiable({...state.captures}
+        ..removeWhere((id, _) => flagged.contains(id))),
+    );
+  }
+
   /// Uploads [_recorded]'s photos and NIR frames once; a failed upload is
-  /// tried again on the next call.
+  /// tried again on the next call. Photos already stored aren't sent again.
   Future<void> _uploadImages() {
     final recorded = _recorded!;
     final captures = state.captures;
     return _upload ??= () async {
       try {
+        final images = {
+          for (final id in recorded.capturedRegions)
+            if (!identical(_uploaded[id], captures[id]!.bytes))
+              id: captures[id]!.bytes,
+        };
+        final token = _token;
+        state = state.copyWith(uploadTotal: images.length, uploadedCount: 0);
+        var sent = 0;
         await ref.read(screeningSessionsProvider.notifier).uploadImages(
           recorded.id,
-          {for (final id in recorded.capturedRegions) id: captures[id]!.bytes},
+          images,
           nirByRegion: {
-            for (final id in recorded.capturedRegions)
+            for (final id in images.keys)
               if (captures[id]!.nirBytes case final nir?) id: nir,
           },
+          onUploaded: (id, modality) {
+            if (modality != 'rgb') return;
+            _uploaded[id] = captures[id]!.bytes;
+            sent++;
+            if (token == _token) state = state.copyWith(uploadedCount: sent);
+          },
         );
+        if (token == _token) state = state.copyWith(uploadsDone: true);
       } catch (_) {
         _upload = null;
         rethrow;
@@ -411,6 +531,7 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     state = state.copyWith(
       finishPhase: FinishPhase.analyzing,
       analysisFailure: null,
+      analysisProgress: null,
     );
     try {
       // The server analyzes what it has stored, so the session and its
@@ -422,7 +543,11 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
           if (token == _token) state = state.copyWith(historySaveFailed: false);
         }
         await _uploadImages();
-        return service.analyze(recorded.id);
+        return service.analyze(recorded.id, onProgress: (progress) {
+          if (token == _token) {
+            state = state.copyWith(analysisProgress: progress);
+          }
+        });
       }()
           .timeout(analysisTimeout);
       if (token != _token) return;
@@ -473,6 +598,7 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     required Map<String, CapturedImage> captures,
   }) {
     final start = scanRegionIndex(after);
+    if (start < 0) return scanRegions.first.id;
     for (var i = 1; i <= scanRegions.length; i++) {
       final r = scanRegions[(start + i) % scanRegions.length];
       if (!captures.containsKey(r.id)) return r.id;

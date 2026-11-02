@@ -35,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   late final AnimationController _intro = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1800),
+    duration: const Duration(milliseconds: 2400),
   );
 
   /// Slow, endless drift of the light behind the glass.
@@ -57,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen>
   /// Fades the splash out over [SplashScreen.next] once the intro ends.
   late final AnimationController _exit = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 400),
+    duration: const Duration(milliseconds: 700),
   );
 
   bool _started = false;

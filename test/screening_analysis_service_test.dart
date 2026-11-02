@@ -103,6 +103,23 @@ void main() {
         'https://api.test/files/a-nir.png');
   });
 
+  test('reports how far the server has got while it polls', () async {
+    final pending = analysis('pending')
+      ..['progress'] = {'done': 1, 'total': 2};
+    final service = serviceWith(
+      json(202, {'session': session(pending)}),
+      [
+        json(200, {'session': session(pending)}),
+        json(200, {'session': session(analysis('complete'))}),
+      ],
+    );
+
+    final heard = <ScreeningAnalysisProgress>[];
+    await service.analyze('s1', onProgress: heard.add);
+    expect(heard.first.done, 1);
+    expect(heard.first.total, 2);
+  });
+
   test('a failed server analysis is a service failure', () async {
     final service = serviceWith(json(202, {'session': session(analysis('pending'))}), [
       json(200, {'session': session(analysis('failed'))}),

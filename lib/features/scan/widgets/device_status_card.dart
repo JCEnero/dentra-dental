@@ -165,12 +165,12 @@ class _DeviceCopy {
       case DeviceStatus.unsupported:
         return const _DeviceCopy(
           'Not available yet',
-          "Pairing isn't in this version. Use your phone camera for now.",
+          "Pairing with your device isn't in this version.",
         );
       case DeviceStatus.disconnected:
         return const _DeviceCopy(
           'Not connected',
-          'Turn on your device and keep it nearby.',
+          'Turn on your device and connect it over Wi-Fi.',
           'Connect',
         );
       case DeviceStatus.connecting:
@@ -182,7 +182,7 @@ class _DeviceCopy {
           'Cancel',
         );
       case DeviceStatus.connected:
-        return const _DeviceCopy('Connected', 'Ready to capture.');
+        return const _DeviceCopy('Connected', 'On Wi-Fi and ready to capture.');
       case DeviceStatus.reconnecting:
         return const _DeviceCopy(
           'Reconnecting…',
@@ -193,7 +193,7 @@ class _DeviceCopy {
         return switch (s.failure) {
           DeviceFailure.notFound => const _DeviceCopy(
               'Device not found',
-              "Make sure it's turned on and nearby.",
+              "Make sure it's turned on and in Wi-Fi range.",
               'Try again',
             ),
           DeviceFailure.timeout => const _DeviceCopy(
@@ -268,7 +268,7 @@ class _CardAction extends StatelessWidget {
   }
 }
 
-/// Glass orb holding a slim intraoral wand. Rings pulse only while a
+/// Glass orb holding the intraoral camera. Rings pulse only while a
 /// connection attempt is actually running; a single ring marks success.
 class _DeviceEmblem extends StatefulWidget {
   const _DeviceEmblem({required this.status, required this.onActive});
@@ -423,27 +423,25 @@ class _EmblemPainter extends CustomPainter {
     _paintWand(canvas, c, r);
   }
 
+  /// The device in miniature: handle, slim neck and round head.
   void _paintWand(Canvas canvas, Offset c, double r) {
     canvas.save();
     canvas.translate(c.dx, c.dy);
     canvas.rotate(-math.pi / 4);
-    final len = r * 1.5;
-    const half = 5.0;
+    final len = r * 1.62;
+    const half = 5.0, headRadius = 4.6;
+    final head = Offset(len / 2 - headRadius, 0);
 
     final body = Path()
       ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(-len / 2, -half, len * 0.62, half * 2),
-        const Radius.circular(half),
+        Rect.fromLTWH(-len / 2, -half, len * 0.54, half * 2),
+        const Radius.circular(half * 0.8),
       ))
       ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-            -len / 2 + len * 0.55, -half * 0.55, len * 0.32, half * 1.1),
-        const Radius.circular(3),
+        Rect.fromLTWH(-len / 2 + len * 0.48, -half * 0.5, len * 0.44, half),
+        const Radius.circular(2.5),
       ))
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(len / 2 - len * 0.2, -half * 0.8, len * 0.2, half * 1.6),
-        const Radius.circular(4),
-      ));
+      ..addOval(Rect.fromCircle(center: head, radius: headRadius));
 
     canvas.drawPath(
       body.shift(const Offset(1.2, 2)),
@@ -474,11 +472,12 @@ class _EmblemPainter extends CustomPainter {
         ..color = AppColors.navy.withValues(alpha: 0.14),
     );
 
-    // Lens on the head.
+    // The lens in its window, on the head.
+    canvas.drawCircle(head, 3.1, Paint()..color = AppColors.navy);
     canvas.drawCircle(
-      Offset(len / 2 - len * 0.1, 0),
-      2.2,
-      Paint()..color = AppColors.navy.withValues(alpha: 0.75),
+      head,
+      1.2,
+      Paint()..color = AppColors.g1.withValues(alpha: 0.85),
     );
 
     // Status light reflects the real state.
@@ -491,7 +490,7 @@ class _EmblemPainter extends CustomPainter {
       _ => AppColors.border,
     };
     canvas.drawCircle(
-      Offset(-len * 0.12, 0),
+      Offset(-len * 0.2, 0),
       2.1,
       Paint()..color = light,
     );

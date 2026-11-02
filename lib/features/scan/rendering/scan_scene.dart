@@ -1,10 +1,8 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../dental_explorer/data/tooth_catalog.dart';
@@ -13,13 +11,13 @@ import '../../dental_explorer/geometry/mesh.dart';
 import '../../dental_explorer/geometry/tooth_geometry.dart';
 import '../../dental_explorer/rendering/dentition_renderer.dart';
 import '../../dental_explorer/rendering/orbit_camera.dart';
-import '../data/capture_regions.dart';
+import '../data/scan_regions.dart';
 
 DentitionModel _buildScanModel(Object? _) => buildDentition(MeshDetail.low);
 
-/// The 3D model behind the region guides, sample photos, scan animation
-/// and results map. Built once in the background. The light mesh is
-/// plenty at these sizes and leaves headroom for the scan effects.
+/// The 3D model behind the view guides and the scan animation. Built once
+/// in the background. The light mesh is plenty at these sizes and leaves
+/// headroom for the scan effects.
 final scanDentitionProvider = FutureProvider<DentitionModel>(
   (ref) => compute(_buildScanModel, null),
 );
@@ -31,31 +29,19 @@ final _stillRenderers = Expando<DentitionRenderer>();
 DentitionRenderer stillRendererFor(DentitionModel model) =>
     _stillRenderers[model] ??= DentitionRenderer(model);
 
-/// How a region's 3D view is drawn.
-enum SceneLook {
-  /// Guide: the teeth to photograph glow teal, the rest stay pale.
-  guide,
-
-  /// Sample "photo": enamel and pink gums, like an intraoral photo.
-  photo,
-
-  /// Translucent outline laid over the user's own photo.
-  overlay,
-}
-
 bool _isTooth(int owner) => owner < 32;
 
 /// Owners a region's view shows: its arches' teeth and gums.
-bool regionShowsOwner(CaptureRegion region, int owner) {
+bool regionShowsOwner(ScanRegion region, int owner) {
   if (_isTooth(owner)) {
-    return region.arches.shows(ToothCatalog.byIndex(owner).arch);
+    return region.view.shows(ToothCatalog.byIndex(owner).arch);
   }
-  return region.arches
+  return region.view
       .shows(owner == kUpperGumOwner ? ToothArch.upper : ToothArch.lower);
 }
 
 /// Owners a region's view is framed on: the teeth it covers.
-bool regionFramesOwner(CaptureRegion region, int owner) =>
+bool regionFramesOwner(ScanRegion region, int owner) =>
     _isTooth(owner) && region.covers(ToothCatalog.byIndex(owner));
 
 /// A camera at [yaw]/[pitch] that centers and fits the crowns of the
@@ -126,12 +112,11 @@ CameraPose fitPose(
         math.max((maxX - minX) / 2 / limitX, (maxY - minY) / 2 / limitY);
     distance = math.max(distance * need, 12);
   }
-  return CameraPose(
-      yaw: yaw, pitch: pitch, distance: distance, target: target);
+  return CameraPose(yaw: yaw, pitch: pitch, distance: distance, target: target);
 }
 
 /// The fitted guide camera for [region] in [size].
-CameraPose regionPose(DentitionModel model, CaptureRegion region, Size size,
+CameraPose regionPose(DentitionModel model, ScanRegion region, Size size,
     {double fill = 0.84}) {
   final pose = fitPose(
     model,
@@ -146,62 +131,84 @@ CameraPose regionPose(DentitionModel model, CaptureRegion region, Size size,
       : pose.copyWith(distance: pose.distance * region.zoom);
 }
 
-// Enamel and gum tones for sample photos, in linear 0–1 RGB. The gums
-// sit between the palette's peach and coral, tinted strongly enough to
-// cover the model's teal glass gums.
-const _ivory = (1.0, 0.96, 0.88);
-const _gumPeach = (0.95, 0.72, 0.64);
+final _poseCache = <String, CameraPose>{};
 
-/// Writes [region]'s [look] into [style].
-void styleRegion(SceneStyle style, CaptureRegion region, SceneLook look) {
+/// [regionPose], remembered per view and size: fitting walks the whole mesh.
+CameraPose cachedRegionPose(
+  DentitionModel model,
+  ScanRegion region,
+  Size size, {
+  double fill = 0.84,
+}) =>
+    _poseCache.putIfAbsent(
+      '${region.id}|$fill|${size.width.round()}x${size.height.round()}',
+      () => regionPose(model, region, size, fill: fill),
+    );
+
+/// Screen position of world point [p] seen from [pose], or null when it's
+/// behind the camera. Same projection as `DentitionRenderer.paint`.
+Offset? projectPoint(CameraPose pose, Size size, Vec3 p) {
+  final r = pose.rotation;
+  final px = p.x - pose.target.x,
+      py = p.y - pose.target.y,
+      pz = p.z - pose.target.z;
+  final d = pose.distance - (r[6] * px + r[7] * py + r[8] * pz);
+  if (d < 4) return null;
+  final f = DentitionRenderer.focalLength(size) / d;
+  return Offset(
+    size.width / 2 + (r[0] * px + r[1] * py + r[2] * pz) * f,
+    size.height / 2 - (r[3] * px + r[4] * py + r[5] * pz) * f,
+  );
+}
+
+/// Writes [region]'s guide into [style]: the teeth to photograph take the
+/// button color, the rest fade back so they don't compete.
+void styleRegion(SceneStyle style, ScanRegion region) {
   style
     ..hideRoots = true
     ..rootReveal = 0;
-  const teal = AppColors.g1;
+  // The middle of the button gradient. Lifted below, as shading darkens it.
+  const teal = AppColors.cardSolid;
   for (var o = 0; o < kOwnerCount; o++) {
-    final shown = regionShowsOwner(region, o);
     style
       ..glow[o] = 0
       ..desaturate[o] = 0
       ..brightness[o] = 1
       ..tint[o] = 0;
-    if (!shown) {
+    if (!regionShowsOwner(region, o)) {
       style.alpha[o] = 0;
-      continue;
-    }
-    if (!_isTooth(o)) {
-      // Gums.
-      switch (look) {
-        case SceneLook.guide:
-          style.alpha[o] = 0.4;
-        case SceneLook.photo:
-          style.alpha[o] = 1;
-          _tint(style, o, _gumPeach, 0.92);
-        case SceneLook.overlay:
-          style.alpha[o] = 0;
+    } else if (!_isTooth(o)) {
+      style.alpha[o] = 0.3; // gums
+    } else {
+      if (region.covers(ToothCatalog.byIndex(o))) {
+        style
+          ..alpha[o] = 1
+          ..brightness[o] = 1.15
+          ..glow[o] = 0.2;
+        _tint(style, o, (teal.r, teal.g, teal.b), 0.94);
+      } else {
+        style
+          ..alpha[o] = 0.35
+          ..desaturate[o] = 0.6
+          ..brightness[o] = 0.97;
       }
-      continue;
     }
-    final target = region.covers(ToothCatalog.byIndex(o));
-    switch (look) {
-      case SceneLook.guide:
-        style.alpha[o] = 1;
-        if (target) {
-          _tint(style, o, (teal.r, teal.g, teal.b), 0.5);
-          style.glow[o] = 0.55;
-        } else {
-          style
-            ..desaturate[o] = 0.6
-            ..brightness[o] = 0.97;
-        }
-      case SceneLook.photo:
-        style.alpha[o] = 1;
-        _tint(style, o, _ivory, 0.35);
-      case SceneLook.overlay:
-        style.alpha[o] = target ? 0.5 : 0.2;
-        _tint(style, o, (teal.r, teal.g, teal.b), 0.85);
-        style.glow[o] = 1;
-    }
+  }
+}
+
+/// Writes [region]'s view into [style] with nothing singled out: every tooth
+/// it shows is plain white.
+void styleRegionPlain(SceneStyle style, ScanRegion region) {
+  styleRegion(style, region);
+  for (var o = 0; o < kOwnerCount; o++) {
+    if (!_isTooth(o) || !regionShowsOwner(region, o)) continue;
+    style
+      ..alpha[o] = 1
+      ..tint[o] = 0
+      ..glow[o] = 0
+      ..desaturate[o] = 1
+      ..brightness[o] = 1.08
+      ..lift[o] = 0.72;
   }
 }
 
@@ -211,88 +218,4 @@ void _tint(SceneStyle s, int owner, (double, double, double) rgb, double k) {
     ..tintG[owner] = rgb.$2
     ..tintB[owner] = rgb.$3
     ..tint[owner] = k;
-}
-
-// ── Sample photos ─────────────────────────────────────────────────
-
-final _sampleCache = <String, Uint8List>{};
-
-/// Placeholder photos for [regions]: renders of the 3D model from each
-/// view, lit like an intraoral photo and marked "SAMPLE". PNG bytes by
-/// region id, cached for the app run.
-Future<Map<String, Uint8List>> renderSamplePhotos(
-  DentitionModel model,
-  Iterable<CaptureRegion> regions,
-) async {
-  final renderer = stillRendererFor(model);
-  return {
-    for (final r in regions)
-      r.id: _sampleCache[r.id] ??= await _renderSample(renderer, r),
-  };
-}
-
-Future<Uint8List> _renderSample(
-    DentitionRenderer renderer, CaptureRegion region) async {
-  const size = Size(720, 540);
-  final rect = Offset.zero & size;
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder, rect);
-
-  // A light studio backdrop in the brand mint.
-  canvas.drawRect(
-    rect,
-    Paint()
-      ..shader = const RadialGradient(
-        radius: 0.9,
-        colors: [AppColors.white, AppColors.lightLavender, Color(0xFFCDEDE9)],
-        stops: [0, 0.6, 1],
-      ).createShader(rect),
-  );
-
-  final style = SceneStyle();
-  styleRegion(style, region, SceneLook.photo);
-  renderer.paint(canvas, size,
-      regionPose(renderer.model, region, size, fill: 0.9), style);
-
-  _paintSampleTag(canvas);
-
-  final picture = recorder.endRecording();
-  final image =
-      await picture.toImage(size.width.toInt(), size.height.toInt());
-  picture.dispose();
-  try {
-    final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    return data!.buffer.asUint8List();
-  } finally {
-    image.dispose();
-  }
-}
-
-/// Marks samples so they are never mistaken for real photos.
-void _paintSampleTag(Canvas canvas) {
-  final tp = TextPainter(
-    text: TextSpan(
-      text: 'SAMPLE',
-      style: GoogleFonts.outfit(
-        fontSize: 20,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 3,
-        color: AppColors.g2,
-      ),
-    ),
-    textDirection: TextDirection.ltr,
-  )..layout();
-  final box = RRect.fromRectAndRadius(
-    Rect.fromLTWH(22, 22, tp.width + 28, tp.height + 12),
-    const Radius.circular(8),
-  );
-  canvas.drawRRect(box, Paint()..color = const Color(0xD9FFFFFF));
-  canvas.drawRRect(
-    box,
-    Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..color = AppColors.lavender,
-  );
-  tp.paint(canvas, const Offset(36, 28));
 }

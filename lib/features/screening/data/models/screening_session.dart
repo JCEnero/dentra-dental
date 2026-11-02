@@ -213,6 +213,9 @@ class ScreeningAnalysis {
   /// Photos that couldn't be analyzed and should be taken again.
   final List<ScreeningQualityIssue> qualityIssues;
 
+  /// How far a pending run has got. Never saved with the result.
+  final ScreeningAnalysisProgress? progress;
+
   const ScreeningAnalysis({
     required this.summary,
     required this.analyzedAt,
@@ -222,6 +225,7 @@ class ScreeningAnalysis {
     this.dentitionType,
     this.recommendations = const [],
     this.qualityIssues = const [],
+    this.progress,
   });
 
   Map<String, dynamic> toJson() => {
@@ -251,8 +255,27 @@ class ScreeningAnalysis {
       recommendations:
           list('recommendations', ScreeningRecommendation.fromJson),
       qualityIssues: list('quality_issues', ScreeningQualityIssue.fromJson),
+      progress: json['progress'] == null
+          ? null
+          : ScreeningAnalysisProgress.fromJson(
+              json['progress'] as Map<String, dynamic>),
     );
   }
+}
+
+/// Where a running analysis is, as reported by the server after each photo.
+class ScreeningAnalysisProgress {
+  /// Photos finished, out of [total].
+  final int done;
+  final int total;
+
+  const ScreeningAnalysisProgress({required this.done, required this.total});
+
+  factory ScreeningAnalysisProgress.fromJson(Map<String, dynamic> json) =>
+      ScreeningAnalysisProgress(
+        done: json['done'] as int? ?? 0,
+        total: json['total'] as int? ?? 0,
+      );
 }
 
 /// A next step from the analysis rules, e.g. "Possible cavity: see a

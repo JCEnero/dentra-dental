@@ -8,6 +8,7 @@ import '../data/models/captured_image.dart';
 import '../data/scan_regions.dart';
 import '../providers/scan_session_provider.dart';
 import 'scan_motion.dart';
+import 'scan_theme.dart';
 
 /// Pinned above the tab bar so the next step is always reachable,
 /// whatever the screen height.
@@ -24,6 +25,8 @@ class ScanActionBar extends StatelessWidget {
     required this.onRetryAnalysis,
     required this.onSkipAnalysis,
     required this.onNewScan,
+    required this.onStart,
+    required this.onRetakeFlagged,
   });
 
   final ScanSessionState session;
@@ -38,6 +41,8 @@ class ScanActionBar extends StatelessWidget {
   final VoidCallback onRetryAnalysis;
   final VoidCallback onSkipAnalysis;
   final VoidCallback onNewScan;
+  final VoidCallback onStart;
+  final VoidCallback onRetakeFlagged;
 
   @override
   Widget build(BuildContext context) {
@@ -46,28 +51,49 @@ class ScanActionBar extends StatelessWidget {
       duration: ScanMotion.of(context, ScanMotion.medium),
       curve: ScanMotion.curve,
       alignment: Alignment.bottomCenter,
-      child: content == null
-          ? const SizedBox(width: double.infinity)
-          // Floating glass card, inset like the tab bar pill below it,
-          // with clear space between the two.
-          : Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 8, AppSpacing.screenH, 10),
-              child: GlassCard(
-                width: double.infinity,
-                borderRadius: const BorderRadius.all(Radius.circular(28)),
-                borderWidth: 1.2,
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                child: AnimatedSwitcher(
-                  duration: ScanMotion.of(context, ScanMotion.fast),
-                  child: content,
-                ),
+      // The start button's glow reaches past the bar.
+      clipBehavior: Clip.none,
+      child: switch (content) {
+        null => const SizedBox(width: double.infinity),
+        // The start page's one action stands on its own, with no card round it.
+        _ when _isIntro => Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenH, 8, AppSpacing.screenH, 12),
+            child: content,
+          ),
+        // Floating glass card, inset like the tab bar pill below it,
+        // with clear space between the two.
+        _ => Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenH, 8, AppSpacing.screenH, 10),
+            child: GlassCard(
+              width: double.infinity,
+              borderRadius: const BorderRadius.all(Radius.circular(28)),
+              borderWidth: 1.2,
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+              child: AnimatedSwitcher(
+                duration: ScanMotion.of(context, ScanMotion.fast),
+                child: content,
               ),
             ),
+          ),
+      },
     );
   }
 
+  bool get _isIntro =>
+      !session.started && session.finishPhase == FinishPhase.scanning;
+
   Widget? _content() {
+    if (_isIntro) {
+      return GlowButton(
+        key: const ValueKey('start'),
+        label: 'Start scan',
+        icon: Icons.arrow_forward_rounded,
+        intensity: 0.7,
+        onTap: onStart,
+      );
+    }
     switch (session.finishPhase) {
       case FinishPhase.saving:
       case FinishPhase.analyzing:
@@ -79,6 +105,22 @@ class ScanActionBar extends StatelessWidget {
           primary: ('Try again', onRetryAnalysis),
         );
       case FinishPhase.done:
+        final retakes = session.analysis?.analysis?.qualityIssues
+                .where((i) => i.modality == 'rgb')
+                .map((i) => i.regionId)
+                .toSet()
+                .length ??
+            0;
+        if (retakes > 0) {
+          return _pair(
+            key: 'retake-flagged',
+            secondary: ('New scan', onNewScan),
+            primary: (
+              'Retake $retakes photo${retakes == 1 ? '' : 's'}',
+              onRetakeFlagged,
+            ),
+          );
+        }
         return PrimaryButton(
           key: const ValueKey('new'),
           label: 'Start new scan',
@@ -92,7 +134,7 @@ class ScanActionBar extends StatelessWidget {
     switch (session.capturePhase) {
       case CapturePhase.awaitingCamera:
         return const _BusyButton(
-            key: ValueKey('wait'), label: 'Waiting for camera…');
+            key: ValueKey('wait'), label: 'Waiting for device…');
       case CapturePhase.receiving:
         return const _BusyButton(
             key: ValueKey('recv'), label: 'Receiving image…');
@@ -137,7 +179,12 @@ class ScanActionBar extends StatelessWidget {
     if (session.allCaptured && session.isCaptured(region.id)) {
       return _withCaption(
         key: 'finish-all-${region.id}',
-        button: PrimaryButton(label: 'Finish scan', onTap: onFinish),
+        button: GlowButton(
+          label: 'Finish scan',
+          icon: Icons.arrow_forward_rounded,
+          intensity: 1,
+          onTap: onFinish,
+        ),
         region: region,
       );
     }
@@ -156,25 +203,39 @@ class ScanActionBar extends StatelessWidget {
 
     return _withCaption(
       key: 'capture-${region.id}-$source',
-      button: PrimaryButton(
-        label: switch (source) {
-          CaptureSource.photoLibrary => 'Choose ${region.label} photo',
-          _ => 'Capture ${region.label}',
-        },
-        trailing: Icon(
-          source == CaptureSource.photoLibrary
-              ? Icons.photo_library_outlined
-              : Icons.photo_camera_outlined,
-          size: 18,
-          color: AppColors.white,
-        ),
-        onTap: () => onCapture(source),
+      button: Row(
+        children: [
+          Expanded(
+            child: GlowButton(
+              label: source == CaptureSource.photoLibrary
+                  ? 'Choose a photo'
+                  : 'Capture with device',
+              icon: source == CaptureSource.photoLibrary
+                  ? Icons.photo_library_outlined
+                  : Icons.photo_camera_outlined,
+              intensity: 0.7,
+              onTap: () => onCapture(source),
+            ),
+          ),
+          if (source == CaptureSource.phoneCamera) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: () => onCapture(CaptureSource.photoLibrary),
+              tooltip: 'Choose a photo instead',
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.white.withValues(alpha: 0.6),
+                foregroundColor: AppColors.g2,
+                fixedSize: const Size(54, 54),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: AppColors.lavender),
+                ),
+              ),
+              icon: const Icon(Icons.photo_library_outlined, size: 20),
+            ),
+          ],
+        ],
       ),
-      caption: switch (source) {
-        CaptureSource.device => 'Uses your DENTRA device',
-        CaptureSource.phoneCamera => 'Opens your phone camera',
-        CaptureSource.photoLibrary => 'Camera not available on this device',
-      },
     );
   }
 
@@ -187,12 +248,11 @@ class ScanActionBar extends StatelessWidget {
     return null;
   }
 
-  /// Adds the source caption and, once something is captured, a way to
-  /// finish early with partial coverage.
+  /// Once something is captured, adds a way to finish early with partial
+  /// coverage and to add a second photo of this view.
   Widget _withCaption({
     required String key,
     required Widget button,
-    String? caption,
     ScanRegion? region,
   }) {
     final canFinishEarly = session.canFinish &&
@@ -218,21 +278,15 @@ class ScanActionBar extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         button,
-        if (caption != null || canFinishEarly || second != null)
+        if (canFinishEarly || second != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             // Wraps onto two lines with large text instead of overflowing.
             child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
+              alignment: WrapAlignment.center,
+              spacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text(
-                  caption ?? '',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    color: AppColors.secondaryText,
-                  ),
-                ),
                 if (second != null)
                   link(
                     session.isCaptured(second)
