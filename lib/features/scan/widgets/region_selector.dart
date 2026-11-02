@@ -42,7 +42,7 @@ class _RegionSelectorState extends State<RegionSelector> {
       // this list scrolls; the page stays where the user is looking.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_scroll.hasClients) return;
-        final index = scanRegions.indexWhere((r) => r.id == widget.selectedId);
+        final index = scanRegionIndex(widget.selectedId);
         final position = _scroll.position;
         final cardCenter =
             AppSpacing.screenH + index * (_cardWidth + _gap) + _cardWidth / 2;
@@ -94,7 +94,9 @@ class _RegionSelectorState extends State<RegionSelector> {
                 region: region,
                 index: i,
                 width: _cardWidth,
-                selected: region.id == widget.selectedId,
+                selected: region.id == baseRegionId(widget.selectedId),
+                // Tapping the view leaves its second photo.
+                canReselect: region.id != widget.selectedId,
                 captured: widget.capturedIds.contains(region.id),
                 enabled: widget.enabled,
                 onTap: () => widget.onSelect(region.id),
@@ -114,6 +116,7 @@ class _RegionCard extends StatelessWidget {
     required this.index,
     required this.width,
     required this.selected,
+    required this.canReselect,
     required this.captured,
     required this.enabled,
     required this.onTap,
@@ -123,6 +126,7 @@ class _RegionCard extends StatelessWidget {
   final int index;
   final double width;
   final bool selected;
+  final bool canReselect;
   final bool captured;
   final bool enabled;
   final VoidCallback onTap;
@@ -136,7 +140,7 @@ class _RegionCard extends StatelessWidget {
       button: true,
       enabled: enabled,
       selected: selected,
-      label: '${region.label}, region ${index + 1} of ${scanRegions.length}, '
+      label: '${region.label}, view ${index + 1} of ${scanRegions.length}, '
           '$status',
       excludeSemantics: true,
       child: ClipRRect(
@@ -154,7 +158,7 @@ class _RegionCard extends StatelessWidget {
             child: Material(
               type: MaterialType.transparency,
               child: InkWell(
-                onTap: enabled && !selected ? onTap : null,
+                onTap: enabled && (!selected || canReselect) ? onTap : null,
                 borderRadius: BorderRadius.circular(17),
                 splashColor: AppColors.lightLavender,
                 highlightColor: AppColors.lightLavender.withValues(alpha: 0.5),

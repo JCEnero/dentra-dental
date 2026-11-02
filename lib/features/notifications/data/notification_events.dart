@@ -70,8 +70,8 @@ abstract class NotificationEvents {
       category: NotificationCategory.screening,
       title: complete ? 'Screening saved' : 'Partial screening saved',
       body: complete
-          ? 'All $total regions were captured. Review your photos anytime.'
-          : '$captured of $total regions captured. You can scan the rest '
+          ? 'All $total views were captured. Review your photos anytime.'
+          : '$captured of $total views captured. You can scan the rest '
               'anytime.',
       createdAt: DateTime.now(),
       target: NotificationTarget.screening,

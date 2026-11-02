@@ -165,11 +165,11 @@ Future<void> tapRegion(WidgetTester tester, String label) async {
 
 Finder regionCard(String label) => find.byWidgetPredicate((w) =>
     w is Semantics &&
-    (w.properties.label?.startsWith('$label, region') ?? false));
+    (w.properties.label?.startsWith('$label, view') ?? false));
 
 final _progressLabel = find.byWidgetPredicate((w) =>
     w is Semantics &&
-    (w.properties.label?.endsWith('regions captured') ?? false));
+    (w.properties.label?.endsWith('views captured') ?? false));
 
 String progressText(WidgetTester tester) =>
     tester.widget<Semantics>(_progressLabel).properties.label!;
@@ -198,17 +198,65 @@ void main() {
 
     expect(find.text('Not available yet'), findsOneWidget);
     expect(find.text('Connected'), findsNothing);
-    expect(progressText(tester), '0 of 5 regions captured');
+    expect(progressText(tester), '0 of 9 views captured');
     for (final r in scanRegions) {
       await showRegion(tester, r.label);
       expect(regionCard(r.label), findsOneWidget);
     }
-    expect(find.text('Capture Upper Left'), findsOneWidget);
+    expect(find.text('Capture Front Teeth'), findsOneWidget);
     expect(find.text('Opens your phone camera'), findsOneWidget);
     expect(find.text('Start over'), findsNothing);
     // No fabricated quality scores or analysis numbers.
     expect(find.textContaining('Sharpness'), findsNothing);
     expect(find.textContaining('Teeth\ndetected'), findsNothing);
+  });
+
+  testWidgets('a second photo is optional and is not another view',
+      (tester) async {
+    final camera = FakeCamera();
+    final container = await pumpScan(tester, camera: camera);
+    await captureCurrent(tester, camera, 'Front Teeth');
+    await tapRegion(tester, 'Front Teeth');
+
+    await tapText(tester, 'Add another photo');
+    await captureCurrent(tester, camera, 'Front Teeth, photo 2');
+
+    expect(progressText(tester), '1 of 9 views captured');
+    expect(
+      container.read(scanSessionProvider).captures.keys,
+      ['front', 'front-2'],
+    );
+    // Moved on to the next open view, not on to the same view's next photo.
+    expect(find.text('Capture Upper Biting Surface'), findsOneWidget);
+    await tapRegion(tester, 'Front Teeth');
+    expect(find.text('See second photo'), findsOneWidget);
+  });
+
+  testWidgets('inner views say they are saved but not checked', (tester) async {
+    await pumpScan(tester);
+    await tapRegion(tester, 'Back of Upper Teeth');
+    expect(find.textContaining("the check can't read"), findsOneWidget);
+    await tapRegion(tester, 'Back Molars, Left');
+    expect(find.textContaining("the check can't read"), findsNothing);
+  });
+
+  test('old screenings keep their own regions, with second photos in place', () {
+    expect(regionsForSession(['ul', 'po']), legacyScanRegions);
+    expect(scanRegionById('po').label, 'Posterior');
+    expect(
+      regionsForSession(['front', 'front-2']).take(2).map((r) => r.label),
+      ['Front Teeth', 'Front Teeth, photo 2'],
+    );
+    expect(findScanRegion('nowhere'), isNull);
+    expect(
+      ScreeningSession(
+        id: 's',
+        completedAt: DateTime(2026),
+        capturedRegions: const ['front', 'front-2'],
+        totalRegions: 2,
+      ).isComplete,
+      isFalse,
+    );
   });
 
   testWidgets('every region renders its own visual and can be selected',
@@ -230,48 +278,48 @@ void main() {
     final camera = FakeCamera();
     final container = await pumpScan(tester, camera: camera);
 
-    await tapText(tester, 'Capture Upper Left');
+    await tapText(tester, 'Capture Front Teeth');
     expect(camera.calls, [CaptureSource.phoneCamera]);
     expect(find.text('Waiting for camera…'), findsWidgets);
-    expect(progressText(tester), '0 of 5 regions captured');
+    expect(progressText(tester), '0 of 9 views captured');
 
     // Regions are locked while the camera is open.
-    await tapRegion(tester, 'Lower Left');
-    expect(find.text('Upper Left'), findsWidgets);
+    await tapRegion(tester, 'Lower Biting Surface');
+    expect(find.text('Front Teeth'), findsWidgets);
 
     camera.deliver();
     await settle(tester);
     expect(find.text('Check your photo'), findsOneWidget);
     expect(find.text('Use photo'), findsOneWidget);
-    expect(progressText(tester), '0 of 5 regions captured');
+    expect(progressText(tester), '0 of 9 views captured');
 
     await tapText(tester, 'Use photo');
-    expect(progressText(tester), '1 of 5 regions captured');
-    expect(find.text('Upper Left saved'), findsOneWidget);
+    expect(progressText(tester), '1 of 9 views captured');
+    expect(find.text('Front Teeth saved'), findsOneWidget);
     // Moves on to the next open region.
-    expect(find.text('Capture Upper Right'), findsOneWidget);
-    expect(container.read(scanSessionProvider).captures.keys, ['ul']);
+    expect(find.text('Capture Upper Biting Surface'), findsOneWidget);
+    expect(container.read(scanSessionProvider).captures.keys, ['front']);
     await settle(tester, steps: 30); // notice hides itself
-    expect(find.text('Upper Left saved'), findsNothing);
+    expect(find.text('Front Teeth saved'), findsNothing);
   });
 
   testWidgets('cancelling the camera leaves progress unchanged',
       (tester) async {
     final camera = FakeCamera();
     await pumpScan(tester, camera: camera);
-    await tapText(tester, 'Capture Upper Left');
+    await tapText(tester, 'Capture Front Teeth');
     camera.cancel();
     await settle(tester);
-    expect(find.text('Capture Upper Left'), findsOneWidget);
+    expect(find.text('Capture Front Teeth'), findsOneWidget);
     expect(find.text('Waiting for camera…'), findsNothing);
-    expect(progressText(tester), '0 of 5 regions captured');
+    expect(progressText(tester), '0 of 9 views captured');
   });
 
   testWidgets('permission denied explains, offers retry and a photo',
       (tester) async {
     final camera = FakeCamera();
     await pumpScan(tester, camera: camera);
-    await tapText(tester, 'Capture Upper Left');
+    await tapText(tester, 'Capture Front Teeth');
     camera.fail(CameraFailure.permissionDenied);
     await settle(tester);
 
@@ -295,8 +343,8 @@ void main() {
       (tester) async {
     final camera = FakeCamera(hasCamera: false);
     await pumpScan(tester, camera: camera);
-    expect(find.text('Choose Upper Left photo'), findsOneWidget);
-    await tapText(tester, 'Choose Upper Left photo');
+    expect(find.text('Choose Front Teeth photo'), findsOneWidget);
+    await tapText(tester, 'Choose Front Teeth photo');
     expect(camera.calls, [CaptureSource.photoLibrary]);
   });
 
@@ -304,7 +352,7 @@ void main() {
     final camera = FakeCamera();
     await pumpScan(tester, camera: camera);
 
-    await tapText(tester, 'Capture Upper Left');
+    await tapText(tester, 'Capture Front Teeth');
     camera.deliver();
     await settle(tester);
     await tapText(tester, 'Retake');
@@ -312,23 +360,23 @@ void main() {
     camera.deliver();
     await settle(tester);
     await tapText(tester, 'Use photo');
-    await captureCurrent(tester, camera, 'Upper Right');
-    expect(progressText(tester), '2 of 5 regions captured');
+    await captureCurrent(tester, camera, 'Upper Biting Surface');
+    expect(progressText(tester), '2 of 9 views captured');
 
     // Revisit a captured region: photo shown, progress kept.
-    await tapRegion(tester, 'Upper Left');
+    await tapRegion(tester, 'Front Teeth');
     expect(find.text('Your photo'), findsOneWidget);
-    expect(find.text('Next: Lower Left'), findsOneWidget);
-    expect(progressText(tester), '2 of 5 regions captured');
+    expect(find.text('Next: Lower Biting Surface'), findsOneWidget);
+    expect(progressText(tester), '2 of 9 views captured');
   });
 
   testWidgets('partial finish records history without inventing analysis',
       (tester) async {
     final camera = FakeCamera();
     final container = await pumpScan(tester, camera: camera);
-    await captureCurrent(tester, camera, 'Upper Left');
+    await captureCurrent(tester, camera, 'Front Teeth');
 
-    await tapText(tester, 'Finish with 1 of 5');
+    await tapText(tester, 'Finish with 1 of 9');
     await settle(tester);
     expect(find.text('Partial scan saved'), findsOneWidget);
     expect(find.textContaining("Smart analysis isn't connected"), findsOneWidget);
@@ -336,10 +384,10 @@ void main() {
 
     final history = await container.read(screeningSessionsProvider.future);
     expect(history, hasLength(1));
-    expect(history.single.capturedRegions, ['ul']);
+    expect(history.single.capturedRegions, ['front']);
 
     await tapText(tester, 'Start new scan');
-    expect(progressText(tester), '0 of 5 regions captured');
+    expect(progressText(tester), '0 of 9 views captured');
   });
 
   testWidgets('analysis state shows only while the request runs; retry works',
@@ -350,8 +398,8 @@ void main() {
     for (final r in scanRegions) {
       await captureCurrent(tester, camera, r.label);
     }
-    expect(progressText(tester), '5 of 5 regions captured');
-    expect(find.text('All 5 regions captured'), findsOneWidget);
+    expect(progressText(tester), '9 of 9 views captured');
+    expect(find.text('All 9 views captured'), findsOneWidget);
 
     await tapText(tester, 'Finish scan');
     expect(analysis.calls, 1);
@@ -377,8 +425,8 @@ void main() {
     final camera = FakeCamera();
     final analysis = FakeAnalysis();
     await pumpScan(tester, camera: camera, analysis: analysis);
-    await captureCurrent(tester, camera, 'Upper Left');
-    await tapText(tester, 'Finish with 1 of 5');
+    await captureCurrent(tester, camera, 'Front Teeth');
+    await tapText(tester, 'Finish with 1 of 9');
     analysis.pending!.complete(ScreeningAnalysisResult(
       summary: 'Possible cavity: see a dentist.',
       analysis: ScreeningAnalysis(
@@ -390,12 +438,12 @@ void main() {
             title: 'Possible cavity: see a dentist',
             detail: 'A dentist can check it.',
             urgency: 'soon',
-            regionIds: ['ul'],
+            regionIds: ['front'],
           ),
         ],
         qualityIssues: const [
           ScreeningQualityIssue(
-            regionId: 'ul',
+            regionId: 'front',
             modality: 'nir',
             reason: 'blurry',
             message: 'Hold the device still.',
@@ -407,7 +455,7 @@ void main() {
     expect(find.text('Possible cavity: see a dentist'), findsOneWidget);
     expect(find.text('Book a visit soon'), findsOneWidget);
     expect(find.text('Retake for a better check'), findsOneWidget);
-    expect(find.text('Upper Left (light scan): Hold the device still.'),
+    expect(find.text('Front Teeth (light scan): Hold the device still.'),
         findsOneWidget);
   });
 
@@ -416,8 +464,8 @@ void main() {
     final camera = FakeCamera();
     final analysis = FakeAnalysis();
     await pumpScan(tester, camera: camera, analysis: analysis);
-    await captureCurrent(tester, camera, 'Upper Left');
-    await tapText(tester, 'Finish with 1 of 5');
+    await captureCurrent(tester, camera, 'Front Teeth');
+    await tapText(tester, 'Finish with 1 of 9');
     analysis.pending!
         .completeError(const AnalysisException(AnalysisFailure.unavailable));
     await settle(tester);
@@ -431,11 +479,11 @@ void main() {
     final camera = FakeCamera();
     final analysis = FakeAnalysis();
     await pumpScan(tester, camera: camera, analysis: analysis);
-    await captureCurrent(tester, camera, 'Upper Left');
-    await tapText(tester, 'Finish with 1 of 5');
+    await captureCurrent(tester, camera, 'Front Teeth');
+    await tapText(tester, 'Finish with 1 of 9');
     expect(find.text('Analyzing images…'), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 91));
+    await tester.pump(ScanSessionNotifier.analysisTimeout + const Duration(seconds: 1));
     await settle(tester);
     expect(find.text('Analyzing images…'), findsNothing);
     expect(find.text('Skip for now'), findsOneWidget);
@@ -498,13 +546,13 @@ void main() {
       final device = FakeDevice();
       final camera = FakeCamera();
       await pumpScan(tester, device: device, camera: camera);
-      await captureCurrent(tester, camera, 'Upper Left');
+      await captureCurrent(tester, camera, 'Front Teeth');
 
       await tapText(tester, 'Connect');
       device.connecting!.complete();
       await settle(tester);
 
-      await tapText(tester, 'Capture Upper Right');
+      await tapText(tester, 'Capture Upper Biting Surface');
       expect(camera.calls, hasLength(1)); // device used, not the phone
       device.progress!(0.5);
       await settle(tester);
@@ -521,7 +569,7 @@ void main() {
       device.link.add(DeviceLinkEvent.disconnected);
       await settle(tester);
       expect(find.text('Connection lost'), findsOneWidget);
-      expect(progressText(tester), '1 of 5 regions captured');
+      expect(progressText(tester), '1 of 9 views captured');
       // Falls back to the phone camera.
       expect(find.text('Try again'), findsOneWidget);
     });
@@ -531,17 +579,17 @@ void main() {
       (tester) async {
     final camera = FakeCamera();
     await pumpScan(tester, camera: camera);
-    await captureCurrent(tester, camera, 'Upper Left');
+    await captureCurrent(tester, camera, 'Front Teeth');
 
     await tapText(tester, 'Start over');
     expect(find.text('Start over?'), findsOneWidget);
     await tapText(tester, 'Keep scanning');
-    expect(progressText(tester), '1 of 5 regions captured');
+    expect(progressText(tester), '1 of 9 views captured');
 
     await tapText(tester, 'Start over');
     await tester.tap(find.text('Start over').last);
     await settle(tester);
-    expect(progressText(tester), '0 of 5 regions captured');
+    expect(progressText(tester), '0 of 9 views captured');
   });
 
   for (final (name, size, scale) in [
@@ -555,17 +603,17 @@ void main() {
       expect(tester.takeException(), isNull);
 
       // Main action stays on screen, above the tab bar.
-      final action = tester.getRect(find.text('Capture Upper Left'));
+      final action = tester.getRect(find.text('Capture Front Teeth'));
       final nav = tester.getRect(find.byType(AppBottomNav));
       expect(action.bottom, lessThanOrEqualTo(nav.top));
       expect(action.top, greaterThanOrEqualTo(0));
 
-      await tapText(tester, 'Capture Upper Left');
+      await tapText(tester, 'Capture Front Teeth');
       camera.deliver();
       await settle(tester);
       expect(tester.takeException(), isNull);
       await tapText(tester, 'Use photo');
-      await tapText(tester, 'Finish with 1 of 5');
+      await tapText(tester, 'Finish with 1 of 9');
       expect(tester.takeException(), isNull);
     });
   }

@@ -8,6 +8,7 @@ import '../../dental_records/data/models/dental_record.dart';
 import '../../scan/data/scan_regions.dart';
 import '../../screening/data/models/screening_session.dart';
 import '../state/history_controller.dart';
+import '../state/history_entry.dart';
 import '../state/history_query.dart';
 
 /// Filters and sort for the history list. Changes apply immediately so the
@@ -30,6 +31,14 @@ class _FilterBody extends ConsumerWidget {
     final controller = ref.read(historyControllerProvider.notifier);
     final count = ref.watch(historyResultsProvider).valueOrNull?.length;
     void set(HistoryFilters f) => controller.setFilters(f);
+    // Old-region chips only for people who have screenings to match them.
+    final hasOldRegions = ref.watch(historyEntriesProvider).valueOrNull?.any(
+              (e) =>
+                  e is ScreeningEntry &&
+                  e.session.capturedRegions
+                      .any((id) => legacyScanRegions.any((r) => r.id == id)),
+            ) ??
+        false;
 
     Set<T> toggle<T>(Set<T> set, T value) =>
         set.contains(value) ? ({...set}..remove(value)) : {...set, value};
@@ -102,7 +111,10 @@ class _FilterBody extends ConsumerWidget {
               selected: filters.regions.isEmpty,
               onSelected: () => set(filters.copyWith(regions: const {})),
             ),
-            for (final region in scanRegions)
+            for (final region in [
+              ...scanRegions,
+              if (hasOldRegions) ...legacyScanRegions,
+            ])
               DentraChoiceChip(
                 label: region.label,
                 selected: filters.regions.contains(region.id),

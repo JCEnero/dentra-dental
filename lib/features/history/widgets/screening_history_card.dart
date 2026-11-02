@@ -31,9 +31,9 @@ class ScreeningHistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final rim = alternate ? AppColors.cardSolid : AppColors.g2;
     final at = session.completedAt;
-    final captured = session.capturedRegions.length;
+    final captured = session.capturedViewCount;
     final regionNames = session.capturedRegions
-        .map((id) => scanRegions.where((r) => r.id == id).firstOrNull?.label)
+        .map((id) => findScanRegion(id)?.label)
         .whereType<String>()
         .join(', ');
     final complete = session.isComplete;
@@ -45,7 +45,7 @@ class ScreeningHistoryCard extends StatelessWidget {
           '${isLatest ? 'Latest screening' : 'Screening'}, '
           '${DentraDates.full(at)} at ${DentraDates.time(at)}. '
           '${session.status.label}, $captured of ${session.totalRegions} '
-          'regions captured. Opens details.',
+          'views captured. Opens details.',
       excludeSemantics: true,
       child: GlassCard(
         borderColor: rim.withValues(alpha: 0.55),
@@ -111,7 +111,7 @@ class ScreeningHistoryCard extends StatelessWidget {
                       Flexible(
                         child: Text(
                           '$captured ${captured == 1 ? 'image' : 'images'} · '
-                          '$captured of ${session.totalRegions} regions',
+                          '$captured of ${session.totalRegions} views',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.outfit(

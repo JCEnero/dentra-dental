@@ -208,7 +208,7 @@ class _Summary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final at = session.completedAt;
-    final captured = session.capturedRegions.length;
+    final captured = session.capturedViewCount;
     final complete = session.isComplete;
     final sources = session.captures.map((c) => _sourceLabel(c.source)).toSet();
 
@@ -253,7 +253,7 @@ class _Summary extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            '$captured of ${session.totalRegions} regions captured',
+            '$captured of ${session.totalRegions} views captured',
             style: GoogleFonts.outfit(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -419,14 +419,15 @@ class _Regions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final regions = regionsForSession(session.capturedRegions);
     return GlassCard(
       borderRadius: BorderRadius.circular(20),
       child: Column(
         children: [
-          for (var i = 0; i < scanRegions.length; i++) ...[
+          for (var i = 0; i < regions.length; i++) ...[
             if (i > 0)
               Divider(height: 1, indent: 96, color: AppGlass.divider),
-            _RegionRow(region: scanRegions[i], session: session),
+            _RegionRow(region: regions[i], session: session),
           ],
         ],
       ),
@@ -580,7 +581,7 @@ class _FindingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final where = [
       if (finding.regionId != null)
-        scanRegions.where((r) => r.id == finding.regionId).firstOrNull?.label,
+        findScanRegion(finding.regionId!)?.label,
       if (finding.tooth != null) 'Tooth ${finding.tooth}',
     ].whereType<String>().join(' · ');
 
@@ -668,8 +669,8 @@ class _Comparison extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${before.length} of ${previous.totalRegions} regions then, '
-                  '${now.length} of ${current.totalRegions} now.',
+                  '${previous.capturedViewCount} of ${previous.totalRegions} views then, '
+                  '${current.capturedViewCount} of ${current.totalRegions} now.',
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     color: AppColors.secondaryText,

@@ -93,7 +93,7 @@ class _Analyzing extends StatelessWidget {
           Text('Analyzing images…', style: _title),
           const SizedBox(height: 4),
           Text(
-            '$n image${n == 1 ? '' : 's'} · This can take up to a minute',
+            '$n image${n == 1 ? '' : 's'} · This can take a couple of minutes',
             style: _body,
           ),
           const SizedBox(height: 16),
@@ -153,7 +153,7 @@ class _Done extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final n = session.capturedCount;
+    final n = session.capturedViewCount;
     final total = scanRegions.length;
     final at = session.finishedAt ?? DateTime.now();
     final summary = session.analysis?.summary;
@@ -183,7 +183,7 @@ class _Done extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${_formatDate(at)} · $n of $total regions',
+                        '${_formatDate(at)} · $n of $total views',
                         style: _body,
                       ),
                     ],
@@ -397,8 +397,10 @@ class _ThumbGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final regions = [
-      for (final r in scanRegions)
+      for (final r in scanRegions) ...[
         if (showMissing || session.isCaptured(r.id)) r,
+        if (session.isCaptured(secondPhotoId(r.id))) r.secondPhoto,
+      ],
     ];
     return LayoutBuilder(builder: (context, constraints) {
       const gap = 8.0;

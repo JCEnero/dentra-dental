@@ -28,7 +28,7 @@ class CaptureStage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final region = session.selectedRegion;
-    final index = scanRegions.indexOf(region);
+    final index = scanRegionIndex(region.id);
     final captured = session.captures[region.id];
 
     return GlassCard(
@@ -49,7 +49,7 @@ class CaptureStage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'REGION ${index + 1} OF ${scanRegions.length}',
+                        'VIEW ${index + 1} OF ${scanRegions.length}',
                         style: GoogleFonts.outfit(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -127,12 +127,11 @@ class CaptureStage extends StatelessWidget {
       );
     }
     if (session.capturePhase == CapturePhase.reviewing) {
-      return _Steps(
-        key: const ValueKey('review'),
+      return const _Steps(
+        key: ValueKey('review'),
         title: 'Check your photo',
         steps: [
-          'Make sure your ${region.label.toLowerCase()} teeth are sharp '
-              'and centered',
+          'Make sure your teeth are sharp and centered',
           "Retake if they're cut off, dark or blurry",
         ],
       );
@@ -141,7 +140,7 @@ class CaptureStage extends StatelessWidget {
       return _Steps(
         key: ValueKey('done-${region.id}'),
         title: 'Captured',
-        steps: const ['You can retake this region any time before you finish'],
+        steps: const ['You can retake this view any time before you finish'],
         done: true,
       );
     }
@@ -150,8 +149,11 @@ class CaptureStage extends StatelessWidget {
       title: 'How to position',
       steps: [
         region.instruction,
-        'Center the highlighted teeth in the frame',
+        ...region.tips,
         'Use good light and hold steady',
+        if (!region.checked)
+          "This photo is saved with your scan, but the check can't read "
+              'this view yet',
       ],
     );
   }

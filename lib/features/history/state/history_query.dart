@@ -180,7 +180,7 @@ List<String> _dateTerms(DateTime d) => [
 String searchableText(ScreeningSession s) {
   final d = s.completedAt;
   final regions = s.capturedRegions
-      .map((id) => scanRegions.where((r) => r.id == id).firstOrNull?.label)
+      .map((id) => findScanRegion(id)?.label)
       .whereType<String>();
   return [
     ..._dateTerms(d),

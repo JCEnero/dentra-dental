@@ -85,8 +85,14 @@ class ScanSessionState {
 
   ScanRegion get selectedRegion => scanRegionById(selectedRegionId);
   bool isCaptured(String regionId) => captures.containsKey(regionId);
+
+  /// Photos taken, second photos included.
   int get capturedCount => captures.length;
-  bool get allCaptured => captures.length == scanRegions.length;
+
+  /// Views with a photo. A view's second photo doesn't count again.
+  int get capturedViewCount =>
+      scanRegions.where((r) => isCaptured(r.id)).length;
+  bool get allCaptured => capturedViewCount == scanRegions.length;
 
   bool get isCaptureBusy =>
       capturePhase == CapturePhase.awaitingCamera ||
@@ -155,7 +161,9 @@ class ScanSessionState {
 /// analysis phase runs only while a real analysis request is in flight.
 class ScanSessionNotifier extends Notifier<ScanSessionState> {
   static const Duration deviceCaptureTimeout = Duration(seconds: 45);
-  static const Duration analysisTimeout = Duration(seconds: 90);
+  /// Covers uploading and analyzing a full scan, up to 18 photos in batches.
+  /// The server gives up on a run at 5 minutes.
+  static const Duration analysisTimeout = Duration(minutes: 4);
 
   /// Invalidates in-flight work when the session resets.
   int _token = 0;
@@ -292,8 +300,10 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     state = state.copyWith(finishPhase: FinishPhase.saving, finishedAt: now);
 
     final captured = [
-      for (final r in scanRegions)
+      for (final r in scanRegions) ...[
         if (state.isCaptured(r.id)) r.id,
+        if (state.isCaptured(secondPhotoId(r.id))) secondPhotoId(r.id),
+      ],
     ];
     final session = ScreeningSession(
       id: now.microsecondsSinceEpoch.toString(),
@@ -333,7 +343,7 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
       unawaited(ref.read(notificationsProvider.notifier).record(
             NotificationEvents.screeningSaved(
               sessionId: session.id,
-              captured: captured.length,
+              captured: state.capturedViewCount,
               total: scanRegions.length,
             ),
           ));
@@ -462,7 +472,7 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     required String after,
     required Map<String, CapturedImage> captures,
   }) {
-    final start = scanRegions.indexWhere((r) => r.id == after);
+    final start = scanRegionIndex(after);
     for (var i = 1; i <= scanRegions.length; i++) {
       final r = scanRegions[(start + i) % scanRegions.length];
       if (!captures.containsKey(r.id)) return r.id;

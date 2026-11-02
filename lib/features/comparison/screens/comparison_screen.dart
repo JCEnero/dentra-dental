@@ -716,7 +716,7 @@ class _ScreeningComparison extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String regions(ScreeningSession? s) =>
-        s == null ? '—' : '${s.capturedRegions.length} of ${s.totalRegions}';
+        s == null ? '—' : '${s.capturedViewCount} of ${s.totalRegions}';
     String analysis(ScreeningSession? s) =>
         s == null ? 'Not a screening' : (s.analysis == null ? 'Not run' : 'Saved');
 
@@ -774,7 +774,7 @@ class _ScreeningComparison extends StatelessWidget {
 
   static String _names(Set<String> ids) => ids.isEmpty
       ? 'None'
-      : [for (final r in scanRegions) if (ids.contains(r.id)) r.label].join(', ');
+      : [for (final id in ids) if (findScanRegion(id) case final r?) r.label].join(', ');
 }
 
 class _Findings extends StatelessWidget {
@@ -813,7 +813,7 @@ class _Findings extends StatelessWidget {
                   [
                     if (f.tooth != null) 'Tooth ${f.tooth}',
                     if (f.regionId != null)
-                      scanRegions.where((r) => r.id == f.regionId).firstOrNull?.label,
+                      findScanRegion(f.regionId!)?.label,
                     // Only a confidence the service reported.
                     if (f.confidence != null)
                       '${(f.confidence! * 100).round()}% reported confidence',

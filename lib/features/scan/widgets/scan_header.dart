@@ -28,7 +28,7 @@ class ScanHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final done = capturedIds.length;
+    final done = scanRegions.where((r) => capturedIds.contains(r.id)).length;
     final total = scanRegions.length;
     final duration = ScanMotion.of(context, ScanMotion.medium);
 
@@ -52,7 +52,7 @@ class ScanHeader extends StatelessWidget {
       bottom: !showProgress
           ? null
           : Semantics(
-              label: '$done of $total regions captured',
+              label: '$done of $total views captured',
               excludeSemantics: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,7 +73,7 @@ class ScanHeader extends StatelessWidget {
                                   : null,
                               color: capturedIds.contains(scanRegions[i].id)
                                   ? null
-                                  : selectedId == scanRegions[i].id
+                                  : selectedId != null && baseRegionId(selectedId!) == scanRegions[i].id
                                       ? AppColors.lavender
                                       : AppColors.border,
                             ),
@@ -85,8 +85,8 @@ class ScanHeader extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     done == total
-                        ? 'All $total regions captured'
-                        : '$done of $total regions captured',
+                        ? 'All $total views captured'
+                        : '$done of $total views captured',
                     style: GoogleFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

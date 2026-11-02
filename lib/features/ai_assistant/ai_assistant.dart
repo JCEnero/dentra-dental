@@ -150,14 +150,14 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
     if (s == null) return null;
     final regions = [
       for (final id in s.capturedRegions)
-        scanRegions.where((r) => r.id == id).firstOrNull?.label ?? id,
+        findScanRegion(id)?.label ?? id,
     ];
     final analysis = s.analysis;
     final prompt = StringBuffer()
       ..writeln('Here is my latest DENTRA screening:')
       ..writeln('- Date: ${DentraDates.medium(s.completedAt)}')
       ..writeln('- Status: ${s.status.label} '
-          '(${s.capturedRegions.length} of ${s.totalRegions} regions captured)')
+          '(${s.capturedViewCount} of ${s.totalRegions} views captured)')
       ..writeln(
           '- Regions captured: ${regions.isEmpty ? 'none' : regions.join(', ')}')
       ..writeln(analysis == null

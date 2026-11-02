@@ -133,10 +133,12 @@ class ScanActionBar extends StatelessWidget {
         break;
     }
 
-    if (session.allCaptured) {
+    // Not while an empty second photo is open: that's still to capture.
+    if (session.allCaptured && session.isCaptured(region.id)) {
       return _withCaption(
-        key: 'finish-all',
+        key: 'finish-all-${region.id}',
         button: PrimaryButton(label: 'Finish scan', onTap: onFinish),
+        region: region,
       );
     }
 
@@ -148,6 +150,7 @@ class ScanActionBar extends StatelessWidget {
           secondary: ('Retake', () => onCapture(source)),
           primary: ('Next: ${next.label}', () => onSelect(next.id)),
         ),
+        region: region,
       );
     }
 
@@ -176,7 +179,7 @@ class ScanActionBar extends StatelessWidget {
   }
 
   ScanRegion? _nextOpen() {
-    final start = scanRegions.indexOf(session.selectedRegion);
+    final start = scanRegionIndex(session.selectedRegionId);
     for (var i = 1; i <= scanRegions.length; i++) {
       final r = scanRegions[(start + i) % scanRegions.length];
       if (!session.isCaptured(r.id)) return r;
@@ -190,14 +193,32 @@ class ScanActionBar extends StatelessWidget {
     required String key,
     required Widget button,
     String? caption,
+    ScanRegion? region,
   }) {
-    final canFinishEarly = session.canFinish && !session.allCaptured;
+    final canFinishEarly = session.canFinish &&
+        (!session.allCaptured || !session.isCaptured(session.selectedRegionId));
+    final second = region == null || isSecondPhoto(region.id)
+        ? null
+        : secondPhotoId(region.id);
+    TextButton link(String label, VoidCallback onPressed) => TextButton(
+          onPressed: onPressed,
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            minimumSize: const Size(48, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            textStyle: GoogleFonts.outfit(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          child: Text(label),
+        );
     return Column(
       key: ValueKey(key),
       mainAxisSize: MainAxisSize.min,
       children: [
         button,
-        if (caption != null || canFinishEarly)
+        if (caption != null || canFinishEarly || second != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             // Wraps onto two lines with large text instead of overflowing.
@@ -212,22 +233,18 @@ class ScanActionBar extends StatelessWidget {
                     color: AppColors.secondaryText,
                   ),
                 ),
+                if (second != null)
+                  link(
+                    session.isCaptured(second)
+                        ? 'See second photo'
+                        : 'Add another photo',
+                    () => onSelect(second),
+                  ),
                 if (canFinishEarly)
-                  TextButton(
-                    onPressed: onFinish,
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      minimumSize: const Size(48, 40),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      textStyle: GoogleFonts.outfit(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    child: Text(
-                      'Finish with ${session.capturedCount} of '
-                      '${scanRegions.length}',
-                    ),
+                  link(
+                    'Finish with ${session.capturedViewCount} of '
+                    '${scanRegions.length}',
+                    onFinish,
                   ),
               ],
             ),

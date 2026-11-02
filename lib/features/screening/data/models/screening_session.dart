@@ -1,4 +1,5 @@
 import '../../../dental_profile/data/models/dental_answers.dart';
+import '../../../scan/data/scan_regions.dart';
 
 /// A finished scan session, as recorded in the user's screening history.
 ///
@@ -48,7 +49,10 @@ class ScreeningSession {
     this.updatedAt,
   });
 
-  bool get isComplete => capturedRegions.length >= totalRegions;
+  /// Views with a photo. A view's second photo doesn't count again.
+  int get capturedViewCount => capturedRegions.map(baseRegionId).toSet().length;
+
+  bool get isComplete => capturedViewCount >= totalRegions;
 
   ScreeningStatus get status =>
       isComplete ? ScreeningStatus.complete : ScreeningStatus.partial;

@@ -49,8 +49,8 @@ class ComparableItem {
   String get title {
     final s = screening;
     if (s != null) {
-      return 'Dental screening · ${s.capturedRegions.length} of '
-          '${s.totalRegions} regions';
+      return 'Dental screening · ${s.capturedViewCount} of '
+          '${s.totalRegions} views';
     }
     return record!.displayTitle;
   }
