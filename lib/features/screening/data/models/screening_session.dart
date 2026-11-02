@@ -201,6 +201,10 @@ class ScreeningAnalysis {
   /// Findings below the line the rules act on: too unsure to advise anything,
   /// but worth showing and comparing on the next scan.
   final List<ScreeningFinding> faintFindings;
+
+  /// Fillings and crowns the model saw. Not a concern, and never counted as a
+  /// sign, but it tells someone their dental work was told apart from decay.
+  final List<ScreeningFinding> dentalWork;
   final DateTime analyzedAt;
 
   /// Identifies the model/version that produced the result, for audit.
@@ -225,6 +229,7 @@ class ScreeningAnalysis {
     required this.analyzedAt,
     this.findings = const [],
     this.faintFindings = const [],
+    this.dentalWork = const [],
     this.model,
     this.status = AnalysisStatus.complete,
     this.dentitionType,
@@ -241,6 +246,7 @@ class ScreeningAnalysis {
         'dentition_type': dentitionType,
         'findings': findings.map((f) => f.toJson()).toList(),
         'faint_findings': faintFindings.map((f) => f.toJson()).toList(),
+        'dental_work': dentalWork.map((f) => f.toJson()).toList(),
         'recommendations': recommendations.map((r) => r.toJson()).toList(),
         'quality_issues': qualityIssues.map((q) => q.toJson()).toList(),
       };
@@ -259,6 +265,7 @@ class ScreeningAnalysis {
       dentitionType: json['dentition_type'] as String?,
       findings: list('findings', ScreeningFinding.fromJson),
       faintFindings: list('faint_findings', ScreeningFinding.fromJson),
+      dentalWork: list('dental_work', ScreeningFinding.fromJson),
       recommendations:
           list('recommendations', ScreeningRecommendation.fromJson),
       qualityIssues: list('quality_issues', ScreeningQualityIssue.fromJson),

@@ -292,6 +292,85 @@ class ScreeningReport {
     };
   }
 
+  int get areasFlagged => areas.values.where((a) => a.state.flagged).length;
+
+  /// For each surface, in order: how many of its six areas were read, and how
+  /// many have a saved photo no model can read. Null for an old five-region scan.
+  List<(ToothSurface, int read, int unread)>? get surfaces {
+    final cells = coverage;
+    if (cells == null) return null;
+    return [
+      for (final surface in ToothSurface.values)
+        (
+          surface,
+          MouthArea.values.where((a) => cells[(surface, a)]!.read).length,
+          MouthArea.values
+              .where((a) => cells[(surface, a)] == AreaState.notRead)
+              .length,
+        ),
+    ];
+  }
+
+  /// The fillings and crowns seen, in words, e.g. "2 fillings and 1 crown".
+  String? get dentalWorkLine {
+    int count(String word) => analysis.dentalWork
+        .where((f) => f.label.toLowerCase().contains(word))
+        .length;
+    String named(int n, String word) => '$n $word${n == 1 ? '' : 's'}';
+    final fillings = count('filling'), crowns = count('crown');
+    return switch ((fillings, crowns)) {
+      (0, 0) => null,
+      (_, 0) => named(fillings, 'filling'),
+      (0, _) => named(crowns, 'crown'),
+      _ => '${named(fillings, 'filling')} and ${named(crowns, 'crown')}',
+    };
+  }
+
+  /// Daily habits that fit what this scan saw, in one short line each.
+  List<String> get careTips {
+    final flagged = [
+      for (final a in areas.values)
+        if (a.state.flagged) a.area,
+    ];
+    return [
+      if (flagged.any((a) => !a.isFront))
+        'Angle your brush to reach your back teeth.'
+      else if (flagged.isNotEmpty)
+        'Take extra care along the gumline of your front teeth.',
+      'Brush twice a day with fluoride toothpaste, and floss.',
+    ];
+  }
+
+  /// Worth asking at the next visit, so a sign turns into a real answer.
+  List<String> get dentistQuestions => [
+        if (signCount > 0) ...[
+          'Is this decay, a stain, or something else?',
+          'Does it need treatment now, or can we watch it?',
+        ] else if (faintCount > 0) ...[
+          'Is this spot anything to watch?',
+          'Would fluoride or sealants help me?',
+        ] else ...[
+          'Is there anything an X-ray should check?',
+          'Would fluoride or sealants help me?',
+        ],
+      ];
+
+  /// The result as plain text, to paste into a message to a dentist.
+  String summaryForDentist(String date) {
+    final lines = [
+      'DENTRA screening, $date. Not a diagnosis.',
+      '$photosRead of ${photoIds.length} photos read.',
+      if (spots.isEmpty) 'Nothing flagged.',
+      for (final s in spots)
+        '- ${s.finding.label}: ${s.where}, ${s.strength.label.toLowerCase()}'
+            '${s.percent == null ? '' : ' (${s.percent}% model confidence)'}, '
+            'in the ${s.photo.label} photo.',
+      if (dentalWorkLine case final work?) 'Also seen: $work.',
+      'Not read by this check: plaque, tartar, gums, inner sides.',
+    ];
+    return lines.join('\n');
+  }
+
   /// The result in one plain sentence. Unread photos keep the service's own
   /// words, which say what to do about them.
   String get sentence {
@@ -401,8 +480,8 @@ class ScreeningReport {
         areas: spotAreas(region, ReportSpot.boxOf(f)),
       ));
     }
-    found.sort(
-        (a, b) => (b.finding.confidence ?? 0).compareTo(a.finding.confidence ?? 0));
+    found.sort((a, b) =>
+        (b.finding.confidence ?? 0).compareTo(a.finding.confidence ?? 0));
     return found;
   }
 }
@@ -434,9 +513,8 @@ class ScanTrend {
   /// [sessions] newest first. [currentId] is the scan the page is about; null
   /// means the newest.
   factory ScanTrend.of(List<ScreeningSession> sessions, {String? currentId}) {
-    final start = currentId == null
-        ? 0
-        : sessions.indexWhere((s) => s.id == currentId);
+    final start =
+        currentId == null ? 0 : sessions.indexWhere((s) => s.id == currentId);
     final points = <TrendPoint>[];
     for (final s in sessions.skip(start < 0 ? 0 : start)) {
       final analysis = s.analysis;
@@ -445,13 +523,26 @@ class ScanTrend {
       }
       final report = ScreeningReport(analysis, s.capturedRegions);
       if (report.detectorOff || report.photosRead == 0) continue;
-      points.add(TrendPoint(sessionId: s.id, at: s.completedAt, report: report));
+      points
+          .add(TrendPoint(sessionId: s.id, at: s.completedAt, report: report));
       if (points.length == maxPoints) break;
     }
     return ScanTrend._(List.unmodifiable(points.reversed));
   }
 
   bool get hasHistory => points.length >= 2;
+
+  /// Some scans here came from an earlier version of the check, so a change may
+  /// come from the check rather than the teeth.
+  bool get mixedVersions =>
+      points.map((p) => _detectorOf(p.report)).toSet().length > 1;
+
+  static String? _detectorOf(ScreeningReport r) =>
+      r.analysis.model?.split('+').first;
+
+  /// Flagged in this scan and the one before.
+  List<MouthArea> get stillAreas =>
+      _compare((now, then) => now.flagged && then.flagged);
 
   /// Where things stand against the last scan, in a few words.
   String get oneLine {

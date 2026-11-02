@@ -115,7 +115,8 @@ class ReportLegendItem extends StatelessWidget {
 
 /// The states shown, darkest first, and one key for all that aren't read.
 class ReportLegend extends StatelessWidget {
-  const ReportLegend(this.states, {super.key, this.alignment = WrapAlignment.start});
+  const ReportLegend(this.states,
+      {super.key, this.alignment = WrapAlignment.start});
 
   final Set<AreaState> states;
   final WrapAlignment alignment;
@@ -134,7 +135,8 @@ class ReportLegend extends StatelessWidget {
           AreaState.clear,
         ])
           if (states.contains(s)) ReportLegendItem(s),
-        if (states.any((s) => !s.read)) const ReportLegendItem(AreaState.notRead),
+        if (states.any((s) => !s.read))
+          const ReportLegendItem(AreaState.notRead),
       ],
     );
   }
@@ -154,9 +156,7 @@ class ReportSwatch extends StatelessWidget {
       decoration: BoxDecoration(
         color: ReportColors.of(state),
         borderRadius: BorderRadius.circular(size * 0.28),
-        border: state.read
-            ? null
-            : Border.all(color: ReportColors.hollowEdge),
+        border: state.read ? null : Border.all(color: ReportColors.hollowEdge),
       ),
     );
   }

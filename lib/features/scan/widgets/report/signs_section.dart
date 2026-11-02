@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../shared/widgets/dentra_image_viewer.dart';
 import '../../../../shared/widgets/glass_card.dart';
-import '../../data/scan_regions.dart';
 import '../../data/scan_report.dart';
 import '../scan_motion.dart';
-import '../scan_theme.dart';
+import 'mouth_3d.dart';
+import 'report_charts.dart';
 import 'report_style.dart';
 import 'spot_photo.dart';
 
@@ -22,9 +20,9 @@ const Map<SignStrength, String> signMeaning = {
       'Often a false alarm. Mention it to a dentist if it keeps showing up.',
 };
 
-/// The real photos, in close on each sign, above how sure the model was about
-/// each one. The photo is the actual tooth map: it can't get someone's mouth
-/// wrong, whatever teeth they have.
+/// One sign at a time: the real photo in close on it, a small 3D mouth saying
+/// where that is, and how sure the model was. Swipe or use the arrows for the
+/// next one, and the big mouth at the top of the page turns with it.
 class SignsSection extends StatefulWidget {
   const SignsSection({
     super.key,
@@ -36,7 +34,7 @@ class SignsSection extends StatefulWidget {
   final ScreeningReport report;
   final ImageProvider? Function(String photoId) imageOf;
 
-  /// Set from elsewhere on the page to show a particular sign.
+  /// The sign being shown, shared with the 3D mouth.
   final ValueNotifier<ReportSpot?> focus;
 
   @override
@@ -48,10 +46,9 @@ class _SignsSectionState extends State<SignsSection> {
   /// report at any time, and the choice should survive that.
   int _index = 0;
 
-  ReportSpot get _selected {
-    final spots = widget.report.spots;
-    return spots[_index.clamp(0, spots.length - 1)];
-  }
+  List<ReportSpot> get _spots => widget.report.spots;
+
+  ReportSpot get _spot => _spots[_index.clamp(0, _spots.length - 1)];
 
   @override
   void initState() {
@@ -68,334 +65,205 @@ class _SignsSectionState extends State<SignsSection> {
   void _onFocus() {
     final spot = widget.focus.value;
     if (spot == null) return;
-    final i = widget.report.spots
-        .indexWhere((s) => identical(s.finding, spot.finding));
-    if (i >= 0) setState(() => _index = i);
+    final i = _spots.indexWhere((s) => identical(s.finding, spot.finding));
+    if (i >= 0 && i != _index) setState(() => _index = i);
+  }
+
+  void _step(int by) {
+    final next = (_index + by).clamp(0, _spots.length - 1);
+    if (next == _index) return;
+    setState(() => _index = next);
+    widget.focus.value = _spots[next];
   }
 
   void _open(ImageProvider image) {
-    final s = _selected;
+    final s = _spot;
     openSpotPhoto(
       context,
       image: image,
       caption: '${s.photo.label} · ${s.strength.label}',
-      markers: markersIn(widget.report.spots, s.photoId, selected: s),
+      markers: markersIn(_spots, s.photoId, selected: s),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final spots = widget.report.spots;
-    final s = _selected;
+    final s = _spot;
     final image = widget.imageOf(s.photoId);
-    final photos = widget.report.photosWithSigns;
-    final rows = spots.where((o) => o.photoId == s.photoId).toList();
-
-    return GlassCard(
-      width: double.infinity,
-      borderRadius: BorderRadius.circular(20),
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: AspectRatio(
-              aspectRatio: 4 / 3,
-              child: image == null
-                  ? const MissingPhoto()
-                  : Semantics(
-                      button: true,
-                      label: '${s.photo.label} photo, with the sign marked. '
-                          'Opens full size.',
-                      excludeSemantics: true,
-                      child: GestureDetector(
-                        onTap: () => _open(image),
-                        child: SpotPhoto(
-                          image: image,
-                          markers: markersIn(spots, s.photoId, selected: s),
-                          focus: s.box,
+    final many = _spots.length > 1;
+    final work = widget.report.dentalWorkLine;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (many) ...[
+          StrengthBar(report: widget.report),
+          const SizedBox(height: 12),
+        ],
+        GestureDetector(
+          onHorizontalDragEnd: (d) {
+            final v = d.primaryVelocity ?? 0;
+            if (v < -120) _step(1);
+            if (v > 120) _step(-1);
+          },
+          child: GlassCard(
+            width: double.infinity,
+            borderRadius: BorderRadius.circular(24),
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: AspectRatio(
+                    aspectRatio: 4 / 3,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (image == null)
+                          const MissingPhoto()
+                        else
+                          Semantics(
+                            button: true,
+                            label: '${s.photo.label} photo, with the sign '
+                                'marked. Opens full size.',
+                            excludeSemantics: true,
+                            child: GestureDetector(
+                              onTap: () => _open(image),
+                              child: SpotPhoto(
+                                image: image,
+                                markers:
+                                    markersIn(_spots, s.photoId, selected: s),
+                                focus: s.box,
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          width: 74,
+                          height: 74,
+                          child: IgnorePointer(
+                            child: ClipOval(
+                              child: GlassBlur(
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color:
+                                        AppColors.white.withValues(alpha: 0.8),
+                                    border: Border.all(
+                                      color: AppColors.white,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(5),
+                                    child: SpotLocator(spot: s),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 4),
+                  child: AnimatedSwitcher(
+                    duration: ScanMotion.of(context, ScanMotion.fast),
+                    child: Semantics(
+                      key: ValueKey(_index),
+                      container: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(s.where, style: reportCardTitle),
+                                    const SizedBox(height: 1),
+                                    Text(s.strength.label, style: reportNote),
+                                  ],
+                                ),
+                              ),
+                              if (s.finding.confidence case final c?)
+                                Semantics(
+                                  label: '${(c * 100).round()} percent model '
+                                      'confidence',
+                                  excludeSemantics: true,
+                                  child: ConfidenceGauge(
+                                    value: c,
+                                    color: ReportColors.ofSign(s.strength),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(signMeaning[s.strength]!, style: reportBody),
+                        ],
                       ),
                     ),
+                  ),
+                ),
+                if (many)
+                  _Pager(
+                    index: _index,
+                    count: _spots.length,
+                    onStep: _step,
+                  ),
+              ],
             ),
           ),
+        ),
+        if (work != null) ...[
+          const SizedBox(height: 10),
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 10, 8, 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  rows.length > 1
-                      ? '${s.photo.label} · ${rows.length} signs in this photo'
-                      : s.photo.label,
-                  style: reportNote,
-                ),
-                if (photos.length > 1) ...[
-                  const SizedBox(height: 8),
-                  _Filmstrip(
-                    photos: photos,
-                    current: s.photoId,
-                    spots: spots,
-                    imageOf: widget.imageOf,
-                    onSelect: (id) => setState(() {
-                      _index = spots.indexWhere((o) => o.photoId == id);
-                    }),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                for (final o in rows)
-                  _SignRow(
-                    spot: o,
-                    // Same words twice can't be told apart without this.
-                    detail: rows.where((r) => r.where == o.where).length > 1
-                        ? o.sideOfPhoto
-                        : null,
-                    selected: identical(o, s),
-                    onTap: () => setState(() => _index = spots.indexOf(o)),
-                  ),
-                const SizedBox(height: 8),
-                AnimatedSwitcher(
-                  duration: ScanMotion.of(context, ScanMotion.fast),
-                  child: Text(
-                    key: ValueKey(s.strength),
-                    '${s.strength.label}. ${signMeaning[s.strength]}',
-                    style: reportBody,
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'We also saw $work. Those aren\'t counted as signs.',
+              style: reportNote,
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
 
-/// The other photos with a sign in them. Each sign's row stays with its photo,
-/// so two signs in the same general area can still be told apart.
-class _Filmstrip extends StatelessWidget {
-  const _Filmstrip({
-    required this.photos,
-    required this.current,
-    required this.spots,
-    required this.imageOf,
-    required this.onSelect,
-  });
-
-  final List<String> photos;
-  final String current;
-  final List<ReportSpot> spots;
-  final ImageProvider? Function(String photoId) imageOf;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          for (final id in photos)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: _FilmstripPhoto(
-                region: findScanRegion(id)!,
-                image: imageOf(id),
-                count: spots.where((s) => s.photoId == id).length,
-                selected: id == current,
-                onTap: () => onSelect(id),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilmstripPhoto extends StatelessWidget {
-  const _FilmstripPhoto({
-    required this.region,
-    required this.image,
+class _Pager extends StatelessWidget {
+  const _Pager({
+    required this.index,
     required this.count,
-    required this.selected,
-    required this.onTap,
+    required this.onStep,
   });
 
-  final ScanRegion region;
-  final ImageProvider? image;
+  final int index;
   final int count;
-  final bool selected;
-  final VoidCallback onTap;
+  final ValueChanged<int> onStep;
 
   @override
   Widget build(BuildContext context) {
-    final photo = image;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: '${region.label}, $count ${count == 1 ? 'sign' : 'signs'}',
-      excludeSemantics: true,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: ScanMotion.of(context, ScanMotion.fast),
-          width: 58,
-          height: 58,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              width: 2,
-              color: selected ? AppColors.primary : Colors.transparent,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: photo == null
-                ? const MissingPhoto()
-                : DentraCoverImage(image: photo),
-          ),
-        ),
-      ),
+    Widget arrow(IconData icon, String tip, int by, bool on) => IconButton(
+          onPressed: on ? () => onStep(by) : null,
+          tooltip: tip,
+          icon: Icon(icon),
+          color: AppColors.primary,
+          disabledColor: AppColors.g2.withValues(alpha: 0.25),
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
+          padding: EdgeInsets.zero,
+        );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        arrow(Icons.chevron_left_rounded, 'Previous sign', -1, index > 0),
+        Text('${index + 1} of $count', style: reportNote),
+        arrow(Icons.chevron_right_rounded, 'Next sign', 1, index < count - 1),
+      ],
     );
   }
-}
-
-/// One sign: where it is and a bar for how sure the model was. A gap in the
-/// track marks where a sign turns strong.
-class _SignRow extends StatelessWidget {
-  const _SignRow({
-    required this.spot,
-    required this.detail,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final ReportSpot spot;
-
-  /// Added to the area's name, e.g. "left of photo".
-  final String? detail;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final percent = spot.percent;
-    final where = detail == null ? spot.where : '${spot.where}, $detail';
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: '$where, ${spot.strength.label}'
-          '${percent == null ? '' : ', $percent percent confidence'}',
-      excludeSemantics: true,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: AnimatedContainer(
-            duration: ScanMotion.of(context, ScanMotion.fast),
-            constraints: const BoxConstraints(minHeight: 48),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: selected
-                  ? AppColors.lightLavender
-                  : AppColors.lightLavender.withValues(alpha: 0),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Side by side while they fit, one above the other at large text.
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  spacing: 8,
-                  children: [
-                    Text(
-                      where,
-                      style: GoogleFonts.outfit(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                    Text(
-                      [
-                        spot.strength.label.split(' ').first,
-                        if (percent != null) '$percent%',
-                      ].join(' · '),
-                      style: figureText(
-                        size: 12.5,
-                        weight: FontWeight.w600,
-                        color: AppColors.secondaryText,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                _ConfidenceBar(
-                  value: spot.finding.confidence ?? 0,
-                  color: ReportColors.ofSign(spot.strength),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ConfidenceBar extends StatelessWidget {
-  const _ConfidenceBar({required this.value, required this.color});
-
-  final double value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: value.clamp(0.0, 1.0)),
-      duration: ScanMotion.of(context, const Duration(milliseconds: 700)),
-      curve: ScanMotion.curve,
-      builder: (context, v, _) => SizedBox(
-        height: 6,
-        child: CustomPaint(painter: _ConfidencePainter(v, color)),
-      ),
-    );
-  }
-}
-
-class _ConfidencePainter extends CustomPainter {
-  const _ConfidencePainter(this.value, this.color);
-
-  final double value;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final r = Radius.circular(size.height / 2);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size, r),
-      Paint()..color = AppColors.navy.withValues(alpha: 0.08),
-    );
-    canvas.save();
-    canvas.clipRRect(RRect.fromRectAndRadius(Offset.zero & size, r));
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width * value, size.height),
-      Paint()..color = color,
-    );
-    canvas.restore();
-    // Where a sign turns strong.
-    final x = size.width * SignStrength.strongFrom;
-    canvas.drawRect(
-      Rect.fromLTWH(x - 1, 0, 2, size.height),
-      Paint()..color = AppColors.white,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_ConfidencePainter old) =>
-      old.value != value || old.color != color;
 }

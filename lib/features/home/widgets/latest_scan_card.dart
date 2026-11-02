@@ -8,7 +8,7 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../history/screens/screening_detail_screen.dart';
 import '../../scan/data/scan_outcomes.dart';
 import '../../scan/data/scan_report.dart';
-import '../../scan/widgets/report/mouth_map.dart';
+import '../../scan/widgets/report/mouth_3d.dart';
 import '../../scan/widgets/report/report_style.dart';
 import '../../scan/widgets/scan_theme.dart';
 import '../../scan/widgets/visuals/dental_arch_painter.dart';

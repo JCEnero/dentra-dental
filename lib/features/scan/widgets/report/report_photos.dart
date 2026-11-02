@@ -12,7 +12,8 @@ import '../scan_theme.dart';
 import 'report_style.dart';
 import 'spot_photo.dart';
 
-/// Every view and what came of it, in one sliding row of the real photos.
+/// The real photos in one sliding row, the teeth a person can't easily see for
+/// themselves first: back molars and inner sides. Each can be opened and zoomed.
 class ReportPhotoRow extends StatelessWidget {
   const ReportPhotoRow({
     super.key,
@@ -29,30 +30,39 @@ class ReportPhotoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = regionsForSession(photoIds);
+    final taken = [
+      for (final region in regionsForSession(photoIds))
+        if (photoIds.contains(region.id)) region,
+    ];
+    final hard = hardFirst(taken);
     return SizedBox(
-      height: 92 + 44 * MediaQuery.textScalerOf(context).scale(1),
+      height: 158 + 40 * MediaQuery.textScalerOf(context).scale(1),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         clipBehavior: Clip.none,
-        itemCount: rows.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemCount: hard.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, i) => SizedBox(
-          width: 112,
+          width: 146,
           child: _PhotoTile(
-            region: rows[i],
-            image: photoIds.contains(rows[i].id) ? imageOf(rows[i].id) : null,
-            taken: photoIds.contains(rows[i].id),
-            outcome: report?.outcomes[rows[i].id],
+            region: hard[i],
+            image: imageOf(hard[i].id),
+            outcome: report?.outcomes[hard[i].id],
             spots: [
               for (final s in report?.spots ?? const <ReportSpot>[])
-                if (s.photoId == rows[i].id) s,
+                if (s.photoId == hard[i].id) s,
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// [regions] with the hard-to-see views at the front, otherwise in order.
+  static List<ScanRegion> hardFirst(List<ScanRegion> regions) {
+    bool hard(ScanRegion r) => hardToSeeViews.contains(baseRegionId(r.id));
+    return [...regions.where(hard), ...regions.where((r) => !hard(r))];
   }
 }
 
@@ -60,92 +70,83 @@ class _PhotoTile extends StatelessWidget {
   const _PhotoTile({
     required this.region,
     required this.image,
-    required this.taken,
     required this.outcome,
     required this.spots,
   });
 
   final ScanRegion region;
   final ImageProvider? image;
-  final bool taken;
   final ViewOutcome? outcome;
   final List<ReportSpot> spots;
 
   @override
   Widget build(BuildContext context) {
     final photo = image;
-    final finding = spots.isEmpty ? null : spots.first;
-    final (String status, Color color) = switch (outcome) {
-      ViewOutcome.clear when finding != null =>
-        (finding.strength.label, AppColors.secondaryText),
-      ViewOutcome.clear => ('No concerns seen', ScanColors.clearInk),
-      ViewOutcome.finding =>
-        (finding?.strength.label ?? 'Worth checking', ScanColors.check),
-      ViewOutcome.urgent =>
-        (finding?.strength.label ?? 'Worth checking', AppColors.navy),
-      ViewOutcome.retake => ('Needs a retake', AppColors.secondaryText),
-      ViewOutcome.notChecked => ('Not read yet', AppColors.secondaryText),
-      null => (taken ? 'Saved' : 'Not taken', AppColors.secondaryText),
-    };
+    final count = spots.length;
+    final String status = count > 0
+        ? '$count ${count == 1 ? 'sign' : 'signs'} marked'
+        : switch (outcome) {
+            ViewOutcome.retake => 'Needs a retake',
+            ViewOutcome.notChecked => 'Not read yet',
+            null => 'Saved',
+            _ => 'Nothing flagged',
+          };
+    final markers = markersIn(spots, region.id);
+    // A square crop could leave the marks out, so frame it on them.
+    final focus = markers.isEmpty
+        ? null
+        : markers.map((m) => m.box).reduce((a, b) => a.expandToInclude(b));
     return Semantics(
       label: '${region.label}: $status',
       button: photo != null,
       excludeSemantics: true,
-      child: GlassCard(
-        borderRadius: const BorderRadius.all(Radius.circular(16)),
-        padding: const EdgeInsets.all(5),
+      child: GestureDetector(
         onTap: photo == null
             ? null
             : () => openSpotPhoto(
                   context,
                   image: photo,
                   caption: region.label,
-                  markers: markersIn(spots, region.id),
+                  markers: markers,
                 ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: photo != null
-                    ? DentraCoverImage(image: photo)
-                    : ColoredBox(
-                        color: AppColors.navy.withValues(alpha: 0.05),
-                        child: Icon(
-                          Icons.hide_image_outlined,
-                          size: 18,
-                          color: AppColors.secondaryText.withValues(alpha: 0.6),
-                        ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: SizedBox(
+                height: 146,
+                width: double.infinity,
+                child: photo == null
+                    ? const MissingPhoto()
+                    : SpotPhoto(
+                        image: photo,
+                        markers: markers,
+                        focus: focus,
+                        decodeWidth: 600,
                       ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(3, 5, 3, 2),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    region.short,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: taken ? AppColors.navy : AppColors.secondaryText,
-                    ),
-                  ),
-                  Text(
-                    status,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 6),
+            Text(
+              region.short,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+              ),
+            ),
+            Text(
+              status,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.outfit(
+                fontSize: 11.5,
+                fontWeight: count > 0 ? FontWeight.w700 : FontWeight.w400,
+                color:
+                    count > 0 ? ScanColors.clearInk : AppColors.secondaryText,
               ),
             ),
           ],
@@ -166,8 +167,8 @@ class RetakeList extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassCard(
       width: double.infinity,
-      borderRadius: const BorderRadius.all(Radius.circular(20)),
-      padding: const EdgeInsets.all(14),
+      borderRadius: const BorderRadius.all(Radius.circular(24)),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

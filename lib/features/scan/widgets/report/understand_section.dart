@@ -1,12 +1,17 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/widgets/glass_card.dart';
 import '../scan_motion.dart';
+import 'report_motion.dart';
 import 'report_style.dart';
 
-/// How decay grows, one tooth at each stage. Tap a stage to read about it. The
-/// check can't say which stage a sign is at, and the page says so.
+/// One tooth, cut in half, with decay growing through it. It plays through the
+/// stages once when it comes into view; tap a stage to go back to it. The check
+/// can't say which stage a sign is at, and the card says so.
 class DecayStages extends StatefulWidget {
   const DecayStages({super.key});
 
@@ -14,105 +19,152 @@ class DecayStages extends StatefulWidget {
   State<DecayStages> createState() => _DecayStagesState();
 }
 
-class _DecayStagesState extends State<DecayStages> {
+class _DecayStagesState extends State<DecayStages>
+    with SingleTickerProviderStateMixin {
   static const _stages = [
     (
       'Weak spot',
-      'Enamel loses minerals and can look chalky white. At this stage it can '
-          'often be reversed with fluoride and less sugar.',
+      'Enamel loses minerals and can look chalky white. It can often be '
+          'reversed with fluoride and less sugar.',
     ),
     (
       'In the enamel',
       'A small hole starts in the hard outer layer. It usually doesn\'t hurt, '
-          'so it\'s easy to miss. A dentist may watch it or fill it.',
+          'so it\'s easy to miss.',
     ),
     (
       'Into dentin',
-      'Decay spreads faster in the softer layer below. Teeth can start to '
-          'feel sensitive, and it usually needs a filling.',
+      'Decay spreads faster in the softer layer below. Teeth can start to feel '
+          'sensitive, and it usually needs a filling.',
     ),
     (
       'At the nerve',
       'Decay reaches the center of the tooth and can cause pain or infection. '
-          'It may need a root canal or other treatment.',
+          'It may need a root canal.',
     ),
   ];
 
-  int _selected = 0;
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    upperBound: (_stages.length - 1).toDouble(),
+    duration: const Duration(milliseconds: 5200),
+  );
+  bool _touched = false;
+
+  int get _stage => _c.value.round().clamp(0, _stages.length - 1);
+
+  void _go(int stage) {
+    _touched = true;
+    _c.animateTo(
+      stage.toDouble(),
+      duration: ScanMotion.of(context, const Duration(milliseconds: 500)),
+      curve: ScanMotion.curve,
+    );
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final (name, text) = _stages[_selected];
-    return Container(
-      padding: const EdgeInsets.fromLTRB(6, 10, 6, 12),
-      decoration: BoxDecoration(
-        color: AppColors.lightLavender,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final (i, stage) in _stages.indexed)
-                Expanded(
-                  child: _StageTile(
-                    index: i,
-                    name: stage.$1,
-                    text: stage.$2,
-                    selected: i == _selected,
-                    onTap: () => setState(() => _selected = i),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: AnimatedSize(
-              duration: ScanMotion.of(context, ScanMotion.medium),
-              curve: ScanMotion.curve,
-              alignment: Alignment.topCenter,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return GlassCard(
+      width: double.infinity,
+      tint: AppColors.lightLavender,
+      borderRadius: BorderRadius.circular(24),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      child: InViewAnimation(
+        duration: const Duration(milliseconds: 1),
+        builder: (context, t) {
+          if (t >= 1 &&
+              !_touched &&
+              !_c.isAnimating &&
+              _c.value == 0 &&
+              !ScanMotion.reduced(context)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && !_touched) _c.forward();
+            });
+          }
+          return AnimatedBuilder(
+            animation: _c,
+            builder: (context, _) {
+              final (name, text) = _stages[_stage];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ExcludeSemantics(child: Text(name, style: reportCardTitle)),
-                  const SizedBox(height: 2),
-                  ExcludeSemantics(child: Text(text, style: reportBody)),
-                  const SizedBox(height: 8),
-                  Text(
-                    'This check can\'t tell which stage a sign is at. '
-                    'A dentist can.',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      height: 1.45,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 84,
+                        height: 108,
+                        child: ExcludeSemantics(
+                          child: CustomPaint(
+                            painter: ToothStagePainter(_c.value),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ExcludeSemantics(
+                              child: Text(name, style: reportCardTitle),
+                            ),
+                            const SizedBox(height: 3),
+                            ExcludeSemantics(
+                              child: Text(text, style: reportBody),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      for (final (i, stage) in _stages.indexed) ...[
+                        if (i > 0) const SizedBox(width: 4),
+                        Expanded(
+                          child: _StageStep(
+                            label: stage.$1,
+                            description: stage.$2,
+                            index: i,
+                            fill: (_c.value + 1 - i).clamp(0.0, 1.0),
+                            selected: i == _stage,
+                            onTap: () => _go(i),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
-              ),
-            ),
-          ),
-        ],
+              );
+            },
+          );
+        },
       ),
     );
   }
 }
 
-class _StageTile extends StatelessWidget {
-  const _StageTile({
+class _StageStep extends StatelessWidget {
+  const _StageStep({
+    required this.label,
+    required this.description,
     required this.index,
-    required this.name,
-    required this.text,
+    required this.fill,
     required this.selected,
     required this.onTap,
   });
 
+  final String label;
+  final String description;
   final int index;
-  final String name;
-  final String text;
+  final double fill;
   final bool selected;
   final VoidCallback onTap;
 
@@ -121,41 +173,46 @@ class _StageTile extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: 'Stage ${index + 1}, $name. $text',
+      label: 'Stage ${index + 1}, $label. $description',
       excludeSemantics: true,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: AnimatedContainer(
-            duration: ScanMotion.of(context, ScanMotion.fast),
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            padding: const EdgeInsets.fromLTRB(2, 8, 2, 7),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              color: AppColors.white.withValues(alpha: selected ? 0.9 : 0),
-            ),
-            child: Column(
-              children: [
-                SizedBox(
-                  width: 44,
-                  height: 58,
-                  child: CustomPaint(painter: ToothStagePainter(index)),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  name,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    height: 1.15,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected ? AppColors.navy : AppColors.secondaryText,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: SizedBox(
+                  height: 5,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ColoredBox(color: AppColors.g2.withValues(alpha: 0.14)),
+                      FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: fill,
+                        child: const ColoredBox(color: AppColors.primary),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 10.5,
+                  height: 1.15,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? AppColors.navy : AppColors.secondaryText,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -163,12 +220,12 @@ class _StageTile extends StatelessWidget {
   }
 }
 
-/// A tooth cut in half: enamel, dentin and the pulp in its middle, with decay
-/// going further in at each stage.
+/// A tooth cut in half: enamel, dentin and the pulp in its middle. [stage] runs
+/// from 0 to 3, with decay growing smoothly in from the surface.
 class ToothStagePainter extends CustomPainter {
   const ToothStagePainter(this.stage);
 
-  final int stage;
+  final double stage;
 
   /// The whole tooth in a 44 by 58 box: a crown with two cusps, two roots.
   static Path _tooth() => Path()
@@ -209,60 +266,62 @@ class ToothStagePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 44, size.height / 58);
+    final s = math.min(size.width / 44, size.height / 58);
+    canvas.translate((size.width - 44 * s) / 2, (size.height - 58 * s) / 2);
+    canvas.scale(s);
     final tooth = _tooth();
     canvas.drawPath(tooth, Paint()..color = AppColors.white);
     canvas.drawPath(_dentin(), Paint()..color = AppColors.lavender);
     canvas.drawPath(_pulp(), Paint()..color = AppColors.cardSolid);
+
+    // At first a chalky patch on the surface, fading as the hole takes over.
+    final chalk = (1 - stage).clamp(0.0, 1.0);
+    if (chalk > 0) {
+      canvas.drawOval(
+        const Rect.fromLTWH(25.5, 2.4, 9, 3.4),
+        Paint()
+          ..color = AppColors.secondaryText.withValues(alpha: 0.42 * chalk),
+      );
+    }
+    // Then a hole, deeper and wider with each stage: into enamel by 1, well
+    // into dentin by 2, reaching the pulp by 3.
+    final grow = stage.clamp(0.0, 3.0);
+    if (grow > 0.05) {
+      final depth = 3 + grow * 5.6;
+      final half = 1.4 + math.min(grow, 2) * 1.7;
+      const cx = 29.5, top = 2.6;
+      final bulge = grow > 1 ? (grow - 1) * 1.3 : 0.0;
+      canvas.drawPath(
+        Path()
+          ..moveTo(cx - half, top)
+          ..lineTo(cx + half, top + 0.2)
+          ..cubicTo(
+            cx + half - 0.6 + bulge,
+            top + depth * 0.5,
+            cx + 1.2 + bulge,
+            top + depth * 0.9,
+            cx - 1.2,
+            top + depth,
+          )
+          ..cubicTo(
+            cx - 2.6 - bulge,
+            top + depth * 0.85,
+            cx - half + 0.4 - bulge,
+            top + depth * 0.45,
+            cx - half,
+            top,
+          )
+          ..close(),
+        Paint()..color = ReportColors.strong,
+      );
+    }
     canvas.drawPath(
       tooth,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
+        ..strokeWidth = 0.9
         ..color = AppColors.g2.withValues(alpha: 0.55),
     );
-
-    final decay = Paint()..color = ReportColors.strong;
-    switch (stage) {
-      case 0:
-        // A chalky patch on the surface, not yet a hole.
-        canvas.drawOval(
-          const Rect.fromLTWH(26, 2.6, 8, 3),
-          Paint()..color = AppColors.secondaryText.withValues(alpha: 0.5),
-        );
-      case 1:
-        canvas.drawPath(
-          Path()
-            ..moveTo(26, 3)
-            ..lineTo(33, 3.2)
-            ..lineTo(30, 8.2)
-            ..lineTo(28, 8.2)
-            ..close(),
-          decay,
-        );
-      case 2:
-        canvas.drawPath(
-          Path()
-            ..moveTo(25.5, 3)
-            ..lineTo(33.5, 3.2)
-            ..lineTo(31.5, 9.5)
-            ..cubicTo(32.5, 12, 31, 15, 29, 15.5)
-            ..cubicTo(27, 15, 25.5, 12, 26.5, 9.5)
-            ..close(),
-          decay,
-        );
-      default:
-        canvas.drawPath(
-          Path()
-            ..moveTo(25, 3)
-            ..lineTo(34, 3.2)
-            ..lineTo(32, 10)
-            ..cubicTo(33, 15, 30, 21, 26, 22)
-            ..cubicTo(24, 20, 24, 14, 26, 10)
-            ..close(),
-          decay,
-        );
-    }
   }
 
   @override
@@ -287,44 +346,41 @@ class WhatItReads extends StatelessWidget {
             ],
           ),
         );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              column(
-                'This check reads',
-                'Visible signs of decay on the outer and chewing surfaces, from '
-                    'your color photos.',
-              ),
-              VerticalDivider(width: 25, thickness: 1, color: ReportColors.rule),
-              column(
-                'It can\'t read yet',
-                'Plaque, tartar, gums and inner sides. It also misses many small '
-                    'cavities and decay between teeth.',
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                column(
+                  'This check reads',
+                  'Visible signs of decay on the outer and chewing surfaces of '
+                      'your teeth.',
+                ),
+                VerticalDivider(
+                  width: 25,
+                  thickness: 1,
+                  color: ReportColors.rule,
+                ),
+                column(
+                  'It can\'t read yet',
+                  'Plaque, tartar, gums and inner sides. It also misses many '
+                      'small cavities and decay between teeth.',
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Divider(height: 1, thickness: 1, color: ReportColors.rule),
-        const SizedBox(height: 12),
-        Text('What can look like decay', style: reportCardTitle),
-        const SizedBox(height: 3),
-        Text(
-          'Stained grooves, white or brown mottling, old fillings and shadows '
-          'can all look similar in a photo. A dentist can tell them apart.',
-          style: reportBody,
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Tested on photos of 10 to 24 year olds that dentists marked, so '
-          'results on your photos may differ.',
-          style: reportNote,
-        ),
-      ],
+          const SizedBox(height: 12),
+          Text(
+            'Stained grooves, old fillings and shadows can look like decay in a '
+            'photo. Confidence is how sure the model is, not how bad a spot is.',
+            style: reportNote,
+          ),
+        ],
+      ),
     );
   }
 }

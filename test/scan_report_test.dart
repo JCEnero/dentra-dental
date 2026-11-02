@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
-import 'dart:ui' show Rect, Size;
 
 import 'package:dentra_mobile/features/ai_assistant/ai_chat_controller.dart';
 import 'package:dentra_mobile/features/history/screens/screening_detail_screen.dart';
@@ -9,8 +7,10 @@ import 'package:dentra_mobile/features/home/widgets/latest_scan_card.dart';
 import 'package:dentra_mobile/features/scan/data/scan_outcomes.dart';
 import 'package:dentra_mobile/features/scan/data/scan_regions.dart';
 import 'package:dentra_mobile/features/scan/data/scan_report.dart';
-import 'package:dentra_mobile/features/scan/widgets/report/coverage_grid.dart';
-import 'package:dentra_mobile/features/scan/widgets/report/mouth_map.dart';
+import 'package:dentra_mobile/features/scan/widgets/report/mouth_3d.dart';
+import 'package:dentra_mobile/features/scan/widgets/report/report_charts.dart';
+import 'package:dentra_mobile/features/scan/widgets/report/next_steps.dart';
+import 'package:dentra_mobile/features/scan/widgets/report/report_photos.dart';
 import 'package:dentra_mobile/features/scan/widgets/report/scan_report_view.dart';
 import 'package:dentra_mobile/features/scan/widgets/report/signs_section.dart';
 import 'package:dentra_mobile/features/scan/widgets/report/spot_photo.dart';
@@ -19,6 +19,7 @@ import 'package:dentra_mobile/features/screening/data/models/screening_session.d
 import 'package:dentra_mobile/features/screening/data/screening_repository.dart';
 import 'package:dentra_mobile/features/screening/providers/screening_sessions_provider.dart';
 import 'package:flutter/material.dart' hide Rect, Size;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -177,20 +178,9 @@ Future<void> _pumpReport(
   }
 }
 
-/// Opens every closed row on the page.
-Future<void> _openFolds(WidgetTester tester) async {
-  for (final title in const [
-    'Your photos',
-    'Understand your result',
-    'Over time',
-    'What this scan covered',
-    "Teeth you can't easily see",
-  ]) {
-    final row = find.text(title);
-    if (row.evaluate().isEmpty) continue;
-    await tester.ensureVisible(row);
-    await tester.tap(row, warnIfMissed: false);
-    await tester.pump(const Duration(milliseconds: 500));
+Future<void> settleFrames(WidgetTester tester) async {
+  for (var i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
   }
 }
 
@@ -427,6 +417,39 @@ void main() {
     });
   });
 
+  group('what helps the person next', () {
+    test('questions and tips follow what was seen', () {
+      final clear = ScreeningReport(_analysis(), _allViews);
+      final back = ScreeningReport(
+        _analysis(findings: [_sign('left', bbox: const [0.3, 0.1, 0.1, 0.1])]),
+        _allViews,
+      );
+      expect(back.dentistQuestions.first, contains('decay, a stain'));
+      expect(clear.dentistQuestions.first, isNot(contains('decay, a stain')));
+      expect(back.careTips.first, contains('back teeth'));
+      expect(clear.careTips, hasLength(1));
+    });
+
+    test('the summary for a dentist says what it is and what it can\'t read', () {
+      final text = ScreeningReport(
+        _analysis(findings: [_sign('left', bbox: const [0.3, 0.1, 0.1, 0.1])]),
+        _allViews,
+      ).summaryForDentist('November 2, 2026');
+      expect(text, contains('November 2, 2026'));
+      expect(text, contains('Not a diagnosis'));
+      expect(text, contains('Upper left back, strong sign (90% model confidence)'));
+      expect(text, contains('Not read by this check'));
+    });
+
+    test('surfaces count what was read and what is only saved', () {
+      final rows = ScreeningReport(_analysis(), _allViews).surfaces!;
+      expect(rows.map((r) => r.$1), ToothSurface.values);
+      expect(rows.map((r) => r.$2), [6, 6, 0]);
+      expect(rows.last.$3, 6);
+      expect(ScreeningReport(_analysis(), const ['ul']).surfaces, isNull);
+    });
+  });
+
   group('coverage', () {
     test('inner sides are never read, and the rest follow their photos', () {
       final coverage = ScreeningReport(_analysis(), _allViews).coverage!;
@@ -536,6 +559,19 @@ void main() {
         _session('a', DateTime(2026, 9), _analysis(findings: [upperFront])),
       ]);
       expect(skipped.repeating, {MouthArea.upperFront: 3});
+    });
+
+    test('says when older scans came from another version of the check', () {
+      final mixed = ScanTrend.of([
+        _session('b', DateTime(2026, 11), _analysis(model: 'det-v5+rules')),
+        _session('a', DateTime(2026, 10), _analysis(model: 'det-v4+rules')),
+      ]);
+      expect(mixed.mixedVersions, isTrue);
+      final same = ScanTrend.of([
+        _session('b', DateTime(2026, 11), _analysis(model: 'det-v5+rules')),
+        _session('a', DateTime(2026, 10), _analysis(model: 'det-v5+x')),
+      ]);
+      expect(same.mixedVersions, isFalse);
     });
 
     test('only scans that really read something count', () {
@@ -691,7 +727,6 @@ void main() {
           size: size,
           textScale: scale,
         );
-        await _openFolds(tester);
         expect(tester.takeException(), isNull);
       });
 
@@ -699,7 +734,6 @@ void main() {
           (tester) async {
         final clear = ScreeningReport(_analysis(), _allViews);
         await _pumpReport(tester, clear, size: size, textScale: scale);
-        await _openFolds(tester);
         expect(tester.takeException(), isNull);
       });
 
@@ -722,67 +756,102 @@ void main() {
         find.bySemanticsLabel('When to see a dentist: Book soon, step 3 of 4'),
         findsOneWidget,
       );
+      expect(find.bySemanticsLabel('surfaces read: 12 of 18'), findsOneWidget);
+      expect(find.bySemanticsLabel('photos read: 7 of 9'), findsOneWidget);
+      expect(find.byType(Mouth3D), findsOneWidget);
     });
 
-    testWidgets('opens on the most pressing area, and tapping one explains it',
+    testWidgets('goes through the signs one at a time, the mouth turning along',
         (tester) async {
       await _pumpReport(tester, busy);
-      expect(find.byType(MouthMap), findsOneWidget);
-      // Back teeth in the arch photo, plus the molar photo on the left.
-      expect(find.text('Upper right back'), findsOneWidget);
+      expect(find.text('1 of 4'), findsOneWidget);
+      expect(find.text('Upper back teeth'), findsOneWidget);
 
-      final area = find.bySemanticsLabel('Lower front: Nothing flagged');
-      await tester.ensureVisible(area);
-      await tester.tap(area, warnIfMissed: false);
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(find.text('Lower front'), findsOneWidget);
-      expect(find.textContaining('Nothing was flagged'), findsOneWidget);
-    });
+      final next = find.byTooltip('Next sign');
+      await tester.ensureVisible(next);
+      await tester.tap(next);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('2 of 4'), findsOneWidget);
+      expect(find.text('Whole mouth'), findsOneWidget);
 
-    testWidgets('says what no photo or no reading means on the map',
-        (tester) async {
-      await _pumpReport(
-        tester,
-        ScreeningReport(_analysis(), const ['front']),
-      );
-      final area = find.bySemanticsLabel('Upper left back: No photo');
-      await tester.ensureVisible(area);
-      await tester.tap(area, warnIfMissed: false);
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(find.text('No photo of this area in this scan.'), findsOneWidget);
-    });
-
-    testWidgets('going from the map to a sign selects it in its photo',
-        (tester) async {
-      await _pumpReport(tester, busy);
-      await tester.ensureVisible(find.text('See it'));
-      await tester.tap(find.text('See it'));
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(find.byType(SignsSection), findsOneWidget);
-      expect(find.textContaining('Upper Biting Surface'), findsWidgets);
+      await tester.ensureVisible(find.text('Whole mouth'));
+      await tester.pump();
+      await tester.tap(find.text('Whole mouth'));
+      await settleFrames(tester);
+      expect(find.text('Whole mouth'), findsNothing);
+      expect(find.text('2 of 4'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('moves between photos with signs, each with its own rows',
-        (tester) async {
-      await _pumpReport(tester, busy);
-      expect(find.text('Upper Biting Surface · 2 signs in this photo'),
-          findsOneWidget);
-
-      final photo = find.bySemanticsLabel('Front Teeth, 1 sign');
-      await tester.ensureVisible(photo);
-      await tester.tap(photo, warnIfMissed: false);
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(find.text('Front Teeth'), findsOneWidget);
-      expect(find.textContaining(signMeaning[SignStrength.faint]!),
-          findsOneWidget);
-    });
-
-    testWidgets('every strength says what it means in words', (tester) async {
+    testWidgets('says what each strength means, with no figures', (tester) async {
       expect(signMeaning.keys, unorderedEquals(SignStrength.values));
       await _pumpReport(tester, busy);
-      expect(find.textContaining(signMeaning[SignStrength.strong]!),
-          findsOneWidget);
+      expect(find.text(signMeaning[SignStrength.strong]!), findsOneWidget);
+    });
+
+    testWidgets('shows how the signs split by strength', (tester) async {
+      await _pumpReport(tester, busy);
+      expect(
+        find.bySemanticsLabel(
+            'Signs by strength: 2 strong sign, 1 possible sign, 1 faint sign'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('says what dental work it saw, apart from signs', (tester) async {
+      await _pumpReport(
+        tester,
+        ScreeningReport(
+          ScreeningAnalysis(
+            summary: 's',
+            analyzedAt: DateTime(2026, 11, 2),
+            findings: [_sign('left')],
+            dentalWork: const [
+              ScreeningFinding(label: 'Possible filling', regionId: 'left'),
+              ScreeningFinding(label: 'Possible filling', regionId: 'left'),
+              ScreeningFinding(label: 'Possible crown', regionId: 'left'),
+            ],
+          ),
+          _allViews,
+        ),
+      );
+      expect(find.textContaining('2 fillings and 1 crown'), findsOneWidget);
+      expect(find.text('Upper left back'), findsNothing);
+    });
+
+    testWidgets('can copy the result for a dentist', (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String;
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+      await _pumpReport(tester, busy);
+      final copy = find.text('Copy my result for the dentist');
+      await tester.ensureVisible(copy);
+      await tester.tap(copy);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(copied, contains('Not a diagnosis'));
+      expect(copied, contains('Upper back teeth'));
+      expect(find.textContaining('Copied'), findsOneWidget);
+    });
+
+    testWidgets('the teeth you can\'t easily see come first in the photos',
+        (tester) async {
+      expect(
+        ReportPhotoRow.hardFirst([
+          scanRegionById('front'),
+          scanRegionById('back-left'),
+          scanRegionById('upper-lingual'),
+        ]).map((r) => r.id),
+        ['back-left', 'upper-lingual', 'front'],
+      );
     });
 
     testWidgets('faint signs alone are headed as such', (tester) async {
@@ -794,7 +863,7 @@ void main() {
         ),
       );
       expect(find.text('Faint signs to watch'), findsOneWidget);
-      expect(find.text('What to do next'), findsNothing);
+      expect(find.text('Keep your regular check-ups'), findsOneWidget);
     });
 
     testWidgets('a clear result has nothing to spot and nothing to do',
@@ -802,9 +871,10 @@ void main() {
       await _pumpReport(tester, ScreeningReport(_analysis(), _allViews));
       expect(find.text('Nothing flagged in your photos'), findsOneWidget);
       expect(find.byType(SignsSection), findsNothing);
-      expect(find.text('What to do next'), findsNothing);
+      // Still has something to say: keep the check-ups going.
+      expect(find.text('Keep your regular check-ups'), findsOneWidget);
       // The first scan: nothing to compare with yet.
-      expect(find.text('This scan is your starting point'), findsOneWidget);
+      expect(find.text('This is your starting point'), findsOneWidget);
     });
 
     testWidgets('a rejected scan shows the feedback and no result',
@@ -820,9 +890,10 @@ void main() {
       expect(find.text("We couldn't read these photos"), findsOneWidget);
       expect(find.text('Retake for a better check'), findsOneWidget);
       expect(find.textContaining('No teeth detected'), findsOneWidget);
-      expect(find.byType(MouthMap), findsNothing);
-      expect(find.byType(CoverageGrid), findsNothing);
+      expect(find.byType(Mouth3D), findsNothing);
+      expect(find.byType(CoverageRings), findsNothing);
       expect(find.byType(TrendSection), findsNothing);
+      expect(find.byType(NextSteps), findsNothing);
       expect(find.text('Ask Rabi about my results'), findsNothing);
     });
 
@@ -837,32 +908,14 @@ void main() {
       expect(find.text('Find clinics nearby'), findsOneWidget);
     });
 
-    testWidgets('keeps the detail closed until asked for', (tester) async {
-      await _pumpReport(tester, busy, history: history, sessionId: 'b');
-      expect(find.byType(CoverageGrid), findsNothing);
-      expect(find.byType(TrendSection), findsNothing);
-      expect(find.text('12 of 18 tooth surfaces read'), findsOneWidget);
-      await _openFolds(tester);
-      expect(find.byType(CoverageGrid), findsOneWidget);
-      expect(find.byType(TrendSection), findsOneWidget);
-    });
-
-    testWidgets('two signs in the same area can be told apart', (tester) async {
-      await _pumpReport(tester, busy);
-      expect(find.text('Upper back teeth, right of photo'), findsOneWidget);
-      expect(find.text('Upper back teeth, left of photo'), findsOneWidget);
-    });
-
     testWidgets('names what it can\'t read', (tester) async {
       await _pumpReport(tester, ScreeningReport(_analysis(), _allViews));
-      await _openFolds(tester);
       expect(find.textContaining('Plaque, tartar, gums'), findsOneWidget);
-      expect(find.textContaining("can't read them yet"), findsOneWidget);
+      expect(find.textContaining("can't be read yet"), findsOneWidget);
     });
 
     testWidgets('never shows a tooth number', (tester) async {
       await _pumpReport(tester, busy, history: history, sessionId: 'b');
-      await _openFolds(tester);
       expect(find.textContaining(RegExp(r'\b[Tt]ooth \d')), findsNothing);
     });
 
@@ -889,21 +942,19 @@ void main() {
         sessionId: '0',
         size: const Size(320, 568),
       );
-      await _openFolds(tester);
       expect(tester.takeException(), isNull);
-      expect(find.textContaining('Showing up scan after scan'), findsOneWidget);
+      expect(find.textContaining('Signs keep showing up'), findsOneWidget);
     });
 
     testWidgets('tapping a past scan on the chart shows its numbers',
         (tester) async {
       await _pumpReport(tester, busy, history: history, sessionId: 'b');
-      await _openFolds(tester);
-      expect(find.textContaining('Nov 2, 2026: 3 signs'), findsOneWidget);
-      final bar = find.bySemanticsLabel('Oct 2, 2026: 0 signs, 0 faint');
-      await tester.ensureVisible(bar);
-      await tester.tap(bar, warnIfMissed: false);
+      expect(find.text('Nov 2, 2026 · 3 signs · 1 faint'), findsOneWidget);
+      final past = find.bySemanticsLabel('Oct 2, 2026 · 0 signs');
+      await tester.ensureVisible(past);
+      await tester.tap(past, warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.textContaining('Oct 2, 2026: 0 signs'), findsOneWidget);
+      expect(find.text('Oct 2, 2026 · 0 signs'), findsOneWidget);
     });
 
     test('Rabi is told where each sign is and how sure the model was', () {
@@ -1019,14 +1070,14 @@ void main() {
         ),
       );
       expect(find.text('Book a dental visit soon'), findsOneWidget);
-      expect(find.byType(MouthMap), findsOneWidget);
+      expect(find.byType(Mouth3D), findsOneWidget);
       expect(find.text('Delete this screening'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('with no analysis it keeps to what was recorded', (tester) async {
       await pump(tester, _session('a', DateTime(2026, 11, 2), null));
-      expect(find.byType(MouthMap), findsNothing);
+      expect(find.byType(Mouth3D), findsNothing);
       expect(find.textContaining('No analysis was run'), findsOneWidget);
     });
 
@@ -1035,7 +1086,7 @@ void main() {
         tester,
         _session('a', DateTime(2026, 11, 2), _analysis(model: 'det-none+x')),
       );
-      expect(find.byType(MouthMap), findsNothing);
+      expect(find.byType(Mouth3D), findsNothing);
       expect(find.text('Nothing flagged in your photos'), findsNothing);
     });
   });
