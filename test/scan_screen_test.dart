@@ -455,6 +455,9 @@ void main() {
     expect(find.text('Possible cavity: see a dentist'), findsOneWidget);
     expect(find.text('Book a visit soon'), findsOneWidget);
     expect(find.text('Retake for a better check'), findsOneWidget);
+    // No success check while photos still need retaking.
+    expect(find.text('Some photos need a retake'), findsOneWidget);
+    expect(find.text('Partial scan saved'), findsNothing);
     expect(find.text('Front Teeth (light scan): Hold the device still.'),
         findsOneWidget);
   });

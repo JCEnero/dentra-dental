@@ -160,6 +160,7 @@ class _Done extends StatelessWidget {
     final details = session.analysis?.analysis;
     final notConnected = !analysisAvailable ||
         session.analysisFailure == AnalysisFailure.unavailable;
+    final needsRetake = details?.qualityIssues.isNotEmpty ?? false;
 
     return Column(
       children: [
@@ -167,7 +168,8 @@ class _Done extends StatelessWidget {
           children: [
             Row(
               children: [
-                const _SuccessMark(),
+                // No success check while some photos couldn't be used.
+                needsRetake ? const _RetakeMark() : const _SuccessMark(),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -177,7 +179,11 @@ class _Done extends StatelessWidget {
                         header: true,
                         liveRegion: true,
                         child: Text(
-                          n == total ? 'Scan complete' : 'Partial scan saved',
+                          needsRetake
+                              ? 'Some photos need a retake'
+                              : n == total
+                                  ? 'Scan complete'
+                                  : 'Partial scan saved',
                           style: _title,
                         ),
                       ),
@@ -554,6 +560,24 @@ class _SweepState extends State<_Sweep> with SingleTickerProviderStateMixin {
           );
         },
       ),
+    );
+  }
+}
+
+/// Shown instead of the success check when photos need taking again.
+class _RetakeMark extends StatelessWidget {
+  const _RetakeMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: const BoxDecoration(
+        color: AppColors.lightLavender,
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(Icons.refresh_rounded, color: AppColors.primary),
     );
   }
 }
