@@ -9,10 +9,12 @@ import 'dentra_glass_ui.dart';
 
 /// Opens [image] full size over a dimmed page, pinch-to-zoom enabled.
 /// [caption] names what is shown (e.g. the record source and date).
+/// [overlay] is drawn over the image at exactly its size, and zooms with it.
 Future<void> showDentraImageViewer(
   BuildContext context, {
   required ImageProvider image,
   String? caption,
+  Widget? overlay,
 }) {
   return showGlassDialog<void>(
     context: context,
@@ -28,21 +30,28 @@ Future<void> showDentraImageViewer(
                   maxScale: 4,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image(
-                      image: image,
-                      fit: BoxFit.contain,
-                      loadingBuilder: (_, child, progress) => progress == null
-                          ? child
-                          : const SizedBox.square(
-                              dimension: 64,
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColors.white,
-                                  strokeWidth: 2.4,
-                                ),
-                              ),
-                            ),
-                      errorBuilder: (_, __, ___) => const DentraImageError(),
+                    child: Stack(
+                      children: [
+                        Image(
+                          image: image,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (_, child, progress) =>
+                              progress == null
+                                  ? child
+                                  : const SizedBox.square(
+                                      dimension: 64,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: AppColors.white,
+                                          strokeWidth: 2.4,
+                                        ),
+                                      ),
+                                    ),
+                          errorBuilder: (_, __, ___) =>
+                              const DentraImageError(),
+                        ),
+                        if (overlay != null) Positioned.fill(child: overlay),
+                      ],
                     ),
                   ),
                 ),

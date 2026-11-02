@@ -819,7 +819,7 @@ void main() {
       expect(find.text(resultSteps.last.title), findsOneWidget);
       await finishChamber(tester);
       expect(find.text('Scanning your teeth'), findsNothing);
-      expect(find.text('All done.'), findsOneWidget);
+      expect(find.text('Nothing flagged in your photos'), findsOneWidget);
     });
 
     testWidgets('closing the scan leaves the run going behind the page',
@@ -832,7 +832,7 @@ void main() {
 
       analysis.pending!.complete(answer());
       await settle(tester, steps: 12);
-      expect(find.text('All done.'), findsOneWidget);
+      expect(find.text('Nothing flagged in your photos'), findsOneWidget);
       expect(container.read(scanSessionProvider).finishPhase, FinishPhase.done);
     });
   });

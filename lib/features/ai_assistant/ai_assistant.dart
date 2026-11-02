@@ -14,6 +14,7 @@ import '../../shared/widgets/glass_card.dart';
 import '../auth/providers/auth_provider.dart';
 import '../profile/providers/profile_provider.dart';
 import '../scan/data/scan_regions.dart';
+import '../scan/data/scan_report.dart';
 import '../screening/data/models/screening_session.dart';
 import '../screening/providers/screening_sessions_provider.dart';
 import 'ai_chat_controller.dart';
@@ -164,8 +165,11 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
           ? '- Screening analysis: none available for this screening'
           : '- Screening analysis summary: ${analysis.summary}');
     if (analysis != null) {
-      for (final f in analysis.findings) {
-        prompt.writeln('- Finding: ${f.label}'
+      final report = ScreeningReport(analysis, s.capturedRegions);
+      for (final spot in report.spots) {
+        final f = spot.finding;
+        prompt.writeln('- Finding: ${f.label}, ${spot.where.toLowerCase()}, '
+            '${spot.strength.label.toLowerCase()}'
             '${f.detail != null ? ' (${f.detail})' : ''}');
       }
     }

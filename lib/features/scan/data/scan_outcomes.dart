@@ -12,12 +12,27 @@ import 'scan_regions.dart';
 /// Six general areas: each arch split into left back, front and right back
 /// (the user's own left and right).
 enum MouthArea {
-  upperRight,
-  upperFront,
-  upperLeft,
-  lowerLeft,
-  lowerFront,
-  lowerRight;
+  upperRight('Upper right back'),
+  upperFront('Upper front'),
+  upperLeft('Upper left back'),
+  lowerLeft('Lower left back'),
+  lowerFront('Lower front'),
+  lowerRight('Lower right back');
+
+  const MouthArea(this.label);
+  final String label;
+
+  bool get isUpper => index <= upperLeft.index;
+  bool get isFront => this == upperFront || this == lowerFront;
+  bool get isLeft => this == upperLeft || this == lowerLeft;
+
+  /// The area a tooth position belongs to.
+  static MouthArea at(DentalArch arch, DentalSide side, ToothKind kind) {
+    final upper = arch == DentalArch.upper;
+    if (!kind.isPosterior) return upper ? upperFront : lowerFront;
+    final left = side == DentalSide.left;
+    return upper ? (left ? upperLeft : upperRight) : (left ? lowerLeft : lowerRight);
+  }
 
   /// The area a tooth of the reference model belongs to.
   static MouthArea of(ToothInfo tooth) {
@@ -77,20 +92,23 @@ Map<String, ViewOutcome> outcomesOf(
   return {for (final id in photoIds) id: outcome(id)};
 }
 
-/// The most that any photo showing [area] said about it, or null when no
-/// photo shows it. A view counts for an area when it's meant to show most of
-/// its teeth, so a side photo reaching one canine says nothing about the front.
-ViewOutcome? areaOutcome(MouthArea area, Map<String, ViewOutcome> outcomes) {
+/// A view counts for an area when it's meant to show most of its teeth, so a
+/// side photo reaching one canine says nothing about the front.
+bool viewShowsArea(ScanRegion region, MouthArea area) {
   final teeth = [
     for (final t in ToothCatalog.all)
       if (area.contains(t)) t,
   ];
+  return teeth.where(region.covers).length * 2 >= teeth.length;
+}
+
+/// The most that any photo showing [area] said about it, or null when no
+/// photo shows it.
+ViewOutcome? areaOutcome(MouthArea area, Map<String, ViewOutcome> outcomes) {
   ViewOutcome? best;
   outcomes.forEach((id, outcome) {
     final region = findScanRegion(id);
-    if (region == null) return;
-    final shown = teeth.where(region.covers).length;
-    if (shown * 2 < teeth.length) return;
+    if (region == null || !viewShowsArea(region, area)) return;
     if (best == null || outcome.index > best!.index) best = outcome;
   });
   return best;

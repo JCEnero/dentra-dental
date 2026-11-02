@@ -197,6 +197,10 @@ class ScreeningAnalysis {
 
   /// Structured findings, when the service provides them.
   final List<ScreeningFinding> findings;
+
+  /// Findings below the line the rules act on: too unsure to advise anything,
+  /// but worth showing and comparing on the next scan.
+  final List<ScreeningFinding> faintFindings;
   final DateTime analyzedAt;
 
   /// Identifies the model/version that produced the result, for audit.
@@ -220,6 +224,7 @@ class ScreeningAnalysis {
     required this.summary,
     required this.analyzedAt,
     this.findings = const [],
+    this.faintFindings = const [],
     this.model,
     this.status = AnalysisStatus.complete,
     this.dentitionType,
@@ -235,6 +240,7 @@ class ScreeningAnalysis {
         'status': status.name,
         'dentition_type': dentitionType,
         'findings': findings.map((f) => f.toJson()).toList(),
+        'faint_findings': faintFindings.map((f) => f.toJson()).toList(),
         'recommendations': recommendations.map((r) => r.toJson()).toList(),
         'quality_issues': qualityIssues.map((q) => q.toJson()).toList(),
       };
@@ -252,6 +258,7 @@ class ScreeningAnalysis {
           AnalysisStatus.complete,
       dentitionType: json['dentition_type'] as String?,
       findings: list('findings', ScreeningFinding.fromJson),
+      faintFindings: list('faint_findings', ScreeningFinding.fromJson),
       recommendations:
           list('recommendations', ScreeningRecommendation.fromJson),
       qualityIssues: list('quality_issues', ScreeningQualityIssue.fromJson),
@@ -373,6 +380,9 @@ class ScreeningFinding {
   /// 'rgb' or 'nir': which image showed it.
   final String? modality;
 
+  /// Where it is in the photo: [x, y, w, h], each 0-1. Null for older results.
+  final List<double>? bbox;
+
   const ScreeningFinding({
     required this.label,
     this.detail,
@@ -383,6 +393,7 @@ class ScreeningFinding {
     this.severity,
     this.surface,
     this.modality,
+    this.bbox,
   });
 
   Map<String, dynamic> toJson() => {
@@ -395,6 +406,7 @@ class ScreeningFinding {
         'severity': severity,
         'surface': surface,
         'modality': modality,
+        'bbox': bbox,
       };
 
   factory ScreeningFinding.fromJson(Map<String, dynamic> json) =>
@@ -408,6 +420,12 @@ class ScreeningFinding {
         severity: json['severity'] as String?,
         surface: json['surface'] as String?,
         modality: json['modality'] as String?,
+        bbox: switch (json['bbox']) {
+          final List<dynamic> b when b.length == 4 => [
+              for (final v in b) (v as num).toDouble(),
+            ],
+          _ => null,
+        },
       );
 }
 

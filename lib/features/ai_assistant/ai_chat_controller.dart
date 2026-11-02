@@ -564,4 +564,8 @@ class AiChatScope extends InheritedNotifier<AiChatController> {
     assert(scope != null, 'No AiChatScope found in widget tree');
     return scope!.notifier!;
   }
+
+  /// For screens that can also open above the app shell, out of its reach.
+  static AiChatController? maybeRead(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<AiChatScope>()?.notifier;
 }

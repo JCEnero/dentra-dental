@@ -6,7 +6,18 @@ import '../../../core/utils/dentra_dates.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../dental_records/widgets/record_source_label.dart';
 import '../../scan/data/scan_regions.dart';
+import '../../scan/data/scan_report.dart';
+import '../../scan/widgets/scan_theme.dart' show ScanColors;
 import '../../screening/data/models/screening_session.dart';
+
+/// The scan's result in a few words, once its analysis has really read something.
+String? _resultOf(ScreeningSession session) {
+  final analysis = session.analysis;
+  if (analysis == null || analysis.status != AnalysisStatus.complete) return null;
+  final report = ScreeningReport(analysis, session.capturedRegions);
+  if (report.detectorOff || report.photosRead == 0) return null;
+  return report.headline;
+}
 
 /// One screening in the history list. The whole card opens the details.
 class ScreeningHistoryCard extends StatelessWidget {
@@ -38,6 +49,7 @@ class ScreeningHistoryCard extends StatelessWidget {
         .join(', ');
     final complete = session.isComplete;
     final statusColor = complete ? AppColors.successGreen : AppColors.warmOrange;
+    final result = _resultOf(session);
 
     return Semantics(
       button: true,
@@ -45,7 +57,7 @@ class ScreeningHistoryCard extends StatelessWidget {
           '${isLatest ? 'Latest screening' : 'Screening'}, '
           '${DentraDates.full(at)} at ${DentraDates.time(at)}. '
           '${session.status.label}, $captured of ${session.totalRegions} '
-          'views captured. Opens details.',
+          'views captured.${result == null ? '' : ' $result.'} Opens details.',
       excludeSemantics: true,
       child: GlassCard(
         borderColor: rim.withValues(alpha: 0.55),
@@ -78,6 +90,17 @@ class ScreeningHistoryCard extends StatelessWidget {
                       color: AppColors.navy,
                     ),
                   ),
+                  if (result != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      result,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: ScanColors.clearInk,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Row(
                     children: [

@@ -4,14 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/glass_card.dart';
-import '../../ai_assistant/ai_chat_controller.dart';
 import '../../dental_profile/providers/dental_profile_providers.dart';
 import '../../dental_profile/widgets/prompt_care_note.dart';
-import '../../screening/data/models/screening_session.dart';
-import '../data/scan_outcomes.dart';
 import '../data/scan_regions.dart';
+import '../data/scan_report.dart';
 import '../providers/scan_session_provider.dart';
 import '../services/screening_analysis_service.dart';
+import 'report/report_photos.dart';
+import 'report/scan_report_view.dart';
 import 'scan_feedback_panel.dart';
 import 'scan_motion.dart';
 import 'scan_theme.dart';
@@ -173,98 +173,96 @@ class _Done extends StatelessWidget {
   /// Index of the Clinics tab in `AppShell`.
   static const _clinicsTab = 3;
 
+  ImageProvider? _imageOf(String photoId) {
+    final bytes = session.captures[photoId]?.bytes;
+    return bytes == null ? null : MemoryImage(bytes);
+  }
+
   @override
   Widget build(BuildContext context) {
     final details = session.analysis?.analysis;
-    final outcomes =
-        details == null ? null : outcomesOf(details, session.photoIds);
-    final summary = session.analysis?.summary;
-    final notConnected = !analysisAvailable ||
-        session.analysisFailure == AnalysisFailure.unavailable;
-    final issues = details?.qualityIssues ?? const <ScreeningQualityIssue>[];
-    final notes = details?.recommendations ?? const <ScreeningRecommendation>[];
-    final retakes = issues.isNotEmpty;
+    final report =
+        details == null ? null : ScreeningReport(details, session.photoIds);
+    final retakes = details?.qualityIssues.isNotEmpty ?? false;
+    final n = session.capturedViewCount;
+    final total = scanRegions.length;
+    final status = retakes
+        ? 'Some photos need a retake'
+        : n == total
+            ? 'Scan complete'
+            : 'Partial scan saved';
+    // No success check while some photos couldn't be used.
+    final Widget mark = ScanIconDisc(
+      retakes ? Icons.refresh_rounded : Icons.check_rounded,
+      size: 42,
+      iconSize: 22,
+    );
+    final date = _formatDate(session.finishedAt ?? DateTime.now());
+
+    // With no model behind it, a clean result would say nothing.
+    final Widget body = report != null && !report.detectorOff
+        ? ScanReportView(
+            report: report,
+            imageOf: _imageOf,
+            status: status,
+            date: date,
+            viewsTaken: n,
+            leading: mark,
+            sessionId: session.analysis?.savedSession?.id,
+            showActions: !retakes,
+            onClinics:
+                onNavigate == null ? null : () => onNavigate!(_clinicsTab),
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Reveal(
+                child: _SummaryCard(
+                  status: status,
+                  date: '$date · $n of $total views',
+                  mark: mark,
+                  summary: session.analysis?.summary,
+                  notConnected: !analysisAvailable ||
+                      session.analysisFailure == AnalysisFailure.unavailable,
+                ),
+              ),
+              if (retakes) ...[
+                const SizedBox(height: 12),
+                Reveal(
+                  delay: const Duration(milliseconds: 180),
+                  child: RetakeList(
+                    issues: details!.qualityIssues,
+                    imageOf: _imageOf,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 22),
+              const Reveal(
+                delay: Duration(milliseconds: 220),
+                child: ScanSectionTitle('Your photos'),
+              ),
+              const SizedBox(height: 10),
+              Reveal(
+                delay: const Duration(milliseconds: 260),
+                // Nothing was looked for, so no photo gets a result.
+                child: ReportPhotoRow(
+                  photoIds: session.photoIds,
+                  imageOf: _imageOf,
+                ),
+              ),
+            ],
+          );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Reveal(
-          child: _SummaryCard(
-            session: session,
-            summary: summary,
-            outcomes: outcomes,
-            needsRetake: retakes,
-            notConnected: notConnected,
-          ),
-        ),
-        if (notes.isNotEmpty) ...[
-          const SizedBox(height: 22),
-          const Reveal(
-            delay: Duration(milliseconds: 100),
-            child: ScanSectionTitle('What to do next'),
-          ),
-          const SizedBox(height: 10),
-          for (final (i, r) in notes.indexed) ...[
-            Reveal(
-              delay: Duration(milliseconds: 140 + 60 * i),
-              child: _NextStepCard(recommendation: r),
-            ),
-            const SizedBox(height: 10),
-          ],
-        ],
-        if (retakes) ...[
-          const SizedBox(height: 12),
-          Reveal(
-            delay: const Duration(milliseconds: 180),
-            child: _RetakeList(issues: issues),
-          ),
-        ],
-        const SizedBox(height: 22),
-        const Reveal(
-          delay: Duration(milliseconds: 220),
-          child: ScanSectionTitle('Your photos'),
-        ),
-        const SizedBox(height: 10),
-        Reveal(
-          delay: const Duration(milliseconds: 260),
-          child: _PhotoResults(session: session, outcomes: outcomes),
-        ),
-        if (summary != null && !retakes) ...[
-          const SizedBox(height: 16),
-          Reveal(
-            delay: const Duration(milliseconds: 300),
-            child: _HelpActions(
-              session: session,
-              onClinics: onNavigate == null
-                  ? null
-                  : () => onNavigate!(_clinicsTab),
-            ),
-          ),
-        ],
+        body,
         const _ReportedCareNote(),
         const SizedBox(height: 14),
         const ScanDisclaimer(),
       ],
     );
   }
-}
-
-/// The headline: how the scan went, in the analysis's own words, and how many
-/// photos landed where.
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.session,
-    required this.summary,
-    required this.outcomes,
-    required this.needsRetake,
-    required this.notConnected,
-  });
-
-  final ScanSessionState session;
-  final String? summary;
-  final Map<String, ViewOutcome>? outcomes;
-  final bool needsRetake;
-  final bool notConnected;
 
   static String _formatDate(DateTime d) {
     const months = [
@@ -283,22 +281,31 @@ class _SummaryCard extends StatelessWidget {
     ];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
+}
+
+/// How the scan went, for runs with no analysis to report on.
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({
+    required this.status,
+    required this.date,
+    required this.mark,
+    required this.summary,
+    required this.notConnected,
+  });
+
+  final String status;
+  final String date;
+  final Widget mark;
+  final String? summary;
+  final bool notConnected;
 
   @override
   Widget build(BuildContext context) {
-    final n = session.capturedViewCount;
-    final total = scanRegions.length;
-    final at = session.finishedAt ?? DateTime.now();
-    final values = outcomes?.values ?? const <ViewOutcome>[];
-    int count(bool Function(ViewOutcome) test) => values.where(test).length;
-    final notChecked = count((o) => o == ViewOutcome.notChecked);
-
     return _Card(
       children: [
         Row(
           children: [
-            // No success check while some photos couldn't be used.
-            needsRetake ? const _RetakeMark() : const _SuccessMark(),
+            mark,
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -307,17 +314,10 @@ class _SummaryCard extends StatelessWidget {
                   Semantics(
                     header: true,
                     liveRegion: true,
-                    child: Text(
-                      needsRetake
-                          ? 'Some photos need a retake'
-                          : n == total
-                              ? 'Scan complete'
-                              : 'Partial scan saved',
-                      style: _title,
-                    ),
+                    child: Text(status, style: _title),
                   ),
                   const SizedBox(height: 2),
-                  Text('${_formatDate(at)} · $n of $total views', style: _body),
+                  Text(date, style: _body),
                 ],
               ),
             ),
@@ -345,334 +345,9 @@ class _SummaryCard extends StatelessWidget {
             style: _body,
           ),
         ],
-        if (values.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(
-            [
-              '${count((o) => o == ViewOutcome.clear)} no concerns',
-              '${count((o) => o == ViewOutcome.finding || o == ViewOutcome.urgent)} to check',
-              '${count((o) => o == ViewOutcome.retake)} to retake',
-              if (notChecked > 0) '$notChecked not read yet',
-            ].join(' · '),
-            style: figureText(
-              size: 12.5,
-              weight: FontWeight.w600,
-              color: AppColors.secondaryText,
-            ),
-          ),
-        ],
       ],
     );
   }
-}
-
-/// One next step from the analysis, and the photos behind it. Urgency is
-/// spelled out in words, not only shown by color.
-class _NextStepCard extends StatelessWidget {
-  const _NextStepCard({required this.recommendation});
-  final ScreeningRecommendation recommendation;
-
-  @override
-  Widget build(BuildContext context) {
-    final r = recommendation;
-    final (label, color) = switch (r.urgency) {
-      'prompt' => ('See a dentist promptly', AppColors.navy),
-      'soon' => ('Book a visit soon', ScanColors.check),
-      _ => ('At your next check-up', AppColors.primary),
-    };
-    final seenIn = [
-      for (final id in r.regionIds)
-        if (findScanRegion(id) case final region?) region.label,
-    ];
-    return GlassCard(
-      borderRadius: const BorderRadius.all(Radius.circular(20)),
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.13),
-            ),
-            child: Icon(
-              r.code == 'braces_seen'
-                  ? Icons.info_outline_rounded
-                  : Icons.visibility_outlined,
-              size: 18,
-              color: color,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(r.title, style: _subtitle),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: _body.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(r.detail, style: _body),
-                if (seenIn.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Seen in: ${seenIn.join(', ')}',
-                    style: GoogleFonts.outfit(
-                      fontSize: 11.5,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Every view and what came of it, in one sliding row of the real photos.
-class _PhotoResults extends StatelessWidget {
-  const _PhotoResults({required this.session, required this.outcomes});
-
-  final ScanSessionState session;
-  final Map<String, ViewOutcome>? outcomes;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = regionsForSession(session.photoIds);
-    final details = session.analysis?.analysis;
-    return SizedBox(
-      height: 92 + 44 * MediaQuery.textScalerOf(context).scale(1),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        clipBehavior: Clip.none,
-        itemCount: rows.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) => SizedBox(
-          width: 112,
-          child: _PhotoTile(
-            region: rows[i],
-            bytes: session.captures[rows[i].id]?.bytes,
-            outcome: outcomes?[rows[i].id],
-            finding: details?.findings
-                .where((f) => f.regionId == rows[i].id)
-                .firstOrNull
-                ?.label,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PhotoTile extends StatelessWidget {
-  const _PhotoTile({
-    required this.region,
-    required this.bytes,
-    required this.outcome,
-    required this.finding,
-  });
-
-  final ScanRegion region;
-  final Uint8List? bytes;
-  final ViewOutcome? outcome;
-
-  /// What was found in this photo, in the analysis's words.
-  final String? finding;
-
-  @override
-  Widget build(BuildContext context) {
-    final taken = bytes != null;
-    final (String status, Color color) = switch (outcome) {
-      ViewOutcome.clear => ('No concerns seen', ScanColors.clearInk),
-      ViewOutcome.finding => (finding ?? 'Worth checking', ScanColors.check),
-      ViewOutcome.urgent => (finding ?? 'Worth checking', AppColors.navy),
-      ViewOutcome.retake => ('Needs a retake', AppColors.secondaryText),
-      ViewOutcome.notChecked => ('Not read yet', AppColors.secondaryText),
-      null => (taken ? 'Saved' : 'Not taken', AppColors.secondaryText),
-    };
-    return Semantics(
-      label: '${region.label}: $status',
-      excludeSemantics: true,
-      child: GlassCard(
-        borderRadius: const BorderRadius.all(Radius.circular(16)),
-        padding: const EdgeInsets.all(5),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: taken
-                    ? Image.memory(
-                        bytes!,
-                        fit: BoxFit.cover,
-                        cacheWidth: 300,
-                        gaplessPlayback: true,
-                        errorBuilder: (_, __, ___) =>
-                            const ColoredBox(color: AppColors.lightLavender),
-                      )
-                    : ColoredBox(
-                        color: AppColors.navy.withValues(alpha: 0.05),
-                        child: Icon(
-                          Icons.hide_image_outlined,
-                          size: 18,
-                          color: AppColors.secondaryText.withValues(alpha: 0.6),
-                        ),
-                      ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(3, 5, 3, 2),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    region.short,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: taken ? AppColors.navy : AppColors.secondaryText,
-                    ),
-                  ),
-                  Text(
-                    status,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Where to go from here: nearby clinics, or asking Rabi about the results.
-class _HelpActions extends StatelessWidget {
-  const _HelpActions({required this.session, required this.onClinics});
-
-  final ScanSessionState session;
-  final VoidCallback? onClinics;
-
-  void _askRabi(BuildContext context) {
-    final chat = AiChatScope.read(context);
-    chat.open();
-    chat.sendMessage(
-      'Can you explain my scan results?',
-      prompt: _rabiPrompt(session),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        GlassCard(
-          borderRadius: const BorderRadius.all(Radius.circular(16)),
-          onTap: () => _askRabi(context),
-          padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
-          child: Row(
-            children: [
-              // Rabi's bunny mark, as in the chat.
-              SizedBox.square(
-                dimension: 36,
-                child: Image.asset(
-                  'assets/images/rabi_avatar.png',
-                  fit: BoxFit.contain,
-                  excludeFromSemantics: true,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.chat_bubble_outline_rounded,
-                    color: AppColors.g2,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Ask Rabi about my results',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.g2),
-            ],
-          ),
-        ),
-        if (onClinics != null) ...[
-          const SizedBox(height: 10),
-          GlassCard(
-            borderRadius: const BorderRadius.all(Radius.circular(16)),
-            onTap: onClinics,
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-            child: Row(
-              children: [
-                const Icon(Icons.location_on_outlined,
-                    size: 22, color: AppColors.g2),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Find clinics nearby',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.g2),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// What Rabi is told, so its answer is about these real results.
-String _rabiPrompt(ScanSessionState session) {
-  final details = session.analysis?.analysis;
-  final seen = [
-    for (final f in details?.findings ?? const <ScreeningFinding>[])
-      '- ${f.label}${f.regionId == null ? '' : ' (${findScanRegion(f.regionId!)?.label ?? f.regionId})'}',
-  ];
-  final steps = [
-    for (final r in details?.recommendations ?? const <ScreeningRecommendation>[])
-      '- ${r.title}: ${r.detail}',
-  ];
-  return 'I just finished a DENTRA screening from my own photos. It describes '
-      'general areas of the mouth rather than specific teeth.\n'
-      '${session.capturedViewCount} of ${scanRegions.length} views captured.\n'
-      'Summary: ${session.analysis?.summary ?? 'None'}\n'
-      'What was seen:\n${seen.isEmpty ? '- Nothing that needs attention.' : seen.join('\n')}\n'
-      'Suggested next steps:\n${steps.isEmpty ? '- None.' : steps.join('\n')}\n'
-      'Explain what this means in plain language and what I should do next. '
-      'Remind me this is a screening, not a diagnosis.';
 }
 
 /// Care advice from what the user reported (severe discomfort in their
@@ -730,36 +405,6 @@ class ScanDisclaimer extends StatelessWidget {
 }
 
 // ── Pieces ──────────────────────────────────────────────────────
-
-/// Photos the quality check couldn't use, with how to take them again.
-class _RetakeList extends StatelessWidget {
-  const _RetakeList({required this.issues});
-  final List<ScreeningQualityIssue> issues;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      borderRadius: const BorderRadius.all(Radius.circular(20)),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Retake for a better check', style: _subtitle),
-          for (final issue in issues)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                '${scanRegionById(issue.regionId).label}'
-                '${issue.modality == 'nir' ? ' (light scan)' : ''}: '
-                '${issue.message}',
-                style: _body,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
 
 class _Card extends StatelessWidget {
   const _Card({required this.children});
@@ -953,87 +598,11 @@ class _SweepState extends State<_Sweep> with SingleTickerProviderStateMixin {
   }
 }
 
-/// Shown instead of the success check when photos need taking again.
-class _RetakeMark extends StatelessWidget {
-  const _RetakeMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: const BoxDecoration(
-        color: AppColors.lightLavender,
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-    );
-  }
-}
-
-/// A check that draws itself once.
-class _SuccessMark extends StatelessWidget {
-  const _SuccessMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: ScanMotion.of(context, const Duration(milliseconds: 650)),
-      curve: ScanMotion.curve,
-      builder: (context, t, _) => SizedBox.square(
-        dimension: 48,
-        child: CustomPaint(painter: _CheckPainter(t)),
-      ),
-    );
-  }
-}
-
-class _CheckPainter extends CustomPainter {
-  const _CheckPainter(this.t);
-  final double t;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero);
-    final r = size.shortestSide / 2;
-    canvas.drawCircle(
-      c,
-      r * (0.85 + 0.15 * t),
-      Paint()
-        ..shader = AppColors.primaryGradient
-            .createShader(Rect.fromCircle(center: c, radius: r)),
-    );
-    final path = Path()
-      ..moveTo(size.width * 0.3, size.height * 0.52)
-      ..lineTo(size.width * 0.44, size.height * 0.66)
-      ..lineTo(size.width * 0.71, size.height * 0.37);
-    final metric = path.computeMetrics().first;
-    canvas.drawPath(
-      metric.extractPath(0, metric.length * t),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.2
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..color = AppColors.white,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_CheckPainter old) => old.t != t;
-}
-
 final TextStyle _title = GoogleFonts.outfit(
   fontSize: 18,
   fontWeight: FontWeight.w800,
   color: AppColors.navy,
   letterSpacing: -0.2,
-);
-final TextStyle _subtitle = GoogleFonts.outfit(
-  fontSize: 14,
-  fontWeight: FontWeight.w700,
-  color: AppColors.navy,
 );
 final TextStyle _body = GoogleFonts.outfit(
   fontSize: 13,

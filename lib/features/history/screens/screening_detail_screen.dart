@@ -15,7 +15,10 @@ import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../dental_records/widgets/record_source_label.dart';
 import '../../scan/data/scan_regions.dart';
+import '../../scan/data/scan_report.dart';
+import '../../scan/widgets/report/scan_report_view.dart';
 import '../../scan/widgets/scan_result_view.dart' show ScanDisclaimer;
+import '../../scan/widgets/scan_theme.dart' show ScanIconDisc;
 import '../../scan/widgets/visuals/region_visual.dart';
 import '../../screening/data/models/screening_session.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
@@ -138,9 +141,25 @@ class _BodyState extends ConsumerState<_Body> {
     }
   }
 
+  ImageProvider? _imageOf(String regionId) {
+    if (widget.images[regionId] case final bytes?) return MemoryImage(bytes);
+    if (widget.session.captureFor(regionId)?.imageUrl case final url?) {
+      return NetworkImage(url);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.session;
+    final analysis = s.analysis;
+    final report = analysis == null ||
+            analysis.status == AnalysisStatus.pending ||
+            analysis.status == AnalysisStatus.failed
+        ? null
+        : ScreeningReport(analysis, s.capturedRegions);
+    // Without a model behind it, a clean result would say nothing.
+    final hasReport = report != null && !report.detectorOff;
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.fromLTRB(AppSpacing.screenH, 20, AppSpacing.screenH,
@@ -151,13 +170,29 @@ class _BodyState extends ConsumerState<_Body> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Summary(session: s),
-              const _SectionTitle('Captured images'),
-              _Images(session: s, images: widget.images),
-              const _SectionTitle('Regions'),
-              _Regions(session: s),
-              const _SectionTitle('Screening findings'),
-              _Findings(session: s),
+              if (hasReport)
+                ScanReportView(
+                  report: report,
+                  imageOf: _imageOf,
+                  status: 'Smart screening',
+                  date: DentraDates.long(s.completedAt),
+                  viewsTaken: s.capturedViewCount,
+                  leading: const ScanIconDisc(
+                    Icons.auto_awesome_outlined,
+                    size: 44,
+                    iconSize: 21,
+                  ),
+                  sessionId: s.id,
+                )
+              else ...[
+                _Summary(session: s),
+                const _SectionTitle('Captured images'),
+                _Images(session: s, images: widget.images),
+                const _SectionTitle('Regions'),
+                _Regions(session: s),
+                const _SectionTitle('Screening findings'),
+                _Findings(session: s),
+              ],
               if (widget.previous != null) ...[
                 const _SectionTitle('Compared with previous'),
                 _Comparison(current: s, previous: widget.previous!),

@@ -1,13 +1,18 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../data/scan_outcomes.dart';
 import '../../data/scan_regions.dart';
 
 /// Design-space size every region visual is painted at, then scaled
 /// uniformly by its parent (10:7).
 const Size kArchCanvas = Size(300, 210);
+
+/// Design-space size of the mouth map on the results page.
+const Size kMouthMapCanvas = Size(300, 326);
 
 /// Occlusal (biting-surface) view of the dental arches with the region's
 /// teeth lit and the rest receding.
@@ -34,14 +39,14 @@ class DentalArchPainter extends CustomPainter {
 
     final layouts = switch (region.view) {
       ArchView.upper => [
-          _fit(DentalArch.upper, const Rect.fromLTWH(22, 8, 256, 194)),
+          _fitArch(DentalArch.upper, const Rect.fromLTWH(22, 8, 256, 194)),
         ],
       ArchView.lower => [
-          _fit(DentalArch.lower, const Rect.fromLTWH(22, 8, 256, 194)),
+          _fitArch(DentalArch.lower, const Rect.fromLTWH(22, 8, 256, 194)),
         ],
       ArchView.both => [
-          _fit(DentalArch.upper, const Rect.fromLTWH(22, 4, 256, 98)),
-          _fit(DentalArch.lower, const Rect.fromLTWH(22, 108, 256, 98)),
+          _fitArch(DentalArch.upper, const Rect.fromLTWH(22, 4, 256, 98)),
+          _fitArch(DentalArch.lower, const Rect.fromLTWH(22, 108, 256, 98)),
         ],
     };
 
@@ -59,45 +64,6 @@ class DentalArchPainter extends CustomPainter {
     }
     if (showSideLabels) _paintSideLabels(canvas, layouts);
     canvas.restore();
-  }
-
-  // ── Layout ────────────────────────────────────────────────────
-
-  /// Fits an arch (in millimetres) into [box], front teeth toward the
-  /// outside edge: the top for the upper arch, the bottom for the lower.
-  _ArchLayout _fit(DentalArch arch, Rect box) {
-    final geometry = _ArchGeometry.of(arch);
-    final b = geometry.bounds;
-    final s = math.min(box.width / b.width, box.height / b.height);
-    final flip = arch == DentalArch.lower;
-    final origin = Offset(
-      box.center.dx,
-      flip
-          ? box.center.dy + b.height * s / 2 + b.top * s
-          : box.center.dy - b.height * s / 2 - b.top * s,
-    );
-    Offset map(Offset mm) =>
-        origin + Offset(mm.dx * s, flip ? -mm.dy * s : mm.dy * s);
-    Offset dir(Offset v) => Offset(v.dx, flip ? -v.dy : v.dy);
-
-    return _ArchLayout(
-      arch: arch,
-      scale: s,
-      centerline: geometry.centerline.map(map).toList(),
-      gumWidth: geometry.gumWidth * s,
-      teeth: [
-        for (final t in geometry.teeth)
-          _PlacedTooth(
-            side: t.side,
-            kind: t.kind,
-            center: map(t.center),
-            distal: dir(t.distal),
-            outward: dir(t.outward),
-            halfLength: t.length * s / 2,
-            halfDepth: t.depth * s / 2,
-          ),
-      ],
-    );
   }
 
   // ── Gingiva ───────────────────────────────────────────────────
@@ -297,6 +263,158 @@ class DentalArchPainter extends CustomPainter {
   @override
   bool shouldRepaint(DentalArchPainter old) =>
       old.region.id != region.id || old.showSideLabels != showSideLabels;
+}
+
+/// How the teeth of one area of the mouth map are drawn.
+@immutable
+class MouthMapStyle {
+  const MouthMapStyle({
+    required this.fill,
+    required this.outline,
+    this.selected = false,
+  });
+
+  final Color fill;
+  final Color outline;
+
+  /// Set apart with a soft glow, keeping its true colour.
+  final bool selected;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MouthMapStyle &&
+      other.fill == fill &&
+      other.outline == outline &&
+      other.selected == selected;
+
+  @override
+  int get hashCode => Object.hash(fill, outline, selected);
+}
+
+/// The two arches as a plain chart, upper above lower, every tooth flat in its
+/// area's style. A general picture of a mouth, not of this person's teeth.
+class MouthMapPainter extends CustomPainter {
+  const MouthMapPainter(this.styles);
+
+  final Map<MouthArea, MouthMapStyle> styles;
+
+  static final List<_ArchLayout> _layouts = [
+    // Inset, so the gums drawn around the teeth stay inside the canvas.
+    _fitArch(DentalArch.upper, const Rect.fromLTWH(20, 8, 260, 146)),
+    _fitArch(DentalArch.lower, const Rect.fromLTWH(20, 172, 260, 146)),
+  ];
+
+  /// Each area's teeth in map coordinates, for tapping and for labels.
+  static final Map<MouthArea, Rect> areaBounds = () {
+    final bounds = <MouthArea, Rect>{};
+    for (final layout in _layouts) {
+      for (final t in layout.teeth) {
+        final area = MouthArea.at(layout.arch, t.side, t.kind);
+        final r = math.max(t.halfLength, t.halfDepth);
+        final box = Rect.fromCircle(center: t.center, radius: r);
+        bounds[area] = bounds[area]?.expandToInclude(box) ?? box;
+      }
+    }
+    return bounds;
+  }();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / kMouthMapCanvas.width;
+    canvas.save();
+    canvas.scale(scale);
+    for (final layout in _layouts) {
+      canvas.drawPath(
+        Path()..addPolygon(layout.centerline, false),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.butt
+          ..strokeJoin = StrokeJoin.round
+          ..strokeWidth = layout.gumWidth * 0.86
+          ..color = AppColors.lavender.withValues(alpha: 0.2),
+      );
+      // Glows first, so none of them falls on a neighbouring tooth.
+      for (final selected in [true, false]) {
+        for (final t in layout.teeth) {
+          final style = styles[MouthArea.at(layout.arch, t.side, t.kind)];
+          if (style != null && style.selected == selected) {
+            _paintTooth(canvas, t, style);
+          }
+        }
+      }
+    }
+    canvas.restore();
+  }
+
+  void _paintTooth(Canvas canvas, _PlacedTooth t, MouthMapStyle style) {
+    final a = t.distal * t.halfLength;
+    final b = t.outward * t.halfDepth;
+    final matrix = Float64List.fromList([
+      a.dx, a.dy, 0, 0, //
+      b.dx, b.dy, 0, 0, //
+      0, 0, 1, 0, //
+      t.center.dx, t.center.dy, 0, 1,
+    ]);
+    final path = _ToothShapes.outline(t.kind).transform(matrix);
+    if (style.selected) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 8
+          ..strokeJoin = StrokeJoin.round
+          ..color = AppColors.g1.withValues(alpha: 0.4)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      );
+    }
+    canvas.drawPath(path, Paint()..color = style.fill);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..color = style.outline,
+    );
+  }
+
+  @override
+  bool shouldRepaint(MouthMapPainter old) => !mapEquals(old.styles, styles);
+}
+
+/// Fits an arch (in millimetres) into [box], front teeth toward the outside
+/// edge: the top for the upper arch, the bottom for the lower.
+_ArchLayout _fitArch(DentalArch arch, Rect box) {
+  final geometry = _ArchGeometry.of(arch);
+  final b = geometry.bounds;
+  final s = math.min(box.width / b.width, box.height / b.height);
+  final flip = arch == DentalArch.lower;
+  final origin = Offset(
+    box.center.dx,
+    flip
+        ? box.center.dy + b.height * s / 2 + b.top * s
+        : box.center.dy - b.height * s / 2 - b.top * s,
+  );
+  Offset map(Offset mm) =>
+      origin + Offset(mm.dx * s, flip ? -mm.dy * s : mm.dy * s);
+  Offset dir(Offset v) => Offset(v.dx, flip ? -v.dy : v.dy);
+
+  return _ArchLayout(
+    arch: arch,
+    scale: s,
+    centerline: geometry.centerline.map(map).toList(),
+    gumWidth: geometry.gumWidth * s,
+    teeth: [
+      for (final t in geometry.teeth)
+        _PlacedTooth(
+          side: t.side,
+          kind: t.kind,
+          center: map(t.center),
+          distal: dir(t.distal),
+          outward: dir(t.outward),
+          halfLength: t.length * s / 2,
+          halfDepth: t.depth * s / 2,
+        ),
+    ],
+  );
 }
 
 // ── Tooth anatomy ───────────────────────────────────────────────

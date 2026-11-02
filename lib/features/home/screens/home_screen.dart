@@ -22,6 +22,7 @@ import '../../profile/providers/profile_provider.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../data/daily_tip_repository.dart';
 import '../providers/daily_tip_provider.dart';
+import '../widgets/latest_scan_card.dart';
 import '../widgets/screening_activity_card.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -236,6 +237,7 @@ class HomeScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const LatestScanCard(),
                   const ScreeningActivityCard(),
                   const SizedBox(height: 2),
                   // Full history and reports live on the History tab.

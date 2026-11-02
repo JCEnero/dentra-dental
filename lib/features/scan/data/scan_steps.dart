@@ -45,7 +45,7 @@ const List<ScanStep> readingSteps = [
   ScanStep(
     'Looking for signs of tooth decay',
     'Now we go over each photo for marks that can mean tooth decay. The check '
-        'learned what these look like from more than 2,000 dental photos.',
+        'learned what these look like from more than 5,000 dental photos.',
   ),
   ScanStep(
     'Checking for braces',
@@ -54,9 +54,9 @@ const List<ScanStep> readingSteps = [
   ),
   ScanStep(
     "Setting aside what we're unsure of",
-    "Anything we aren't confident about is left out, so you only hear about "
-        "what stands out. Your age matters here, since children's teeth need "
-        'a closer look.',
+    "Anything we aren't confident about is marked as faint and gets no advice, "
+        "so you can see how sure we are. Your age matters here, since children's "
+        'teeth need a closer look.',
   ),
 ];
 
@@ -69,8 +69,9 @@ const List<ScanStep> resultSteps = [
   ),
   ScanStep(
     'Writing your results',
-    'Last, we turn it all into plain sentences about general areas of your '
-        "mouth. Remember, this is a screening, not a diagnosis.",
+    'Last, we turn it all into a map of general areas of your mouth and your '
+        'own photos with each sign marked. Remember, this is a screening, not a '
+        'diagnosis.',
   ),
 ];
 
