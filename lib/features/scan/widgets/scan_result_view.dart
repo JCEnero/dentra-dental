@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../dental_profile/data/models/dental_answers.dart';
 import '../../dental_profile/providers/dental_profile_providers.dart';
 import '../../dental_profile/widgets/prompt_care_note.dart';
+import '../../screening/data/models/scan_check_in.dart';
 import '../data/scan_regions.dart';
 import '../data/scan_report.dart';
 import '../providers/scan_session_provider.dart';
@@ -206,8 +208,10 @@ class _Done extends StatelessWidget {
             imageOf: _imageOf,
             status: status,
             date: date,
-            viewsTaken: n,
+            at: session.finishedAt ?? DateTime.now(),
             leading: mark,
+            saved: session.analysis?.savedSession,
+            checkIn: session.checkIn,
             sessionId: session.analysis?.savedSession?.id,
             showActions: !retakes,
             onClinics:
@@ -257,7 +261,8 @@ class _Done extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         body,
-        const _ReportedCareNote(),
+        if (report == null || report.detectorOff)
+          _ReportedCareNote(checkIn: session.checkIn),
         const SizedBox(height: 14),
         const ScanDisclaimer(),
       ],
@@ -354,14 +359,19 @@ class _SummaryCard extends StatelessWidget {
 /// dental profile). Shown next to the result, never folded into it, and
 /// no screening result removes it.
 class _ReportedCareNote extends ConsumerWidget {
-  const _ReportedCareNote();
+  const _ReportedCareNote({this.checkIn});
+
+  /// What they said before this scan, which outranks their profile.
+  final ScanCheckIn? checkIn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(dentalProfileProvider).valueOrNull;
-    if (profile == null || !profile.answers.needsPromptCare) {
-      return const SizedBox.shrink();
-    }
+    final said = checkIn?.normalized();
+    final needsCare = said != null && said.symptoms.isNotEmpty
+        ? said.severity == DiscomfortLevel.severe || said.needsEmergencyCare
+        : profile?.answers.needsPromptCare ?? false;
+    if (!needsCare) return const SizedBox.shrink();
     return const Padding(
       padding: EdgeInsets.only(top: 14),
       child: PromptCareNote(),

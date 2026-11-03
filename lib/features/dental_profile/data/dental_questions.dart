@@ -9,6 +9,11 @@ enum DentalQuestionId {
   discomfortLevel,
   screeningGoals,
   difficultAreas,
+  pastTreatments,
+  lastCleaning,
+  brushing,
+  betweenTeeth,
+  healthFactors,
   dentalAppliances,
   additionalInformation,
 }
@@ -154,6 +159,46 @@ const Map<DentalQuestionId, DentalQuestion> dentalQuestions = {
     options: DifficultArea.values,
     multiple: true,
   ),
+  DentalQuestionId.pastTreatments: DentalQuestion(
+    id: DentalQuestionId.pastTreatments,
+    title: 'Have you had any of these treatments?',
+    reviewLabel: 'Past treatments',
+    helper: 'Fillings and crowns can look like marks in a photo.',
+    options: PastTreatment.values,
+    multiple: true,
+    optional: true,
+  ),
+  DentalQuestionId.lastCleaning: DentalQuestion(
+    id: DentalQuestionId.lastCleaning,
+    title: 'When was your last professional cleaning?',
+    reviewLabel: 'Last cleaning',
+    options: LastCleaning.values,
+    optional: true,
+  ),
+  DentalQuestionId.brushing: DentalQuestion(
+    id: DentalQuestionId.brushing,
+    title: 'How often do you brush your teeth?',
+    reviewLabel: 'Brushing',
+    options: BrushingHabit.values,
+    optional: true,
+  ),
+  DentalQuestionId.betweenTeeth: DentalQuestion(
+    id: DentalQuestionId.betweenTeeth,
+    title: 'How often do you clean between your teeth?',
+    reviewLabel: 'Cleaning between teeth',
+    helper: 'With floss or small brushes.',
+    options: BetweenTeethHabit.values,
+    optional: true,
+  ),
+  DentalQuestionId.healthFactors: DentalQuestion(
+    id: DentalQuestionId.healthFactors,
+    title: 'Do any of these apply to you?',
+    reviewLabel: 'Health factors',
+    helper: 'They can affect your teeth and gums.',
+    options: HealthFactor.values,
+    multiple: true,
+    optional: true,
+  ),
   DentalQuestionId.dentalAppliances: DentalQuestion(
     id: DentalQuestionId.dentalAppliances,
     title: 'Do you use any of these dental appliances?',
@@ -212,6 +257,19 @@ const List<DentalStep> dentalSteps = [
   ),
   DentalStep(
     eyebrow: 'Optional',
+    title: 'Your dental care',
+    summary: 'Skip this step if you prefer. It helps us fit your advice to you.',
+    optional: true,
+    questions: [
+      DentalQuestionId.pastTreatments,
+      DentalQuestionId.lastCleaning,
+      DentalQuestionId.brushing,
+      DentalQuestionId.betweenTeeth,
+      DentalQuestionId.healthFactors,
+    ],
+  ),
+  DentalStep(
+    eyebrow: 'Optional',
     title: 'A few more details',
     summary: 'Skip this step if you prefer.',
     optional: true,
@@ -239,6 +297,11 @@ extension DentalAnswersAccess on DentalAnswers {
         DentalQuestionId.discomfortLevel => _one(discomfortLevel),
         DentalQuestionId.screeningGoals => screeningGoals,
         DentalQuestionId.difficultAreas => difficultAreas,
+        DentalQuestionId.pastTreatments => pastTreatments,
+        DentalQuestionId.lastCleaning => _one(lastCleaning),
+        DentalQuestionId.brushing => _one(brushing),
+        DentalQuestionId.betweenTeeth => _one(betweenTeeth),
+        DentalQuestionId.healthFactors => healthFactors,
         DentalQuestionId.dentalAppliances => dentalAppliances,
         DentalQuestionId.additionalInformation => const {},
       };
@@ -279,6 +342,16 @@ extension DentalAnswersAccess on DentalAnswers {
         copyWith(screeningGoals: typed<ScreeningGoal>()),
       DentalQuestionId.difficultAreas =>
         copyWith(difficultAreas: typed<DifficultArea>()),
+      DentalQuestionId.pastTreatments =>
+        copyWith(pastTreatments: typed<PastTreatment>()),
+      DentalQuestionId.lastCleaning =>
+        copyWith(lastCleaning: s.firstOrNull as LastCleaning?),
+      DentalQuestionId.brushing =>
+        copyWith(brushing: s.firstOrNull as BrushingHabit?),
+      DentalQuestionId.betweenTeeth =>
+        copyWith(betweenTeeth: s.firstOrNull as BetweenTeethHabit?),
+      DentalQuestionId.healthFactors =>
+        copyWith(healthFactors: typed<HealthFactor>()),
       DentalQuestionId.dentalAppliances =>
         copyWith(dentalAppliances: typed<DentalAppliance>()),
       DentalQuestionId.additionalInformation => this,

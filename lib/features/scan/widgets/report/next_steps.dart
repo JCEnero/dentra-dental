@@ -5,37 +5,64 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../../shared/widgets/glass_card.dart';
-import '../../data/scan_report.dart';
+import '../../data/care_plan.dart';
+import '../../data/patient_context.dart';
 import '../scan_theme.dart';
 import 'report_motion.dart';
 import 'report_style.dart';
 
-/// What to do, as a short path: the visit, what to ask there, and every day.
-/// Urgency is spelled out in words.
+/// What to do, as a short path: each step and where it came from, what to ask
+/// at the visit, and every day. Urgency is spelled out in words.
 class NextSteps extends StatelessWidget {
-  const NextSteps({super.key, required this.report, required this.date});
+  const NextSteps({
+    super.key,
+    required this.plan,
+    required this.context_,
+    required this.date,
+  });
 
-  final ScreeningReport report;
+  final CarePlan plan;
+  final PatientContext context_;
   final String date;
 
   void _copy(BuildContext context) {
     final messenger = ScaffoldMessenger.of(context);
-    Clipboard.setData(ClipboardData(text: report.summaryForDentist(date))).then(
+    final text = plan.report.summaryForDentist(
+      date,
+      reported: context_.reportedLines,
+    );
+    Clipboard.setData(ClipboardData(text: text)).then(
       (_) => messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(dentraSnackBar('Copied. Paste it into a message.')),
     );
   }
 
+  /// Most steps shown here, so the path stays short. All go in the PDF.
+  static const int _maxSteps = 3;
+
+  static IconData _iconOf(CareStep step) => switch (step.level) {
+        CareLevel.emergency => Icons.emergency_outlined,
+        CareLevel.prompt => Icons.priority_high_rounded,
+        _
+            when !step.sources.contains(CareSource.check) &&
+                step.sources.contains(CareSource.records) =>
+          Icons.folder_outlined,
+        _ => Icons.event_available_outlined,
+      };
+
+  static String? _whenOf(CareLevel level) => switch (level) {
+        CareLevel.emergency => 'Get help now',
+        CareLevel.prompt => 'See a dentist promptly',
+        CareLevel.soon => 'Book a visit soon',
+        CareLevel.nextVisit => 'At your next check-up',
+        CareLevel.routine => null,
+      };
+
   @override
   Widget build(BuildContext context) {
-    final notes = report.analysis.recommendations;
-    final advice = [
-      for (final r in notes)
-        if (r.code != 'braces_seen') r,
-    ];
-    final braces = notes.where((r) => r.code == 'braces_seen');
-    final tips = report.careTips;
+    final braces = plan.report.analysis.recommendations
+        .where((r) => r.code == 'braces_seen');
     return GlassCard(
       width: double.infinity,
       borderRadius: BorderRadius.circular(24),
@@ -45,7 +72,7 @@ class NextSteps extends StatelessWidget {
         builder: (context, t) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (advice.isEmpty)
+            if (plan.steps.isEmpty)
               _Stop(
                 icon: Icons.event_available_outlined,
                 title: 'Keep your regular check-ups',
@@ -56,18 +83,29 @@ class NextSteps extends StatelessWidget {
                 ),
               )
             else
-              for (final r in advice)
+              for (final step in plan.steps.take(_maxSteps))
                 _Stop(
-                  icon: Icons.event_available_outlined,
-                  title: r.title,
+                  icon: _iconOf(step),
+                  title: step.title,
                   t: t,
-                  subtitle: switch (r.urgency) {
-                    'prompt' => 'See a dentist promptly',
-                    'soon' => 'Book a visit soon',
-                    _ => 'At your next check-up',
-                  },
-                  child: Text(r.detail, style: reportBody),
+                  subtitle: _whenOf(step.level),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(step.detail, style: reportBody),
+                      const SizedBox(height: 2),
+                      Text(careSourcesInWords(step.sources), style: reportNote),
+                    ],
+                  ),
                 ),
+            if (plan.steps.length > _maxSteps)
+              Padding(
+                padding: const EdgeInsets.only(left: 46, bottom: 12),
+                child: Text(
+                  'And ${plan.steps.length - _maxSteps} more in your PDF.',
+                  style: reportNote,
+                ),
+              ),
             _Stop(
               icon: Icons.forum_outlined,
               title: 'At your visit, ask',
@@ -75,7 +113,7 @@ class NextSteps extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final q in report.dentistQuestions)
+                  for (final q in plan.questions)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 3),
                       child: Text(q, style: reportBody),
@@ -105,7 +143,7 @@ class NextSteps extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final tip in tips)
+                  for (final tip in plan.dailyCare)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 3),
                       child: Text(tip, style: reportBody),
@@ -204,10 +242,20 @@ class _Stop extends StatelessWidget {
   }
 }
 
-/// Where to go from here: nearby clinics, or asking Rabi about the results.
+/// Where to go from here: keeping the results, nearby clinics, or asking Rabi
+/// about them.
 class ReportActions extends StatelessWidget {
-  const ReportActions({super.key, this.onAskRabi, this.onClinics});
+  const ReportActions({
+    super.key,
+    this.onDownload,
+    this.downloading = false,
+    this.onAskRabi,
+    this.onClinics,
+  });
 
+  /// Null while the page has nothing to put in a report.
+  final VoidCallback? onDownload;
+  final bool downloading;
   final VoidCallback? onAskRabi;
   final VoidCallback? onClinics;
 
@@ -238,6 +286,16 @@ class ReportActions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (onDownload != null)
+          DentraPillButton(
+            label: 'Download My Results',
+            loading: downloading,
+            loadingLabel: 'Preparing your PDF',
+            icon: Icons.download_rounded,
+            onPressed: downloading ? null : onDownload,
+          ),
+        if (onDownload != null && (onClinics != null || onAskRabi != null))
+          const SizedBox(height: 10),
         if (onClinics != null)
           row(
             const ScanIconDisc(Icons.location_on_outlined),

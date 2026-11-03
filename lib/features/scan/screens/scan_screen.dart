@@ -6,6 +6,10 @@ import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/primary_button.dart';
+import '../../dental_profile/providers/dental_profile_providers.dart';
+import '../../dental_records/providers/dental_records_provider.dart';
+import '../../screening/providers/screening_sessions_provider.dart';
+import '../data/check_in_plan.dart';
 import '../data/models/captured_image.dart';
 import '../providers/device_connection_provider.dart';
 import '../providers/scan_session_provider.dart';
@@ -14,6 +18,7 @@ import '../services/phone_camera_service.dart';
 import '../services/screening_analysis_service.dart';
 import '../widgets/capture_stage.dart';
 import '../widgets/chamber/scan_chamber_screen.dart';
+import '../widgets/check_in_sheet.dart';
 import '../widgets/device_status_card.dart';
 import '../widgets/region_selector.dart';
 import '../widgets/scan_action_bar.dart';
@@ -60,6 +65,29 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     showScanChamber(context).whenComplete(() => _chamberOpen = false);
   }
 
+  /// Start asks only what isn't known yet, once per scan. Closing the sheet
+  /// without choosing stays on the start page.
+  Future<void> _start() async {
+    final scan = ref.read(scanSessionProvider.notifier);
+    if (ref.read(scanSessionProvider).checkInSeen) {
+      scan.start();
+      return;
+    }
+    final plan = CheckInPlan.of(
+      now: DateTime.now(),
+      profile: ref.read(dentalProfileProvider).valueOrNull,
+      sessions: ref.read(screeningSessionsProvider).valueOrNull ?? const [],
+      records: ref.read(dentalRecordsProvider).valueOrNull ?? const [],
+    );
+    if (plan.isEmpty) {
+      scan.start();
+      return;
+    }
+    final result = await showCheckInSheet(context, plan);
+    if (result == null || !mounted) return;
+    scan.start(checkIn: result.answers);
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(scanSessionProvider);
@@ -70,6 +98,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final scan = ref.read(scanSessionProvider.notifier);
     // Start building the 3D model now, so the guides are ready when shown.
     ref.watch(scanDentitionProvider);
+    // Load what the check-in needs to know, so Start doesn't have to wait.
+    ref.watch(dentalProfileProvider);
+    ref.watch(dentalRecordsProvider);
 
     ref.listen(scanSessionProvider.select((s) => s.historySaveFailed),
         (_, failed) {
@@ -271,7 +302,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   onRetryAnalysis: scan.retryAnalysis,
                   onSkipAnalysis: scan.skipAnalysis,
                   onNewScan: scan.reset,
-                  onStart: scan.start,
+                  onStart: _start,
                   onRetakeFlagged: scan.retakeFlagged,
                 ),
               ),

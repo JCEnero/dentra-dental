@@ -15,6 +15,7 @@ import 'package:dentra_mobile/features/scan/widgets/scan_hero.dart';
 import 'package:dentra_mobile/features/scan/services/phone_camera_service.dart';
 import 'package:dentra_mobile/features/scan/services/photo_quality.dart';
 import 'package:dentra_mobile/features/scan/services/screening_analysis_service.dart';
+import 'package:dentra_mobile/features/dental_profile/data/models/dental_answers.dart';
 import 'package:dentra_mobile/features/screening/providers/screening_sessions_provider.dart';
 import 'package:dentra_mobile/features/screening/data/models/screening_session.dart';
 import 'package:dentra_mobile/shared/widgets/app_bottom_nav.dart';
@@ -149,8 +150,16 @@ Future<ProviderContainer> pumpScan(
     ),
   ));
   await settle(tester, steps: 3);
-  if (pastIntro) await tapText(tester, 'Start scan');
+  if (pastIntro) await startScan(tester);
   return container;
+}
+
+/// Taps Start and skips the check-in that opens.
+Future<void> startScan(WidgetTester tester) async {
+  await tapText(tester, 'Start scan');
+  await settle(tester, steps: 5);
+  await tapText(tester, 'Skip for now');
+  await settle(tester, steps: 5);
 }
 
 /// Ends a run the test left waiting, so its timeout timer isn't left pending.
@@ -233,7 +242,7 @@ void main() {
       expect(find.text(step), findsOneWidget);
     }
     expect(find.textContaining('3D'), findsNothing);
-    await tapText(tester, 'Start scan');
+    await startScan(tester);
 
     expect(progressText(tester), '0 of 9 views captured');
     for (final r in scanRegions) {
@@ -420,7 +429,7 @@ void main() {
 
     await tapText(tester, 'Start new scan');
     expect(find.text('Start scan'), findsOneWidget);
-    await tapText(tester, 'Start scan');
+    await startScan(tester);
     expect(progressText(tester), '0 of 9 views captured');
   });
 
@@ -614,6 +623,66 @@ void main() {
     });
   });
 
+  group('the check-in before a scan', () {
+    testWidgets('closing it stays on the start page', (tester) async {
+      await pumpScan(tester, pastIntro: false);
+      await tapText(tester, 'Start scan');
+      await settle(tester, steps: 5);
+      expect(find.text('Before you scan'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Close'));
+      await settle(tester, steps: 8);
+      expect(find.text('Before you scan'), findsNothing);
+      expect(find.text('Start scan'), findsOneWidget);
+    });
+
+    testWidgets('skipping it starts the scan with nothing stored',
+        (tester) async {
+      final container = await pumpScan(tester, pastIntro: false);
+      await startScan(tester);
+      expect(progressText(tester), '0 of 9 views captured');
+      expect(container.read(scanSessionProvider).checkIn, isNull);
+    });
+
+    testWidgets('isn\'t asked again on the way back to the start page',
+        (tester) async {
+      final container = await pumpScan(tester, pastIntro: false);
+      await startScan(tester);
+      container.read(scanSessionProvider.notifier).showIntro();
+      await settle(tester);
+      await tapText(tester, 'Start scan');
+      await settle(tester, steps: 5);
+      expect(find.text('Before you scan'), findsNothing);
+      expect(progressText(tester), '0 of 9 views captured');
+    });
+
+    testWidgets('what\'s said goes with the scan, and survives a retake',
+        (tester) async {
+      final camera = FakeCamera();
+      final analysis = FakeAnalysis();
+      final container = await pumpScan(
+        tester,
+        camera: camera,
+        analysis: analysis,
+        pastIntro: false,
+      );
+      await tapText(tester, 'Start scan');
+      await settle(tester, steps: 5);
+      await tapText(tester, 'Tooth pain');
+      await tapText(tester, 'Continue');
+      await settle(tester, steps: 5);
+      final said = container.read(scanSessionProvider).checkIn;
+      expect(said?.symptoms, {CurrentConcern.toothPain});
+
+      await captureCurrent(tester, camera);
+      await tapText(tester, 'Finish with 1 of 9');
+      await settle(tester, steps: 12);
+      final history = await container.read(screeningSessionsProvider.future);
+      expect(history.first.checkIn?.symptoms, {CurrentConcern.toothPain});
+      await endRun(tester, analysis);
+    });
+  });
+
   testWidgets('start over asks first and keeps work when declined',
       (tester) async {
     final camera = FakeCamera();
@@ -629,7 +698,7 @@ void main() {
     await tester.tap(find.text('Start over').last);
     await settle(tester);
     expect(find.text('Start scan'), findsOneWidget);
-    await tapText(tester, 'Start scan');
+    await startScan(tester);
     expect(progressText(tester), '0 of 9 views captured');
   });
 

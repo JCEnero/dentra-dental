@@ -15,6 +15,7 @@ class AnswerOptionTile extends StatelessWidget {
     required this.selected,
     required this.multiple,
     required this.onTap,
+    this.compact = false,
   });
 
   final String label;
@@ -25,6 +26,10 @@ class AnswerOptionTile extends StatelessWidget {
 
   /// Null disables the row (e.g. while saving).
   final VoidCallback? onTap;
+
+  /// A small tile for a grid of short answers: the label alone, centred, with
+  /// its fill showing that it's selected.
+  final bool compact;
 
   static const _radius = BorderRadius.all(Radius.circular(16));
 
@@ -46,8 +51,11 @@ class AnswerOptionTile extends StatelessWidget {
             child: AnimatedContainer(
               duration: motion,
               curve: Curves.easeOut,
-              constraints: const BoxConstraints(minHeight: 56),
-              padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
+              constraints: BoxConstraints(minHeight: compact ? 46 : 56),
+              alignment: compact ? Alignment.center : null,
+              padding: compact
+                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 8)
+                  : const EdgeInsets.fromLTRB(18, 14, 14, 14),
               decoration: BoxDecoration(
                 borderRadius: _radius,
                 color: selected
@@ -61,24 +69,40 @@ class AnswerOptionTile extends StatelessWidget {
                   width: selected ? 1.5 : 1,
                 ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
+              child: compact
+                  ? Text(
                       label,
+                      textAlign: TextAlign.center,
                       style: GoogleFonts.outfit(
-                        fontSize: 15.5,
+                        fontSize: 13.5,
                         fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.w500,
+                            selected ? FontWeight.w700 : FontWeight.w500,
                         color: AppColors.navy,
-                        height: 1.3,
+                        height: 1.2,
                       ),
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: GoogleFonts.outfit(
+                              fontSize: 15.5,
+                              fontWeight:
+                                  selected ? FontWeight.w600 : FontWeight.w500,
+                              color: AppColors.navy,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _Mark(
+                          selected: selected,
+                          multiple: multiple,
+                          duration: motion,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  _Mark(selected: selected, multiple: multiple, duration: motion),
-                ],
-              ),
             ),
           ),
         ),

@@ -76,6 +76,8 @@ class LocalScreeningRepository implements ScreeningRepository {
       totalRegions: session.totalRegions,
       captures: session.captures,
       analysis: session.analysis,
+      reportedContext: session.reportedContext ?? existing?.reportedContext,
+      checkIn: session.checkIn ?? existing?.checkIn,
       createdAt: existing?.createdAt ?? session.createdAt ?? now,
       updatedAt: now,
     );

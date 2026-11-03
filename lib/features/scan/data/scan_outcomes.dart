@@ -12,15 +12,18 @@ import 'scan_regions.dart';
 /// Six general areas: each arch split into left back, front and right back
 /// (the user's own left and right).
 enum MouthArea {
-  upperRight('Upper right back'),
-  upperFront('Upper front'),
-  upperLeft('Upper left back'),
-  lowerLeft('Lower left back'),
-  lowerFront('Lower front'),
-  lowerRight('Lower right back');
+  upperRight('Upper right back', 'upper_right'),
+  upperFront('Upper front', 'upper_front'),
+  upperLeft('Upper left back', 'upper_left'),
+  lowerLeft('Lower left back', 'lower_left'),
+  lowerFront('Lower front', 'lower_front'),
+  lowerRight('Lower right back', 'lower_right');
 
-  const MouthArea(this.label);
+  const MouthArea(this.label, this.id);
   final String label;
+
+  /// Stable id used by the API.
+  final String id;
 
   bool get isUpper => index <= upperLeft.index;
   bool get isFront => this == upperFront || this == lowerFront;
@@ -45,6 +48,14 @@ enum MouthArea {
   }
 
   bool contains(ToothInfo tooth) => of(tooth) == this;
+
+  /// The areas some FDI tooth numbers fall in. Numbers the chart doesn't know
+  /// are left out.
+  static Set<MouthArea> ofTeeth(Iterable<String> teeth) => {
+        for (final t in teeth)
+          if (int.tryParse(t) case final n?)
+            if (ToothCatalog.byFdi(n) case final tooth?) of(tooth),
+      };
 }
 
 /// One photo's result, least to most pressing. [retake] and [notChecked] mean

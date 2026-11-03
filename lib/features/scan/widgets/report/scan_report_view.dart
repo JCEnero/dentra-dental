@@ -2,13 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/widgets/glass_card.dart';
+import '../../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../ai_assistant/ai_chat_controller.dart';
+import '../../../../core/utils/dentra_dates.dart';
+import '../../../dental_profile/data/models/dental_answers.dart';
+import '../../../dental_profile/providers/dental_profile_providers.dart';
+import '../../../dental_records/data/models/dental_record.dart';
+import '../../../dental_records/providers/dental_records_provider.dart';
+import '../../../profile/providers/profile_provider.dart';
+import '../../../screening/data/models/scan_check_in.dart';
 import '../../../screening/data/models/screening_session.dart';
 import '../../../screening/providers/screening_sessions_provider.dart';
+import '../../data/care_plan.dart';
+import '../../data/patient_context.dart';
 import '../../data/scan_regions.dart';
 import '../../data/scan_report.dart';
+import '../../services/report_download.dart';
 import '../scan_motion.dart';
 import '../scan_theme.dart';
+import 'context_section.dart';
 import 'next_steps.dart';
 import 'report_charts.dart';
 import 'report_hero.dart';
@@ -19,9 +31,10 @@ import 'trend_section.dart';
 import 'understand_section.dart';
 
 /// The whole result of one analysis, as one story: where things stand on a 3D
-/// mouth, what was seen in the real photos, what to do, what the scan covered,
-/// how it's changing, and what any of it means. Each part is a picture first and
-/// a sentence second. Used right after a scan and when opening one from history.
+/// mouth, what was seen in the real photos, how that sits with what the user told
+/// us and their records, what to do, what the scan covered, how it's changing,
+/// and what any of it means. Each part is a picture first and a sentence second.
+/// Used right after a scan and when opening one from history.
 class ScanReportView extends ConsumerStatefulWidget {
   const ScanReportView({
     super.key,
@@ -29,8 +42,10 @@ class ScanReportView extends ConsumerStatefulWidget {
     required this.imageOf,
     required this.status,
     required this.date,
-    required this.viewsTaken,
+    required this.at,
     required this.leading,
+    this.saved,
+    this.checkIn,
     this.sessionId,
     this.onClinics,
     this.showActions = true,
@@ -42,8 +57,17 @@ class ScanReportView extends ConsumerStatefulWidget {
   /// How the scan went, e.g. "Scan complete".
   final String status;
   final String date;
-  final int viewsTaken;
+
+  /// When the scan was taken.
+  final DateTime at;
   final Widget leading;
+
+  /// The stored scan, if it reached the server. It holds what the user had
+  /// told us at the time, so an old report keeps reading the same.
+  final ScreeningSession? saved;
+
+  /// What the user said before this scan, if it hasn't been stored yet.
+  final ScanCheckIn? checkIn;
 
   /// The scan on the timeline. Null means the newest in the history.
   final String? sessionId;
@@ -59,6 +83,7 @@ class ScanReportView extends ConsumerStatefulWidget {
 class _ScanReportViewState extends ConsumerState<ScanReportView> {
   final _focus = ValueNotifier<ReportSpot?>(null);
   final _signsKey = GlobalKey();
+  bool _downloading = false;
 
   @override
   void dispose() {
@@ -78,12 +103,80 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
     );
   }
 
-  void _askRabi(AiChatController chat) {
+  void _askRabi(AiChatController chat, PatientContext patient) {
     chat.open();
     chat.sendMessage(
       'Can you explain my scan results?',
-      prompt: rabiPromptFor(widget.report),
+      prompt: rabiPromptFor(widget.report, reported: patient.reportedLines),
     );
+  }
+
+  /// What's known about the user at this scan. A stored scan has what was
+  /// reported at the time, or knows there was nothing; only a scan the server
+  /// hasn't seen falls back on the profile.
+  PatientContext _patientFrom(
+    DentalProfile? profile,
+    AsyncValue<List<DentalRecord>> records,
+    List<ScreeningSession> sessions,
+  ) {
+    final saved = widget.saved;
+    return PatientContext(
+      at: widget.at,
+      profile: saved != null
+          ? saved.reportedContext
+          : profile == null
+              ? null
+              : ScreeningReportedContext.fromProfile(profile, widget.at),
+      checkIn: saved?.checkIn ?? widget.checkIn,
+      records: records.valueOrNull ?? const [],
+      recordsUnavailable: records.hasError,
+      followUpScan: sessions.any((s) =>
+          s.id != (widget.sessionId ?? saved?.id) &&
+          s.completedAt.isBefore(widget.at)),
+    );
+  }
+
+  /// The PDF is made on this device, from what this signed-in user can already
+  /// read, and goes nowhere but to them. It waits for anything still loading, so
+  /// a quick tap doesn't leave out their name or records.
+  Future<void> _download() async {
+    setState(() => _downloading = true);
+    final messenger = ScaffoldMessenger.of(context);
+    Future<T?> loaded<T>(Future<T> future) async {
+      try {
+        return await future.timeout(const Duration(seconds: 10));
+      } catch (_) {
+        return null;
+      }
+    }
+
+    try {
+      final person = await loaded(ref.read(profileProvider.future));
+      final profile = await loaded(ref.read(dentalProfileProvider.future));
+      await loaded(ref.read(dentalRecordsProvider.future));
+      final sessions =
+          await loaded(ref.read(screeningSessionsProvider.future)) ??
+              const <ScreeningSession>[];
+      if (!mounted) return;
+      await downloadScreeningReport(
+        report: widget.report,
+        patient:
+            _patientFrom(profile, ref.read(dentalRecordsProvider), sessions),
+        trend: ScanTrend.of(sessions, currentId: widget.sessionId),
+        person: person,
+        sessionId: widget.sessionId ?? widget.saved?.id,
+        imageOf: widget.imageOf,
+      );
+    } catch (_) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(dentraSnackBar(
+          'Couldn\'t make your PDF. Please try again.',
+          tone: DentraFeedbackTone.error,
+        ));
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
   }
 
   @override
@@ -98,13 +191,29 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
     // Opened from the history, this page sits above the shell Rabi lives in.
     final chat = AiChatScope.maybeRead(context);
     final trend = ScanTrend.of(sessions, currentId: widget.sessionId);
+    final patient = _patientFrom(
+      ref.watch(dentalProfileProvider).valueOrNull,
+      ref.watch(dentalRecordsProvider),
+      sessions,
+    );
+    final plan = CarePlan.of(report, patient, trend);
+    final hasContext = plan.links.isNotEmpty ||
+        patient.records.isNotEmpty ||
+        patient.recordsUnavailable ||
+        patient.symptomFacts.isNotEmpty ||
+        patient.treatmentFacts.isNotEmpty ||
+        patient.backgroundFacts.isNotEmpty;
 
     final sections = <Widget>[
+      if (plan.isEmergency) EmergencyBanner(plan: plan, at: widget.at),
       ReportHero(
         report: report,
+        plan: plan,
+        context: patient,
+        trend: trend,
         status: widget.status,
         date: widget.date,
-        viewsTaken: widget.viewsTaken,
+        time: DentraDates.time(widget.at),
         leading: widget.leading,
         focus: _focus,
         onSeeSpot: _seeSpot,
@@ -124,15 +233,28 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
             focus: _focus,
           ),
         ),
-      if (read)
+      if (hasContext)
+        _Section(
+          heading: const ReportHeading(
+            'You and this scan',
+            subtitle: 'How your answers and records sit with your photos. None '
+                'of this changes what the check saw.',
+          ),
+          child: ContextSection(plan: plan, patient: patient),
+        ),
+      if (read || plan.steps.isNotEmpty)
         _Section(
           heading: const ReportHeading('What to do next'),
-          child: NextSteps(report: report, date: widget.date),
+          child: NextSteps(plan: plan, context_: patient, date: widget.date),
         ),
-      if (widget.showActions && read)
+      if (read)
         ReportActions(
-          onAskRabi: chat == null ? null : () => _askRabi(chat),
-          onClinics: widget.onClinics,
+          onDownload: _download,
+          downloading: _downloading,
+          onAskRabi: !widget.showActions || chat == null
+              ? null
+              : () => _askRabi(chat, patient),
+          onClinics: widget.showActions ? widget.onClinics : null,
         ),
       if (read && surfaces != null)
         _Section(
@@ -166,14 +288,12 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
       if (read)
         const _Section(
           heading: ReportHeading('How decay grows'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DecayStages(),
-              SizedBox(height: 14),
-              WhatItReads(),
-            ],
-          ),
+          child: DecayStages(),
+        ),
+      if (read)
+        const _Section(
+          heading: ReportHeading('What this check can read'),
+          child: WhatItReads(),
         ),
       _Section(
         heading: ReportHeading(
@@ -226,8 +346,12 @@ class _Section extends StatelessWidget {
   }
 }
 
-/// What Rabi is told, so its answer is about these real results.
-String rabiPromptFor(ScreeningReport report) {
+/// What Rabi is told, so its answer is about these real results. What the user
+/// [reported] is marked as theirs, so it isn't taken for something the check saw.
+String rabiPromptFor(
+  ScreeningReport report, {
+  List<String> reported = const [],
+}) {
   final seen = [
     for (final s in report.spots)
       '- ${s.finding.label}: ${s.where}, ${s.strength.label.toLowerCase()}'
@@ -246,6 +370,8 @@ String rabiPromptFor(ScreeningReport report) {
       'Summary: ${report.analysis.summary}\n'
       'What was seen:\n${seen.isEmpty ? '- Nothing that needs attention.' : seen.join('\n')}\n'
       'Suggested next steps:\n${steps.isEmpty ? '- None.' : steps.join('\n')}\n'
+      '${reported.isEmpty ? '' : 'What I told DENTRA myself (not detected by the '
+          'check):\n${reported.map((l) => '- $l').join('\n')}\n'}'
       'Explain what this means in plain language and what I should do next. '
       'Remind me this is a screening, not a diagnosis.';
 }

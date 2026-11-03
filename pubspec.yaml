@@ -23,6 +23,9 @@ dependencies:
   google_sign_in: 7.2.0
   flutter_secure_storage: 11.2.0
   file_selector: 1.1.0
+  pdf: 3.11.3
+  printing: 5.14.2
+  image: 4.5.4
 
 dev_dependencies:
   flutter_test:
@@ -37,3 +40,4 @@ flutter:
     - assets/images/treatments/
     - assets/images/treatments/icons/
     - assets/videos/
+    - assets/fonts/

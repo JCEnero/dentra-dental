@@ -9,17 +9,6 @@ import 'report_charts.dart';
 import 'report_style.dart';
 import 'spot_photo.dart';
 
-/// What each strength means, in words. No figures: on a second, outside set of
-/// photos signs were right less often than on the set the model trained on, so
-/// a number here would claim more than has been shown.
-const Map<SignStrength, String> signMeaning = {
-  SignStrength.strong: 'The model is fairly sure. Worth showing a dentist.',
-  SignStrength.possible:
-      'The model leans yes, but it could be a stain or a shadow.',
-  SignStrength.faint:
-      'Often a false alarm. Mention it to a dentist if it keeps showing up.',
-};
-
 /// One sign at a time: the real photo in close on it, a small 3D mouth saying
 /// where that is, and how sure the model was. Swipe or use the arrows for the
 /// next one, and the big mouth at the top of the page turns with it.

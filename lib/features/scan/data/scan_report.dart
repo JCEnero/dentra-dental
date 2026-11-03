@@ -30,6 +30,17 @@ enum SignStrength {
   static const double strongFrom = 0.8;
 }
 
+/// What each strength means, in words. No figures: on a second, outside set of
+/// photos signs were right less often than on the set the model trained on, so
+/// a number here would claim more than has been shown.
+const Map<SignStrength, String> signMeaning = {
+  SignStrength.strong: 'The model is fairly sure. Worth showing a dentist.',
+  SignStrength.possible:
+      'The model leans yes, but it could be a stain or a shadow.',
+  SignStrength.faint:
+      'Often a false alarm. Mention it to a dentist if it keeps showing up.',
+};
+
 /// What can be said about one area, or one surface of it, least to most
 /// pressing.
 enum AreaState {
@@ -292,6 +303,46 @@ class ScreeningReport {
     };
   }
 
+  /// What was found, in a few words. What to do about it is said separately.
+  String get findingLine {
+    if (photosRead == 0) return headline;
+    final n = signCount;
+    if (n > 0) return '$n possible ${n == 1 ? 'sign' : 'signs'} of decay';
+    if (faintCount > 0) {
+      return '$faintCount faint ${faintCount == 1 ? 'sign' : 'signs'} to watch';
+    }
+    return 'Nothing flagged in your photos';
+  }
+
+  /// The confidence the model gave its signs, lowest and highest. Null if it
+  /// marked nothing or reported no confidence.
+  (int, int)? get confidenceRange {
+    final all = [
+      for (final s in spots)
+        if (s.percent case final p?) p,
+    ];
+    if (all.isEmpty) return null;
+    return (
+      all.reduce((a, b) => a < b ? a : b),
+      all.reduce((a, b) => a > b ? a : b),
+    );
+  }
+
+  /// This scan used the guided views, rather than the old five regions.
+  bool get guided => coverage != null;
+
+  /// Guided views with at least one photo read. An old scan counts its photos.
+  int get viewsRead => guided
+      ? scanRegions
+          .where((r) =>
+              (outcomes[r.id]?.checked ?? false) ||
+              (outcomes[secondPhotoId(r.id)]?.checked ?? false))
+          .length
+      : photosRead;
+
+  /// What [viewsRead] is out of.
+  int get viewsTotal => guided ? scanRegions.length : photoIds.length;
+
   int get areasFlagged => areas.values.where((a) => a.state.flagged).length;
 
   /// For each surface, in order: how many of its six areas were read, and how
@@ -355,8 +406,9 @@ class ScreeningReport {
         ],
       ];
 
-  /// The result as plain text, to paste into a message to a dentist.
-  String summaryForDentist(String date) {
+  /// The result as plain text, to paste into a message to a dentist. What the
+  /// user [reported] is kept under its own heading.
+  String summaryForDentist(String date, {List<String> reported = const []}) {
     final lines = [
       'DENTRA screening, $date. Not a diagnosis.',
       '$photosRead of ${photoIds.length} photos read.',
@@ -367,6 +419,11 @@ class ScreeningReport {
             'in the ${s.photo.label} photo.',
       if (dentalWorkLine case final work?) 'Also seen: $work.',
       'Not read by this check: plaque, tartar, gums, inner sides.',
+      if (reported.isNotEmpty) ...[
+        '',
+        'What I told DENTRA (my own words, not detected by the check):',
+        for (final line in reported) '- $line',
+      ],
     ];
     return lines.join('\n');
   }

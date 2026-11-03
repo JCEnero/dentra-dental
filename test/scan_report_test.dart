@@ -150,7 +150,7 @@ Future<void> _pumpReport(
     imageOf: (_) => MemoryImage(_png),
     status: 'Scan complete',
     date: 'November 2, 2026',
-    viewsTaken: 9,
+    at: DateTime(2026, 11, 2, 9, 30),
     leading: const SizedBox.square(dimension: 44),
     sessionId: sessionId,
     onClinics: () {},
@@ -751,13 +751,19 @@ void main() {
     testWidgets('leads with the result, the scale and the figures', (tester) async {
       await _pumpReport(tester, busy, history: history, sessionId: 'b');
       expect(find.text('Book a dental visit soon'), findsOneWidget);
-      expect(find.textContaining('3 signs of possible decay'), findsOneWidget);
+      expect(find.text('3 possible signs of decay'), findsOneWidget);
       expect(
-        find.bySemanticsLabel('When to see a dentist: Book soon, step 3 of 4'),
+        find.bySemanticsLabel(RegExp('On a scale .* this is Soon')),
         findsOneWidget,
       );
-      expect(find.bySemanticsLabel('surfaces read: 12 of 18'), findsOneWidget);
-      expect(find.bySemanticsLabel('photos read: 7 of 9'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(RegExp('Views read: 7 of 9')),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(RegExp('Model confidence: ')),
+        findsOneWidget,
+      );
       expect(find.byType(Mouth3D), findsOneWidget);
     });
 
@@ -863,7 +869,7 @@ void main() {
         ),
       );
       expect(find.text('Faint signs to watch'), findsOneWidget);
-      expect(find.text('Keep your regular check-ups'), findsOneWidget);
+      expect(find.text('Keep your regular check-ups'), findsWidgets);
     });
 
     testWidgets('a clear result has nothing to spot and nothing to do',
@@ -872,7 +878,7 @@ void main() {
       expect(find.text('Nothing flagged in your photos'), findsOneWidget);
       expect(find.byType(SignsSection), findsNothing);
       // Still has something to say: keep the check-ups going.
-      expect(find.text('Keep your regular check-ups'), findsOneWidget);
+      expect(find.text('Keep your regular check-ups'), findsWidgets);
       // The first scan: nothing to compare with yet.
       expect(find.text('This is your starting point'), findsOneWidget);
     });

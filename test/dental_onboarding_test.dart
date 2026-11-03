@@ -88,6 +88,11 @@ void main() {
         'difficult_areas': ['back_teeth'],
         'dental_appliances': <String>[],
         'dental_appliances_other': null,
+        'past_treatments': <String>[],
+        'last_cleaning': null,
+        'brushing': null,
+        'between_teeth': null,
+        'health_factors': <String>[],
         'additional_information': null,
       });
     });
@@ -150,7 +155,7 @@ void main() {
         ..next();
       expect(c.currentStep!.optional, isTrue);
       expect(c.canSkip, isTrue);
-      c.toggle(DentalQuestionId.dentalAppliances, DentalAppliance.braces);
+      c.toggle(DentalQuestionId.pastTreatments, PastTreatment.filling);
       expect(c.canSkip, isFalse);
     });
 
@@ -343,6 +348,7 @@ void main() {
       await tapButton(tester, 'Continue');
 
       await tapButton(tester, 'Skip this step');
+      await tapButton(tester, 'Skip this step');
       expect(find.text('Review your answers'), findsOneWidget);
       expect(find.text('Tooth pain'), findsOneWidget);
 
@@ -367,7 +373,7 @@ void main() {
         (tester) async {
       drafts.drafts['stub-uid-001'] = const QuestionnaireDraft(
         answers: sampleAnswers,
-        step: 5, // review
+        step: 6, // review
       );
       repo.saveError = offline;
       await signIn(tester);
@@ -521,6 +527,7 @@ void main() {
 
       await tapButton(tester, 'Continue');
       await tapButton(tester, 'Continue');
+      await tapButton(tester, 'Skip this step');
       await tapButton(tester, 'Skip this step');
       expect(find.text('Review your answers'), findsOneWidget);
       expect(tester.takeException(), isNull);

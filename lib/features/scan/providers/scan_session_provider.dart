@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../notifications/data/notification_events.dart';
 import '../../notifications/providers/notifications_provider.dart';
+import '../../screening/data/models/scan_check_in.dart';
 import '../../screening/data/models/screening_session.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
 import '../data/models/captured_image.dart';
@@ -43,6 +44,8 @@ class ScanSessionState {
   const ScanSessionState({
     required this.selectedRegionId,
     this.started = false,
+    this.checkIn,
+    this.checkInSeen = false,
     this.captures = const {},
     this.capturePhase = CapturePhase.idle,
     this.transferProgress,
@@ -67,6 +70,12 @@ class ScanSessionState {
 
   /// Past the intro, into the guided views.
   final bool started;
+
+  /// What the user said before this scan. Null when they skipped it.
+  final ScanCheckIn? checkIn;
+
+  /// They've had their say, so coming back to the intro doesn't ask again.
+  final bool checkInSeen;
 
   /// Accepted images by region id. A region is complete only once its
   /// image is here.
@@ -137,6 +146,8 @@ class ScanSessionState {
   ScanSessionState copyWith({
     String? selectedRegionId,
     bool? started,
+    ScanCheckIn? checkIn,
+    bool? checkInSeen,
     Map<String, CapturedImage>? captures,
     CapturePhase? capturePhase,
     Object? transferProgress = _unset,
@@ -159,6 +170,8 @@ class ScanSessionState {
     return ScanSessionState(
       selectedRegionId: selectedRegionId ?? this.selectedRegionId,
       started: started ?? this.started,
+      checkIn: checkIn ?? this.checkIn,
+      checkInSeen: checkInSeen ?? this.checkInSeen,
       captures: captures ?? this.captures,
       capturePhase: capturePhase ?? this.capturePhase,
       transferProgress: transferProgress == _unset
@@ -231,8 +244,12 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
   ScanSessionState build() =>
       ScanSessionState(selectedRegionId: scanRegions.first.id);
 
-  /// Leaves the intro for the guided views.
-  void start() => state = state.copyWith(started: true);
+  /// Leaves the intro for the guided views, keeping what the user said first.
+  void start({ScanCheckIn? checkIn}) => state = state.copyWith(
+        started: true,
+        checkIn: checkIn,
+        checkInSeen: true,
+      );
 
   /// Back to the intro. Photos taken so far stay.
   void showIntro() {
@@ -386,6 +403,7 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
       completedAt: now,
       capturedRegions: captured,
       totalRegions: scanRegions.length,
+      checkIn: state.checkIn,
       captures: [
         for (final id in captured)
           ScreeningCapture(
@@ -481,6 +499,8 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
           ? first.id
           : secondPhotoId(first.id),
       started: true,
+      checkIn: state.checkIn,
+      checkInSeen: true,
       captures: Map.unmodifiable({...state.captures}
         ..removeWhere((id, _) => flagged.contains(id))),
     );

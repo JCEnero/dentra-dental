@@ -328,59 +328,232 @@ class ToothStagePainter extends CustomPainter {
   bool shouldRepaint(ToothStagePainter old) => old.stage != stage;
 }
 
-/// What the check reads today and what it doesn't, side by side, so a clear
-/// result isn't taken for more than it is, then what can fool it. Worded from
-/// what it really got wrong on photos dentists had looked at.
+/// What a result can speak to and what it can't, against a tooth with the
+/// surfaces it reads filled in. Nothing here is a score: when a new class is
+/// added to the model, move it up a row.
 class WhatItReads extends StatelessWidget {
   const WhatItReads({super.key});
 
   @override
   Widget build(BuildContext context) {
-    Widget column(String title, String body) => Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: reportCardTitle),
-              const SizedBox(height: 3),
-              Text(body, style: reportBody),
-            ],
-          ),
-        );
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    const rows = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ScopeRow(
+          fill: _ScopeFill.solid,
+          title: 'Reads',
+          text: 'Visible signs of decay on chewing and outer surfaces.',
+        ),
+        SizedBox(height: 11),
+        _ScopeRow(
+          fill: _ScopeFill.half,
+          title: 'Often misses',
+          text: 'Small or early cavities, and decay between teeth or at the '
+              'gumline.',
+        ),
+        SizedBox(height: 11),
+        _ScopeRow(
+          fill: _ScopeFill.hollow,
+          title: 'Can\'t read yet',
+          text: 'Plaque, tartar, gums and inner sides.',
+        ),
+      ],
+    );
+    return GlassCard(
+      width: double.infinity,
+      borderRadius: BorderRadius.circular(24),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          LayoutBuilder(builder: (context, constraints) {
+            const tooth = ExcludeSemantics(
+              child: SizedBox(
+                width: 76,
+                height: 100,
+                child: CustomPaint(painter: _ScopeToothPainter()),
+              ),
+            );
+            if (constraints.maxWidth / scale < 250) return rows;
+            return const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                column(
-                  'This check reads',
-                  'Visible signs of decay on the outer and chewing surfaces of '
-                      'your teeth.',
-                ),
-                VerticalDivider(
-                  width: 25,
-                  thickness: 1,
-                  color: ReportColors.rule,
-                ),
-                column(
-                  'It can\'t read yet',
-                  'Plaque, tartar, gums and inner sides. It also misses many '
-                      'small cavities and decay between teeth.',
-                ),
+                tooth,
+                SizedBox(width: 14),
+                Expanded(child: rows),
               ],
-            ),
+            );
+          }),
+          const SizedBox(height: 13),
+          Divider(height: 1, thickness: 1, color: ReportColors.rule),
+          const SizedBox(height: 11),
+          const _ScopeNote(
+            title: 'Can look like decay',
+            text: 'Stained grooves, old fillings and shadows.',
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Stained grooves, old fillings and shadows can look like decay in a '
-            'photo. Confidence is how sure the model is, not how bad a spot is.',
-            style: reportNote,
+          const SizedBox(height: 7),
+          const _ScopeNote(
+            title: 'Confidence',
+            text: 'How sure the model is, not how bad a spot is.',
           ),
         ],
       ),
     );
   }
+}
+
+enum _ScopeFill { solid, half, hollow }
+
+class _ScopeRow extends StatelessWidget {
+  const _ScopeRow({
+    required this.fill,
+    required this.title,
+    required this.text,
+  });
+
+  final _ScopeFill fill;
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 3),
+          child: ExcludeSemantics(
+            child: SizedBox.square(
+              dimension: 12,
+              child: CustomPaint(painter: _ScopeFillPainter(fill)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: reportCardTitle),
+              const SizedBox(height: 1),
+              Text(text, style: reportBody),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScopeFillPainter extends CustomPainter {
+  const _ScopeFillPainter(this.fill);
+
+  final _ScopeFill fill;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.width / 2;
+    final center = Offset(r, r);
+    canvas.drawCircle(center, r, Paint()..color = AppColors.white);
+    if (fill == _ScopeFill.solid) {
+      canvas.drawCircle(center, r, Paint()..color = ReportColors.possible);
+    } else if (fill == _ScopeFill.half) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: r),
+        math.pi / 2,
+        math.pi,
+        true,
+        Paint()..color = ReportColors.possible,
+      );
+    }
+    canvas.drawCircle(
+      center,
+      r - 0.6,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = fill == _ScopeFill.hollow
+            ? ReportColors.hollowEdge
+            : ReportColors.possible,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScopeFillPainter old) => old.fill != fill;
+}
+
+class _ScopeNote extends StatelessWidget {
+  const _ScopeNote({required this.title, required this.text});
+
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        style: reportNote,
+        children: [
+          TextSpan(
+            text: '$title  ',
+            style: GoogleFonts.outfit(
+              fontSize: 11.5,
+              height: 1.4,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+          ),
+          TextSpan(text: text),
+        ],
+      ),
+    );
+  }
+}
+
+/// The same cut-away tooth as the decay stages, with what the check reads shown
+/// on it: the chewing surface and the outer side in teal, while the inner side,
+/// the gumline and the root stay pale.
+class _ScopeToothPainter extends CustomPainter {
+  const _ScopeToothPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = math.min(size.width / 44, size.height / 58);
+    canvas.translate((size.width - 44 * s) / 2, (size.height - 58 * s) / 2);
+    canvas.scale(s);
+    final tooth = ToothStagePainter._tooth();
+    canvas.drawPath(tooth, Paint()..color = AppColors.white);
+    canvas.save();
+    canvas.clipPath(tooth);
+    // The chewing surface, then down the outer side as far as the gumline.
+    canvas.drawRect(
+      const Rect.fromLTWH(0, 0, 44, 8.5),
+      Paint()..color = ReportColors.possible,
+    );
+    canvas.drawRect(
+      const Rect.fromLTWH(0, 8.5, 11, 15.5),
+      Paint()..color = ReportColors.possible,
+    );
+    // Where gum meets tooth.
+    canvas.drawRect(
+      const Rect.fromLTWH(0, 24, 44, 5),
+      Paint()..color = AppColors.lavender.withValues(alpha: 0.9),
+    );
+    canvas.restore();
+    canvas.drawPath(
+      ToothStagePainter._dentin(),
+      Paint()..color = AppColors.lightLavender,
+    );
+    canvas.drawPath(
+      tooth,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9
+        ..color = AppColors.g2.withValues(alpha: 0.55),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScopeToothPainter old) => false;
 }

@@ -176,7 +176,8 @@ class _BodyState extends ConsumerState<_Body> {
                   imageOf: _imageOf,
                   status: 'Smart screening',
                   date: DentraDates.long(s.completedAt),
-                  viewsTaken: s.capturedViewCount,
+                  at: s.completedAt,
+                  saved: s,
                   leading: const ScanIconDisc(
                     Icons.auto_awesome_outlined,
                     size: 44,

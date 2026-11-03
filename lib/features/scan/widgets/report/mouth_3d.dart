@@ -11,7 +11,6 @@ import '../../../dental_explorer/geometry/dentition_builder.dart';
 import '../../../dental_explorer/rendering/dentition_renderer.dart';
 import '../../../dental_explorer/rendering/orbit_camera.dart';
 import '../../data/scan_outcomes.dart';
-import '../../data/scan_regions.dart';
 import '../../data/scan_report.dart';
 import '../../rendering/scan_scene.dart';
 import '../scan_motion.dart';

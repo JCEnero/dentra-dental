@@ -190,6 +190,86 @@ enum DentalAppliance implements AnswerOption {
   final bool exclusive;
 }
 
+enum PastTreatment implements AnswerOption {
+  filling('filling', 'Fillings'),
+  rootCanal('root_canal', 'Root canal'),
+  extraction('extraction', 'Tooth removed'),
+  crownOrBridge('crown_or_bridge', 'Crown or bridge'),
+  gumTreatment('gum_treatment', 'Gum treatment'),
+  none('none', 'None of these', exclusive: true),
+  notSure('not_sure', 'Not sure', exclusive: true);
+
+  const PastTreatment(this.id, this.label, {this.exclusive = false});
+  @override
+  final String id;
+  @override
+  final String label;
+  @override
+  final bool exclusive;
+}
+
+enum LastCleaning implements AnswerOption {
+  within6Months('within_6_months', 'Within the last 6 months'),
+  sixTo12Months('6_to_12_months', '6–12 months ago'),
+  overAYear('over_1_year', 'More than a year ago'),
+  never('never', 'I have never had a cleaning'),
+  dontRemember('dont_remember', "I don't remember");
+
+  const LastCleaning(this.id, this.label);
+  @override
+  final String id;
+  @override
+  final String label;
+  @override
+  bool get exclusive => false;
+}
+
+enum BrushingHabit implements AnswerOption {
+  twiceOrMore('twice_or_more', 'Twice a day or more'),
+  once('once', 'Once a day'),
+  lessThanDaily('less_than_daily', 'Less than once a day');
+
+  const BrushingHabit(this.id, this.label);
+  @override
+  final String id;
+  @override
+  final String label;
+  @override
+  bool get exclusive => false;
+}
+
+enum BetweenTeethHabit implements AnswerOption {
+  daily('daily', 'Every day'),
+  sometimes('sometimes', 'Sometimes'),
+  rarely('rarely', 'Rarely or never');
+
+  const BetweenTeethHabit(this.id, this.label);
+  @override
+  final String id;
+  @override
+  final String label;
+  @override
+  bool get exclusive => false;
+}
+
+enum HealthFactor implements AnswerOption {
+  diabetes('diabetes', 'Diabetes'),
+  dryMouth('dry_mouth', 'Dry mouth'),
+  teethGrinding('teeth_grinding', 'Grinding or clenching my teeth'),
+  tobacco('tobacco', 'Smoking or using tobacco'),
+  none('none', 'None of these', exclusive: true),
+  preferNotToAnswer('prefer_not_to_answer', 'Prefer not to answer',
+      exclusive: true);
+
+  const HealthFactor(this.id, this.label, {this.exclusive = false});
+  @override
+  final String id;
+  @override
+  final String label;
+  @override
+  final bool exclusive;
+}
+
 /// Limits shared with the API.
 abstract final class DentalTextLimits {
   static const int detail = 200;
@@ -215,6 +295,11 @@ class DentalAnswers {
     this.difficultAreas = const {},
     this.dentalAppliances = const {},
     this.dentalAppliancesOther = '',
+    this.pastTreatments = const {},
+    this.lastCleaning,
+    this.brushing,
+    this.betweenTeeth,
+    this.healthFactors = const {},
     this.additionalInformation = '',
   });
 
@@ -230,6 +315,11 @@ class DentalAnswers {
   final Set<DifficultArea> difficultAreas;
   final Set<DentalAppliance> dentalAppliances;
   final String dentalAppliancesOther;
+  final Set<PastTreatment> pastTreatments;
+  final LastCleaning? lastCleaning;
+  final BrushingHabit? brushing;
+  final BetweenTeethHabit? betweenTeeth;
+  final Set<HealthFactor> healthFactors;
   final String additionalInformation;
 
   /// "How long" is asked once an actual concern is reported.
@@ -272,6 +362,11 @@ class DentalAnswers {
         dentalAppliances: dentalAppliances,
         dentalAppliancesOther:
             asksDentalAppliancesOther ? dentalAppliancesOther.trim() : '',
+        pastTreatments: pastTreatments,
+        lastCleaning: lastCleaning,
+        brushing: brushing,
+        betweenTeeth: betweenTeeth,
+        healthFactors: healthFactors,
         additionalInformation: additionalInformation.trim(),
       );
 
@@ -288,6 +383,11 @@ class DentalAnswers {
     Set<DifficultArea>? difficultAreas,
     Set<DentalAppliance>? dentalAppliances,
     String? dentalAppliancesOther,
+    Set<PastTreatment>? pastTreatments,
+    LastCleaning? lastCleaning,
+    BrushingHabit? brushing,
+    BetweenTeethHabit? betweenTeeth,
+    Set<HealthFactor>? healthFactors,
     String? additionalInformation,
   }) {
     return DentalAnswers(
@@ -305,6 +405,11 @@ class DentalAnswers {
       dentalAppliances: dentalAppliances ?? this.dentalAppliances,
       dentalAppliancesOther:
           dentalAppliancesOther ?? this.dentalAppliancesOther,
+      pastTreatments: pastTreatments ?? this.pastTreatments,
+      lastCleaning: lastCleaning ?? this.lastCleaning,
+      brushing: brushing ?? this.brushing,
+      betweenTeeth: betweenTeeth ?? this.betweenTeeth,
+      healthFactors: healthFactors ?? this.healthFactors,
       additionalInformation:
           additionalInformation ?? this.additionalInformation,
     );
@@ -328,6 +433,11 @@ class DentalAnswers {
       'difficult_areas': ids(a.difficultAreas),
       'dental_appliances': ids(a.dentalAppliances),
       'dental_appliances_other': text(a.dentalAppliancesOther),
+      'past_treatments': ids(a.pastTreatments),
+      'last_cleaning': a.lastCleaning?.id,
+      'brushing': a.brushing?.id,
+      'between_teeth': a.betweenTeeth?.id,
+      'health_factors': ids(a.healthFactors),
       'additional_information': text(a.additionalInformation),
     };
   }
@@ -362,6 +472,11 @@ class DentalAnswers {
       dentalAppliances:
           _setFrom(DentalAppliance.values, json['dental_appliances']),
       dentalAppliancesOther: text('dental_appliances_other'),
+      pastTreatments: _setFrom(PastTreatment.values, json['past_treatments']),
+      lastCleaning: _byId(LastCleaning.values, json['last_cleaning']),
+      brushing: _byId(BrushingHabit.values, json['brushing']),
+      betweenTeeth: _byId(BetweenTeethHabit.values, json['between_teeth']),
+      healthFactors: _setFrom(HealthFactor.values, json['health_factors']),
       additionalInformation: text('additional_information'),
     );
   }

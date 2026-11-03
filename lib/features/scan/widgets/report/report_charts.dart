@@ -11,81 +11,13 @@ import 'report_style.dart';
 
 Color get _track => AppColors.g2.withValues(alpha: 0.13);
 
-/// One ratio against its limit, drawn as a ring with the figure inside it.
-class RingMeter extends StatelessWidget {
-  const RingMeter({
-    super.key,
-    required this.value,
-    required this.total,
-    required this.label,
-    this.size = 66,
-  });
-
-  final int value;
-  final int total;
-  final String label;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final share = total == 0 ? 0.0 : (value / total).clamp(0.0, 1.0);
-    return Semantics(
-      label: '$label: $value of $total',
-      excludeSemantics: true,
-      child: Column(
-        children: [
-          SizedBox.square(
-            dimension: size,
-            child: InViewAnimation(
-              builder: (context, t) => CustomPaint(
-                painter: _RingsPainter([(share * t, AppColors.primary)], 6),
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text.rich(
-                        TextSpan(
-                          text: '${(value * t).round()}',
-                          style: GoogleFonts.outfit(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.navy,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: '/$total',
-                              style: GoogleFonts.outfit(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                          ],
-                        ),
-                        maxLines: 1,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(label, textAlign: TextAlign.center, style: reportNote),
-        ],
-      ),
-    );
-  }
-}
-
-/// Rings inside one another, outermost first. Each is a share from 0 to 1.
 class _RingsPainter extends CustomPainter {
-  const _RingsPainter(this.rings, this.stroke, {this.gap = 4});
+  const _RingsPainter(this.rings, this.stroke);
+
+  static const double gap = 4;
 
   final List<(double, Color)> rings;
   final double stroke;
-  final double gap;
 
   @override
   void paint(Canvas canvas, Size size) {

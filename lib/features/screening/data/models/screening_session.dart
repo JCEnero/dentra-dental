@@ -1,5 +1,6 @@
 import '../../../dental_profile/data/models/dental_answers.dart';
 import '../../../scan/data/scan_regions.dart';
+import 'scan_check_in.dart';
 
 /// A finished scan session, as recorded in the user's screening history.
 ///
@@ -33,6 +34,10 @@ class ScreeningSession {
   /// from [analysis]. Set by the server; null without a profile.
   final ScreeningReportedContext? reportedContext;
 
+  /// What the user said just before this scan, if they answered. Also
+  /// self-reported, and also kept apart from [analysis].
+  final ScanCheckIn? checkIn;
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -45,6 +50,7 @@ class ScreeningSession {
     this.captures = const [],
     this.analysis,
     this.reportedContext,
+    this.checkIn,
     this.createdAt,
     this.updatedAt,
   });
@@ -79,6 +85,7 @@ class ScreeningSession {
       captures: captures ?? this.captures,
       analysis: analysis ?? this.analysis,
       reportedContext: reportedContext,
+      checkIn: checkIn,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -94,6 +101,7 @@ class ScreeningSession {
         'captures': captures.map((c) => c.toJson()).toList(),
         'analysis': analysis?.toJson(),
         'reported_context': reportedContext?.toJson(),
+        'check_in': checkIn?.toJson(),
         'created_at': createdAt?.toUtc().toIso8601String(),
         'updated_at': updatedAt?.toUtc().toIso8601String(),
       };
@@ -109,6 +117,7 @@ class ScreeningSession {
 
     final analysis = json['analysis'];
     final context = json['reported_context'];
+    final checkIn = json['check_in'];
     return ScreeningSession(
       id: json['id'] as String,
       userId: pick<String>('user_id', 'userId'),
@@ -126,6 +135,9 @@ class ScreeningSession {
       reportedContext: context == null
           ? null
           : ScreeningReportedContext.fromJson(context as Map<String, dynamic>),
+      checkIn: checkIn == null
+          ? null
+          : ScanCheckIn.fromJson(checkIn as Map<String, dynamic>),
       createdAt: date('created_at'),
       updatedAt: date('updated_at'),
     );
@@ -452,7 +464,42 @@ class ScreeningReportedContext {
     this.screeningGoals = const {},
     this.difficultAreas = const {},
     this.dentalAppliances = const {},
+    this.lastCheckup,
+    this.previousProblems = const {},
+    this.pastTreatments = const {},
+    this.lastCleaning,
+    this.brushing,
+    this.betweenTeeth,
+    this.healthFactors = const {},
+    this.answeredAt,
   });
+
+  /// The snapshot the server would take of [profile] right now, for a scan the
+  /// server hasn't stored yet.
+  factory ScreeningReportedContext.fromProfile(
+    DentalProfile profile,
+    DateTime at,
+  ) {
+    final a = profile.answers;
+    return ScreeningReportedContext(
+      profileVersion: profile.version,
+      recordedAt: at,
+      currentConcerns: a.currentConcerns,
+      concernDuration: a.concernDuration,
+      discomfortLevel: a.discomfortLevel,
+      screeningGoals: a.screeningGoals,
+      difficultAreas: a.difficultAreas,
+      dentalAppliances: a.dentalAppliances,
+      lastCheckup: a.lastCheckup,
+      previousProblems: a.previousProblems,
+      pastTreatments: a.pastTreatments,
+      lastCleaning: a.lastCleaning,
+      brushing: a.brushing,
+      betweenTeeth: a.betweenTeeth,
+      healthFactors: a.healthFactors,
+      answeredAt: profile.updatedAt ?? profile.completedAt,
+    );
+  }
 
   /// Dental profile version the snapshot was taken from.
   final int profileVersion;
@@ -463,6 +510,16 @@ class ScreeningReportedContext {
   final Set<ScreeningGoal> screeningGoals;
   final Set<DifficultArea> difficultAreas;
   final Set<DentalAppliance> dentalAppliances;
+  final LastCheckup? lastCheckup;
+  final Set<PreviousProblem> previousProblems;
+  final Set<PastTreatment> pastTreatments;
+  final LastCleaning? lastCleaning;
+  final BrushingHabit? brushing;
+  final BetweenTeethHabit? betweenTeeth;
+  final Set<HealthFactor> healthFactors;
+
+  /// When the user last changed these answers. Null on older snapshots.
+  final DateTime? answeredAt;
 
   /// Read through [DentalAnswers] so ids are parsed in one place.
   factory ScreeningReportedContext.fromJson(Map<String, dynamic> json) {
@@ -476,6 +533,17 @@ class ScreeningReportedContext {
       screeningGoals: a.screeningGoals,
       difficultAreas: a.difficultAreas,
       dentalAppliances: a.dentalAppliances,
+      lastCheckup: a.lastCheckup,
+      previousProblems: a.previousProblems,
+      pastTreatments: a.pastTreatments,
+      lastCleaning: a.lastCleaning,
+      brushing: a.brushing,
+      betweenTeeth: a.betweenTeeth,
+      healthFactors: a.healthFactors,
+      answeredAt: switch (json['answered_at']) {
+        final String at => DateTime.tryParse(at)?.toLocal(),
+        _ => null,
+      },
     );
   }
 
@@ -488,6 +556,14 @@ class ScreeningReportedContext {
         'screening_goals': [for (final g in screeningGoals) g.id],
         'difficult_areas': [for (final d in difficultAreas) d.id],
         'dental_appliances': [for (final d in dentalAppliances) d.id],
+        'last_checkup': lastCheckup?.id,
+        'previous_problems': [for (final p in previousProblems) p.id],
+        'past_treatments': [for (final t in pastTreatments) t.id],
+        'last_cleaning': lastCleaning?.id,
+        'brushing': brushing?.id,
+        'between_teeth': betweenTeeth?.id,
+        'health_factors': [for (final f in healthFactors) f.id],
+        'answered_at': answeredAt?.toUtc().toIso8601String(),
         'recorded_at': recordedAt.toUtc().toIso8601String(),
       };
 }
