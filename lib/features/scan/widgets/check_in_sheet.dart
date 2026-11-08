@@ -1,16 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_glass.dart';
 import '../../../core/utils/dentra_dates.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../dental_profile/data/models/dental_answers.dart';
 import '../../dental_profile/widgets/answer_option_tile.dart';
 import '../../dental_profile/widgets/prompt_care_note.dart';
+import '../../dental_profile/widgets/question_block.dart'
+    show QuestionnaireProgress;
+import '../../dental_records/widgets/record_format.dart';
 import '../../dental_records/widgets/tooth_number_field.dart';
 import '../../screening/data/models/scan_check_in.dart';
 import '../data/care_plan.dart';
 import '../data/check_in_plan.dart';
+import 'mouth_area_picker.dart';
 import 'report/report_style.dart';
 
 /// How the sheet closed with an answer. Closing it any other way stays on the
@@ -22,8 +29,8 @@ class CheckInResult {
   final ScanCheckIn? answers;
 }
 
-/// The few questions worth asking before this scan. Every one can be skipped,
-/// and the answers never reach the image model.
+/// The few questions worth asking before this scan, one at a time. Every one
+/// can be skipped, and the answers never reach the image model.
 Future<CheckInResult?> showCheckInSheet(
   BuildContext context,
   CheckInPlan plan,
@@ -33,10 +40,10 @@ Future<CheckInResult?> showCheckInSheet(
     context: context,
     title: 'Before you scan',
     subtitle: last == null
-        ? 'A few quick questions so your result fits you. They don\'t change '
-            'what the check sees in your photos.'
-        : 'Since your last scan on ${DentraDates.medium(last)}. Your answers '
-            'don\'t change what the check sees in your photos.',
+        ? 'A few taps so your advice fits you. Your photos are read the same '
+            'either way.'
+        : 'Since your last scan on ${DentraDates.medium(last)}. Your photos '
+            'are read the same either way.',
     builder: (_) => _CheckInForm(plan: plan),
   );
 }
@@ -76,6 +83,21 @@ String _startedLabel(ConcernDuration d) => switch (d) {
       _ => 'Not sure',
     };
 
+/// One question on screen at a time.
+enum _Step {
+  symptoms,
+  where,
+  started,
+  pattern,
+  severity,
+  warnings,
+  treatment,
+  treatmentDetail,
+  checkup,
+  cleaning,
+  focus,
+}
+
 class _CheckInForm extends StatefulWidget {
   const _CheckInForm({required this.plan});
 
@@ -101,6 +123,17 @@ class _CheckInFormState extends State<_CheckInForm> {
   AreaAnswer? _focusArea;
   List<String> _focusTeeth = const [];
 
+  late _Step _step = _steps.first;
+
+  /// 1 going forward, -1 going back: which way the questions slide.
+  int _direction = 1;
+
+  /// Moves on after a one-tap answer.
+  Timer? _autoNext;
+
+  /// Long enough to see the answer land before the next question slides in.
+  static const _autoNextDelay = Duration(milliseconds: 420);
+
   ScanCheckIn get _answers => ScanCheckIn(
         symptoms: _symptoms,
         symptomArea: _symptomArea,
@@ -118,26 +151,159 @@ class _CheckInFormState extends State<_CheckInForm> {
         focusTeeth: _focusTeeth,
       );
 
-  void _done(ScanCheckIn? answers) =>
-      Navigator.of(context).pop(CheckInResult(answers));
-
-  /// Tick or untick an answer; a "none" answer clears the rest, and the rest
-  /// clear it.
-  Set<T> _toggled<T extends AnswerOption>(Set<T> current, T option) {
-    if (current.contains(option)) return {...current}..remove(option);
-    if (option.exclusive) return {option};
-    return {...current.where((o) => !o.exclusive), option};
+  /// The questions in the plan, with follow-ups only where an answer calls
+  /// for them. Follow-ups come after the answer that opens them, so the
+  /// question on screen never drops out of the list.
+  List<_Step> get _steps {
+    final plan = widget.plan;
+    final a = _answers;
+    return [
+      if (plan.asksSymptoms) ...[
+        _Step.symptoms,
+        if (a.hasSymptom) ...[_Step.where, _Step.started, _Step.pattern],
+        if (a.asksSeverity) _Step.severity,
+        if (a.hasSymptom && a.asksWarningSigns) _Step.warnings,
+      ],
+      if (plan.asksTreatment) ...[
+        _Step.treatment,
+        if (a.hasTreatment) _Step.treatmentDetail,
+      ],
+      if (plan.asksCheckup) _Step.checkup,
+      if (plan.asksCleaning) _Step.cleaning,
+      // Where it hurts already says where to pay attention.
+      if (plan.asksFocus && !a.hasSymptom) _Step.focus,
+    ];
   }
 
   @override
-  Widget build(BuildContext context) {
-    final plan = widget.plan;
+  void dispose() {
+    _autoNext?.cancel();
+    super.dispose();
+  }
+
+  void _done(ScanCheckIn? answers) {
+    _autoNext?.cancel();
+    Navigator.of(context).pop(CheckInResult(answers));
+  }
+
+  void _finish() {
     final a = _answers;
-    final sections = <Widget>[
-      if (plan.asksSymptoms) ...[
-        _Question(
-          title: 'Is anything bothering you today?',
-          child: Column(
+    _done(a.isEmpty ? null : a.normalized());
+  }
+
+  void _go(_Step to, int direction) {
+    _autoNext?.cancel();
+    setState(() {
+      _step = to;
+      _direction = direction;
+    });
+    // Each question starts at the top of the sheet.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final position = Scrollable.maybeOf(context)?.position;
+      if (position == null || position.pixels <= 0) return;
+      final motion = dentraMotion(context, 260);
+      if (motion == Duration.zero) {
+        position.jumpTo(0);
+      } else {
+        position.animateTo(0, duration: motion, curve: Curves.easeOutCubic);
+      }
+    });
+  }
+
+  void _next() {
+    final steps = _steps;
+    final i = steps.indexOf(_step);
+    if (i < steps.length - 1) _go(steps[i + 1], 1);
+  }
+
+  void _back() {
+    final steps = _steps;
+    final i = steps.indexOf(_step);
+    if (i > 0) _go(steps[i - 1], -1);
+  }
+
+  /// After a one-tap answer, slides on by itself. Not from the last question,
+  /// and not for anyone moving with a screen reader or switch access, who
+  /// would lose their place.
+  void _moveOnSoon() {
+    _autoNext?.cancel();
+    if (MediaQuery.accessibleNavigationOf(context)) return;
+    final from = _step;
+    _autoNext = Timer(_autoNextDelay, () {
+      if (!mounted || _step != from) return;
+      final steps = _steps;
+      final i = steps.indexOf(from);
+      if (i >= 0 && i < steps.length - 1) _go(steps[i + 1], 1);
+    });
+  }
+
+  /// Picks a single answer, or clears it when tapped again. A pick moves on
+  /// unless [stay] says the user should read something first.
+  void _pick<T>(T? current, T value, void Function(T?) set,
+      {bool moveOn = true, bool Function(T)? stay}) {
+    final clearing = current == value;
+    setState(() => set(clearing ? null : value));
+    if (!clearing && moveOn && !(stay?.call(value) ?? false)) {
+      _moveOnSoon();
+    } else {
+      _autoNext?.cancel();
+    }
+  }
+
+  /// Ticks or unticks an answer; a "none" answer clears the rest, the rest
+  /// clear it, and ticking "none" moves on.
+  void _toggle<T extends AnswerOption>(
+      Set<T> current, T option, void Function(Set<T>) set) {
+    final Set<T> next;
+    if (current.contains(option)) {
+      next = {...current}..remove(option);
+    } else if (option.exclusive) {
+      next = {option};
+    } else {
+      next = {...current.where((o) => !o.exclusive), option};
+    }
+    setState(() => set(next));
+    if (option.exclusive && next.contains(option)) {
+      _moveOnSoon();
+    } else {
+      _autoNext?.cancel();
+    }
+  }
+
+  /// The question, and a line on how to answer when it isn't obvious.
+  (String, String?) _copy(_Step step) => switch (step) {
+        _Step.symptoms => (
+            'Is anything bothering you today?',
+            'Pick any that apply.',
+          ),
+        _Step.where => ('Where is it?', null),
+        _Step.started => ('When did it start?', null),
+        _Step.pattern => ('How has it been?', null),
+        _Step.severity => ('How bad is it?', null),
+        _Step.warnings => (
+            'Do you have any of these?',
+            'Pick any that apply.',
+          ),
+        _Step.treatment => (
+            widget.plan.lastScanAt == null
+                ? 'Any dental treatment in the last 3 months?'
+                : 'Any dental treatment since then?',
+            'Pick any that apply.',
+          ),
+        _Step.treatmentDetail => ('When, and on which tooth?', null),
+        _Step.checkup => ('When was your last check-up?', null),
+        _Step.cleaning => (
+            widget.plan.asksCheckup
+                ? 'And your last professional cleaning?'
+                : 'When was your last professional cleaning?',
+            null,
+          ),
+        _Step.focus => ('Any tooth or area you\'d like noted?', null),
+      };
+
+  Widget _content(_Step step, ScanCheckIn a) => switch (step) {
+        _Step.symptoms => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AnswerOptionTile(
@@ -145,8 +311,8 @@ class _CheckInFormState extends State<_CheckInForm> {
                 compact: true,
                 multiple: true,
                 selected: _symptoms.contains(CurrentConcern.none),
-                onTap: () => setState(
-                    () => _symptoms = _toggled(_symptoms, CurrentConcern.none)),
+                onTap: () => _toggle(
+                    _symptoms, CurrentConcern.none, (v) => _symptoms = v),
               ),
               const SizedBox(height: 8),
               _Tiles<CurrentConcern>(
@@ -155,165 +321,178 @@ class _CheckInFormState extends State<_CheckInForm> {
                 multiple: true,
                 labelOf: _symptomLabel,
                 isSelected: _symptoms.contains,
-                onTap: (c) =>
-                    setState(() => _symptoms = _toggled(_symptoms, c)),
+                onTap: (c) => _toggle(_symptoms, c, (v) => _symptoms = v),
               ),
             ],
           ),
-        ),
-        if (a.hasSymptom) ...[
-          _Question(
-            title: 'Where is it?',
-            optional: true,
-            child: _AreaAndTooth(
-              area: _symptomArea,
-              teeth: _symptomTeeth,
-              onArea: (v) =>
-                  setState(() => _symptomArea = _symptomArea == v ? null : v),
-              onTeeth: (v) => setState(() => _symptomTeeth = v),
-            ),
+        _Step.where => _AreaAndTooth(
+            area: _symptomArea,
+            teeth: _symptomTeeth,
+            onArea: (v) =>
+                setState(() => _symptomArea = _symptomArea == v ? null : v),
+            onTeeth: (v) => setState(() => _symptomTeeth = v),
           ),
-          _Question(
-            title: 'When did it start?',
-            optional: true,
-            child: _Tiles<ConcernDuration>(
-              options: symptomStarts,
-              columns: 2,
-              labelOf: _startedLabel,
-              isSelected: (d) => _started == d,
-              onTap: (d) => setState(() => _started = _started == d ? null : d),
-            ),
+        _Step.started => _Tiles<ConcernDuration>(
+            options: symptomStarts,
+            columns: 2,
+            labelOf: _startedLabel,
+            isSelected: (d) => _started == d,
+            onTap: (d) => _pick(_started, d, (v) => _started = v),
           ),
-          _Question(
-            title: 'How has it been?',
-            optional: true,
-            child: _Tiles<SymptomPattern>(
-              options: SymptomPattern.values,
-              labelOf: (p) => p.label,
-              isSelected: (p) => _pattern == p,
-              onTap: (p) => setState(() => _pattern = _pattern == p ? null : p),
-            ),
+        _Step.pattern => _Tiles<SymptomPattern>(
+            options: SymptomPattern.values,
+            labelOf: (p) => p.label,
+            isSelected: (p) => _pattern == p,
+            onTap: (p) => _pick(_pattern, p, (v) => _pattern = v),
           ),
-        ],
-        if (a.asksSeverity)
-          _Question(
-            title: 'How bad is it?',
-            optional: true,
-            child: _Tiles<DiscomfortLevel>(
-              options: const [
-                DiscomfortLevel.mild,
-                DiscomfortLevel.moderate,
-                DiscomfortLevel.severe,
-              ],
-              labelOf: (d) => d.label,
-              isSelected: (d) => _severity == d,
-              onTap: (d) =>
-                  setState(() => _severity = _severity == d ? null : d),
-            ),
+        _Step.severity => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SeverityScale(
+                value: _severity,
+                onTap: (d) => _pick(
+                  _severity,
+                  d,
+                  (v) => _severity = v,
+                  // The care note below needs reading first.
+                  stay: (level) => level == DiscomfortLevel.severe,
+                ),
+              ),
+              _Reveal(
+                show: a.severity == DiscomfortLevel.severe,
+                child: const PromptCareNote(),
+              ),
+            ],
           ),
-        if (a.severity == DiscomfortLevel.severe) ...[
-          const PromptCareNote(),
-          const SizedBox(height: 18),
-        ],
-        if (a.hasSymptom && a.asksWarningSigns) ...[
-          _Question(
-            title: 'Do you have any of these?',
-            child: _Tiles<WarningSign>(
-              options: WarningSign.values,
-              columns: 1,
-              multiple: true,
-              labelOf: (w) => w.label,
-              isSelected: _warnings.contains,
-              onTap: (w) => setState(() => _warnings = _toggled(_warnings, w)),
-            ),
+        _Step.warnings => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Tiles<WarningSign>(
+                options: WarningSign.values,
+                columns: 1,
+                multiple: true,
+                labelOf: (w) => w.label,
+                isSelected: _warnings.contains,
+                onTap: (w) => _toggle(_warnings, w, (v) => _warnings = v),
+              ),
+              _Reveal(
+                show: a.needsEmergencyCare,
+                child: const _EmergencyNote(),
+              ),
+            ],
           ),
-          if (a.needsEmergencyCare) ...[
-            const _EmergencyNote(),
-            const SizedBox(height: 18),
-          ],
-        ],
-      ],
-      if (plan.asksTreatment) ...[
-        _Question(
-          title: plan.lastScanAt == null
-              ? 'Any dental treatment in the last 3 months?'
-              : 'Any dental treatment since then?',
-          optional: true,
-          child: _Tiles<RecentTreatment>(
+        _Step.treatment => _Tiles<RecentTreatment>(
             options: RecentTreatment.values,
             columns: 2,
             multiple: true,
             labelOf: (t) => t.label,
             isSelected: _treatments.contains,
-            onTap: (t) =>
-                setState(() => _treatments = _toggled(_treatments, t)),
+            onTap: (t) => _toggle(_treatments, t, (v) => _treatments = v),
           ),
-        ),
-        if (a.hasTreatment)
-          _Question(
-            title: 'When, and on which tooth?',
-            optional: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Tiles<TreatmentWhen>(
-                  options: TreatmentWhen.values,
-                  columns: 2,
-                  labelOf: (w) => w.label,
-                  isSelected: (w) => _treatmentWhen == w,
-                  onTap: (w) => setState(
-                      () => _treatmentWhen = _treatmentWhen == w ? null : w),
-                ),
-                const SizedBox(height: 12),
-                ToothNumberField(
-                  value: _treatmentTeeth,
-                  onChanged: (v) => setState(() => _treatmentTeeth = v),
-                ),
-              ],
-            ),
+        _Step.treatmentDetail => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Tiles<TreatmentWhen>(
+                options: TreatmentWhen.values,
+                columns: 2,
+                labelOf: (w) => w.label,
+                isSelected: (w) => _treatmentWhen == w,
+                // The tooth is asked on the same screen, so this waits.
+                onTap: (w) => _pick(
+                    _treatmentWhen, w, (v) => _treatmentWhen = v,
+                    moveOn: false),
+              ),
+              const SizedBox(height: 8),
+              _ToothTile(
+                teeth: _treatmentTeeth,
+                onChanged: (v) => setState(() => _treatmentTeeth = v),
+              ),
+            ],
           ),
-      ],
-      if (plan.asksCheckup)
-        _Question(
-          title: 'When was your last check-up?',
-          optional: true,
-          child: _Tiles<LastCheckup>(
+        _Step.checkup => _Tiles<LastCheckup>(
             options: LastCheckup.values,
             labelOf: _checkupLabel,
             isSelected: (c) => _checkup == c,
-            onTap: (c) => setState(() => _checkup = _checkup == c ? null : c),
+            onTap: (c) => _pick(_checkup, c, (v) => _checkup = v),
           ),
-        ),
-      if (plan.asksCleaning)
-        _Question(
-          title: 'And your last professional cleaning?',
-          optional: true,
-          child: _Tiles<LastCleaning>(
+        _Step.cleaning => _Tiles<LastCleaning>(
             options: LastCleaning.values,
             labelOf: _cleaningLabel,
             isSelected: (c) => _cleaning == c,
-            onTap: (c) => setState(() => _cleaning = _cleaning == c ? null : c),
+            onTap: (c) => _pick(_cleaning, c, (v) => _cleaning = v),
           ),
-        ),
-      // Where it hurts already says where to pay attention.
-      if (plan.asksFocus && !a.hasSymptom)
-        _Question(
-          title: 'Any tooth or area you\'d like noted?',
-          optional: true,
-          child: _AreaAndTooth(
+        _Step.focus => _AreaAndTooth(
             area: _focusArea,
             teeth: _focusTeeth,
             onArea: (v) =>
                 setState(() => _focusArea = _focusArea == v ? null : v),
             onTeeth: (v) => setState(() => _focusTeeth = v),
           ),
-        ),
-    ];
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = _steps;
+    final index = steps.indexOf(_step).clamp(0, steps.length - 1);
+    final step = steps[index];
+    final last = index == steps.length - 1;
+    final (title, hint) = _copy(step);
+    final motion = dentraMotion(context, 320);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ...sections,
-        const SizedBox(height: 4),
+        _ProgressRow(
+          step: index,
+          total: steps.length,
+          label: title,
+          onBack: index > 0 ? _back : null,
+        ),
+        const SizedBox(height: 20),
+        AnimatedSize(
+          duration: motion,
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: AnimatedSwitcher(
+            duration: motion,
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            // Only the new question sizes the sheet, so it resizes while
+            // the old one slides out over it.
+            layoutBuilder: (current, previous) => Stack(
+              fit: StackFit.passthrough,
+              alignment: Alignment.topCenter,
+              children: [
+                for (final old in previous)
+                  Positioned(top: 0, left: 0, right: 0, child: old),
+                if (current != null) current,
+              ],
+            ),
+            transitionBuilder: (child, animation) {
+              // The new question comes in from the side we're heading to;
+              // the old one leaves toward the other.
+              final incoming = child.key == ValueKey(step);
+              final dx = 0.14 * _direction * (incoming ? 1 : -1);
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween(begin: Offset(dx, 0), end: Offset.zero)
+                      .animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey(step),
+              child: _Question(
+                title: title,
+                hint: hint,
+                child: _content(step, _answers),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 26),
         DentraButtonRow(
           secondary: DentraPillButton(
             label: 'Skip for now',
@@ -321,8 +500,8 @@ class _CheckInFormState extends State<_CheckInForm> {
             onPressed: () => _done(null),
           ),
           primary: DentraPillButton(
-            label: 'Continue',
-            onPressed: () => _done(a.isEmpty ? null : a.normalized()),
+            label: last ? 'Continue' : 'Next',
+            onPressed: last ? _finish : _next,
           ),
         ),
       ],
@@ -330,49 +509,94 @@ class _CheckInFormState extends State<_CheckInForm> {
   }
 }
 
-/// A question, marked when it can be skipped on its own.
-class _Question extends StatelessWidget {
-  const _Question({
-    required this.title,
-    required this.child,
-    this.optional = false,
+/// Back, and a thin line for how far along the questions are.
+class _ProgressRow extends StatelessWidget {
+  const _ProgressRow({
+    required this.step,
+    required this.total,
+    required this.label,
+    required this.onBack,
   });
 
-  final String title;
-  final Widget child;
-  final bool optional;
+  final int step;
+  final int total;
+  final String label;
+
+  /// Null on the first question.
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(
-                    title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
+    return Row(
+      children: [
+        // Back slides in from the second question; the line makes room.
+        AnimatedSize(
+          duration: dentraMotion(context, 260),
+          curve: Curves.easeOutCubic,
+          child: onBack == null
+              ? const SizedBox(height: 44)
+              : Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: IconButton(
+                    onPressed: onBack,
+                    tooltip: 'Back',
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.white.withValues(alpha: 0.7),
+                      foregroundColor: AppColors.navy,
+                      fixedSize: const Size(44, 44),
                     ),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 20),
                   ),
                 ),
-              ),
-              if (optional) Text('Optional', style: reportNote),
-            ],
+        ),
+        Expanded(
+          child: QuestionnaireProgress(step: step, total: total, label: label),
+        ),
+      ],
+    );
+  }
+}
+
+/// The question in large type over its answers.
+class _Question extends StatelessWidget {
+  const _Question({required this.title, required this.child, this.hint});
+
+  final String title;
+  final String? hint;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+              height: 1.25,
+              letterSpacing: -0.2,
+            ),
           ),
-          const SizedBox(height: 9),
-          child,
+        ),
+        if (hint != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            hint!,
+            style: GoogleFonts.outfit(
+              fontSize: 13.5,
+              color: AppColors.secondaryText,
+              height: 1.4,
+            ),
+          ),
         ],
-      ),
+        const SizedBox(height: 18),
+        child,
+      ],
     );
   }
 }
@@ -425,7 +649,8 @@ class _Tiles<T extends AnswerOption> extends StatelessWidget {
   }
 }
 
-/// Which general area and, if they know it, which tooth.
+/// Which general area, tapped on a map of the mouth, and the tooth if they
+/// know it.
 class _AreaAndTooth extends StatelessWidget {
   const _AreaAndTooth({
     required this.area,
@@ -441,18 +666,184 @@ class _AreaAndTooth extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onMap = area != null && area != AreaAnswer.notSure;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Tiles<AreaAnswer>(
-          options: AreaAnswer.values,
-          labelOf: (a) => a.label,
-          isSelected: (a) => area == a,
-          onTap: onArea,
+        MouthAreaPicker(selected: area, onSelect: onArea),
+        const SizedBox(height: 14),
+        // What's picked, in words, under the map.
+        ExcludeSemantics(
+          child: AnimatedSwitcher(
+            duration: dentraMotion(context, 180),
+            child: Text(
+              onMap ? area!.label : 'Tap an area',
+              key: ValueKey(onMap ? area : null),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: onMap ? FontWeight.w700 : FontWeight.w500,
+                color: onMap ? AppColors.primary : AppColors.secondaryText,
+              ),
+            ),
+          ),
         ),
-        const SizedBox(height: 12),
-        ToothNumberField(value: teeth, onChanged: onTeeth),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: AnswerOptionTile(
+                label: AreaAnswer.notSure.label,
+                compact: true,
+                multiple: false,
+                selected: area == AreaAnswer.notSure,
+                onTap: () => onArea(AreaAnswer.notSure),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: _ToothTile(teeth: teeth, onChanged: onTeeth)),
+          ],
+        ),
       ],
+    );
+  }
+}
+
+/// Opens the tooth chart. Filled once a tooth is chosen; the chart can clear
+/// it again.
+class _ToothTile extends StatelessWidget {
+  const _ToothTile({required this.teeth, required this.onChanged});
+
+  final List<String> teeth;
+  final ValueChanged<List<String>> onChanged;
+
+  Future<void> _open(BuildContext context) async {
+    final picked = await pickTeeth(context, teeth);
+    if (picked != null) onChanged(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = teeth.isEmpty ? 'Add a tooth' : teethLabel(teeth);
+    return Semantics(
+      button: true,
+      label: teeth.isEmpty ? 'Add a tooth number' : label,
+      hint: 'Opens tooth chart',
+      onTap: () => _open(context),
+      excludeSemantics: true,
+      child: AnswerOptionTile(
+        label: label,
+        compact: true,
+        multiple: true,
+        selected: teeth.isNotEmpty,
+        onTap: () => _open(context),
+      ),
+    );
+  }
+}
+
+/// Mild, moderate, severe as three rising bars that fill up to the answer,
+/// in the teal ramp the results use.
+class _SeverityScale extends StatelessWidget {
+  const _SeverityScale({required this.value, required this.onTap});
+
+  final DiscomfortLevel? value;
+  final ValueChanged<DiscomfortLevel> onTap;
+
+  static const _levels = [
+    DiscomfortLevel.mild,
+    DiscomfortLevel.moderate,
+    DiscomfortLevel.severe,
+  ];
+  static const _fills = [AppColors.g1, AppColors.g2, ReportColors.strong];
+
+  @override
+  Widget build(BuildContext context) {
+    final chosen = value == null ? -1 : _levels.indexOf(value!);
+    final motion = dentraMotion(context, 240);
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: AppGlass.fillLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.g2.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final (i, level) in _levels.indexed)
+            Expanded(
+              child: MergeSemantics(
+                child: Semantics(
+                  checked: i == chosen,
+                  inMutuallyExclusiveGroup: true,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: InkWell(
+                      onTap: () => onTap(level),
+                      borderRadius: BorderRadius.circular(16),
+                      focusColor: AppColors.g2.withValues(alpha: 0.12),
+                      splashColor: AppColors.g2.withValues(alpha: 0.08),
+                      highlightColor: AppColors.g2.withValues(alpha: 0.05),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedContainer(
+                              duration: motion,
+                              curve: Curves.easeOutCubic,
+                              width: 12,
+                              height: 14.0 + 10 * i,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(6),
+                                color: i <= chosen
+                                    ? _fills[i]
+                                    : AppColors.g2.withValues(alpha: 0.12),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              level.label,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.outfit(
+                                fontSize: 13.5,
+                                fontWeight: i == chosen
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: AppColors.navy,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Grows in under the answers when [show] turns on.
+class _Reveal extends StatelessWidget {
+  const _Reveal({required this.show, required this.child});
+
+  final bool show;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSize(
+      duration: dentraMotion(context),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: show
+          ? Padding(padding: const EdgeInsets.only(top: 14), child: child)
+          : const SizedBox(width: double.infinity),
     );
   }
 }

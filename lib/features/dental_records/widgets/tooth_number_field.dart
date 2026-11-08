@@ -7,6 +7,17 @@ import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../dental_explorer/data/tooth_catalog.dart';
 import 'record_format.dart';
 
+/// Opens the tooth chart, starting from [initial]. Null when closed without
+/// choosing; empty when the user chose no specific tooth.
+Future<List<String>?> pickTeeth(BuildContext context, List<String> initial) =>
+    showGlassSheet<List<String>>(
+      context: context,
+      title: 'Teeth involved',
+      subtitle: 'Only choose teeth you know about. Numbers follow the FDI '
+          'chart used in Dental Explorer.',
+      builder: (_) => _ToothPicker(initial: initial),
+    );
+
 /// Optional "which teeth?" field. Empty means no specific tooth; the app
 /// never picks one for the user.
 class ToothNumberField extends StatelessWidget {
@@ -21,13 +32,7 @@ class ToothNumberField extends StatelessWidget {
   final ValueChanged<List<String>> onChanged;
 
   Future<void> _pick(BuildContext context) async {
-    final picked = await showGlassSheet<List<String>>(
-      context: context,
-      title: 'Teeth involved',
-      subtitle: 'Only choose teeth you know about. Numbers follow the FDI '
-          'chart used in Dental Explorer.',
-      builder: (_) => _ToothPicker(initial: value),
-    );
+    final picked = await pickTeeth(context, value);
     if (picked != null) onChanged(picked);
   }
 

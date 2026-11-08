@@ -669,6 +669,10 @@ void main() {
       await tapText(tester, 'Start scan');
       await settle(tester, steps: 5);
       await tapText(tester, 'Tooth pain');
+      // One question at a time: on through the rest, then Continue.
+      for (var i = 0; i < 12 && find.text('Continue').evaluate().isEmpty; i++) {
+        await tapText(tester, 'Next');
+      }
       await tapText(tester, 'Continue');
       await settle(tester, steps: 5);
       final said = container.read(scanSessionProvider).checkIn;

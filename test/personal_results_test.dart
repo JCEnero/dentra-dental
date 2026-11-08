@@ -14,6 +14,7 @@ import 'package:dentra_mobile/features/scan/data/scan_report.dart';
 import 'package:dentra_mobile/features/scan/services/report_download.dart';
 import 'package:dentra_mobile/features/scan/services/report_pdf.dart';
 import 'package:dentra_mobile/features/scan/widgets/check_in_sheet.dart';
+import 'package:dentra_mobile/features/scan/widgets/mouth_area_picker.dart';
 import 'package:dentra_mobile/features/scan/widgets/report/context_section.dart';
 import 'package:dentra_mobile/features/scan/widgets/report/scan_report_view.dart';
 import 'package:dentra_mobile/features/screening/data/models/scan_check_in.dart';
@@ -176,6 +177,7 @@ Future<List<CheckInResult?>> _openSheet(
   WidgetTester tester,
   CheckInPlan plan, {
   Size size = const Size(390, 1400),
+  double textScale = 1,
 }) async {
   tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
@@ -183,6 +185,11 @@ Future<List<CheckInResult?>> _openSheet(
   final results = <CheckInResult?>[];
   await tester.pumpWidget(ProviderScope(
     child: MaterialApp(
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        minScaleFactor: textScale,
+        maxScaleFactor: textScale,
+        child: child!,
+      ),
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(
@@ -205,7 +212,64 @@ Future<void> _tap(WidgetTester tester, String text) async {
   await tester.ensureVisible(find.text(text).first);
   await tester.pump(const Duration(milliseconds: 100));
   await tester.tap(find.text(text).first);
-  await tester.pump(const Duration(milliseconds: 500));
+  await _settleStep(tester);
+}
+
+/// Lets an answer land, a question that moves on by itself move on, and the
+/// old question finish sliding out.
+Future<void> _settleStep(WidgetTester tester) async {
+  // Frame by frame: animations count from their first frame.
+  for (var i = 0; i < 12; i++) {
+    await tester.pump(const Duration(milliseconds: 80));
+  }
+}
+
+Future<void> _back(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('Back'));
+  await _settleStep(tester);
+}
+
+/// Taps Next until [question] is on screen.
+Future<void> _nextUntil(WidgetTester tester, String question) async {
+  for (var i = 0; i < 12 && find.text(question).evaluate().isEmpty; i++) {
+    await _tap(tester, 'Next');
+  }
+  expect(find.text(question), findsOneWidget);
+}
+
+/// Taps Next through to the last question, then Continue.
+Future<void> _continue(WidgetTester tester) async {
+  for (var i = 0; i < 12 && find.text('Continue').evaluate().isEmpty; i++) {
+    await _tap(tester, 'Next');
+  }
+  await _tap(tester, 'Continue');
+}
+
+/// Taps an area on the mouth map, in the middle of its band.
+Future<void> _tapArea(WidgetTester tester, AreaAnswer area) async {
+  final map = tester.getRect(find.descendant(
+    of: find.byType(MouthAreaPicker),
+    matching: find.byType(CustomPaint),
+  ));
+  // Matches the map's own proportions: band 13% of the width, arch depth
+  // 80% of its half-width.
+  final band = map.width * 0.13;
+  final rx = map.width / 2 - band / 2 - 2;
+  final ry = rx * 0.8;
+  final upperY = map.top + 2 + ry + band / 2;
+  final lowerY = map.bottom - 2 - ry - band / 2;
+  final x = map.center.dx;
+  final at = switch (area) {
+    AreaAnswer.upperFront => Offset(x, upperY - ry),
+    AreaAnswer.lowerFront => Offset(x, lowerY + ry),
+    AreaAnswer.upperRight => Offset(x - rx * 0.92, upperY - ry * 0.4),
+    AreaAnswer.upperLeft => Offset(x + rx * 0.92, upperY - ry * 0.4),
+    AreaAnswer.lowerRight => Offset(x - rx * 0.92, lowerY + ry * 0.4),
+    AreaAnswer.lowerLeft => Offset(x + rx * 0.92, lowerY + ry * 0.4),
+    AreaAnswer.notSure => throw ArgumentError('not on the map'),
+  };
+  await tester.tapAt(at);
+  await _settleStep(tester);
 }
 
 void main() {
@@ -344,39 +408,83 @@ void main() {
   group('the check-in sheet', () {
     const plan = CheckInPlan(asksSymptoms: true, asksTreatment: true);
 
-    testWidgets('shows follow-ups only when they apply', (tester) async {
+    testWidgets(
+        'asks one question at a time, with follow-ups only when they '
+        'apply', (tester) async {
       await _openSheet(tester, plan);
-      expect(find.text('Where is it?'), findsNothing);
-      expect(find.text('How bad is it?'), findsNothing);
-      expect(find.text('When, and on which tooth?'), findsNothing);
+      expect(find.text('Is anything bothering you today?'), findsOneWidget);
+      expect(find.text('1 of 2'), findsOneWidget);
+      expect(find.byTooltip('Back'), findsNothing);
 
       await _tap(tester, 'Tooth pain');
+      // Where, when, how it's been and how bad come next.
+      expect(find.text('1 of 6'), findsOneWidget);
+      await _tap(tester, 'Next');
       expect(find.text('Where is it?'), findsOneWidget);
-      expect(find.text('When did it start?'), findsOneWidget);
-      expect(find.text('How bad is it?'), findsOneWidget);
+      expect(find.text('Is anything bothering you today?'), findsNothing);
+      await _nextUntil(tester, 'How bad is it?');
+      await _tap(tester, 'Next');
       expect(find.text('Do you have any of these?'), findsNothing);
+      expect(find.text('Any dental treatment in the last 3 months?'),
+          findsOneWidget);
 
+      for (var i = 0; i < 5; i++) {
+        await _back(tester);
+      }
+      expect(find.text('Is anything bothering you today?'), findsOneWidget);
       await _tap(tester, 'Nothing right now');
-      expect(find.text('Where is it?'), findsNothing);
+      // "Nothing" moves on by itself, past the follow-ups.
+      expect(find.text('Any dental treatment in the last 3 months?'),
+          findsOneWidget);
+      expect(find.text('2 of 2'), findsOneWidget);
 
       await _tap(tester, 'Filling');
+      await _tap(tester, 'Next');
       expect(find.text('When, and on which tooth?'), findsOneWidget);
     });
 
-    testWidgets('marks what can be skipped', (tester) async {
+    testWidgets('moves on by itself after a one-tap answer', (tester) async {
+      final results = await _openSheet(
+        tester,
+        const CheckInPlan(asksCheckup: true, asksCleaning: true),
+      );
+      await _tap(tester, 'Over a year');
+      expect(find.text('And your last professional cleaning?'), findsOneWidget);
+      // Not from the last question: that waits for Continue.
+      await _tap(tester, 'Never');
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('And your last professional cleaning?'), findsOneWidget);
+      expect(results, isEmpty);
+
+      await _tap(tester, 'Continue');
+      final a = results.single!.answers!;
+      expect(a.lastCheckup, LastCheckup.overAYear);
+      expect(a.lastCleaning, LastCleaning.never);
+    });
+
+    testWidgets('doesn\'t move on by itself with a screen reader',
+        (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(accessibleNavigation: true);
+      addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       await _openSheet(
         tester,
-        const CheckInPlan(asksSymptoms: true, asksTreatment: true, asksFocus: true),
+        const CheckInPlan(asksCheckup: true, asksCleaning: true),
       );
-      // Treatment and the tooth to note, but not whether anything's wrong.
-      expect(find.text('Optional'), findsNWidgets(2));
-      expect(find.text('Skip for now'), findsOneWidget);
+      await _tap(tester, 'Over a year');
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('When was your last check-up?'), findsOneWidget);
     });
 
     testWidgets('asks only the questions in the plan', (tester) async {
       await _openSheet(tester, const CheckInPlan(asksCleaning: true));
       expect(find.text('Is anything bothering you today?'), findsNothing);
-      expect(find.text('And your last professional cleaning?'), findsOneWidget);
+      expect(find.text('When was your last professional cleaning?'),
+          findsOneWidget);
+      expect(find.text('1 of 1'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
+      expect(find.text('Skip for now'), findsOneWidget);
     });
 
     testWidgets('says when it follows an earlier scan', (tester) async {
@@ -384,32 +492,71 @@ void main() {
         tester,
         CheckInPlan(asksTreatment: true, lastScanAt: DateTime(2026, 10, 5)),
       );
-      expect(find.textContaining('Since your last scan on Oct 5'), findsOneWidget);
+      expect(
+          find.textContaining('Since your last scan on Oct 5'), findsOneWidget);
       expect(find.text('Any dental treatment since then?'), findsOneWidget);
+    });
+
+    testWidgets('picks the area on a map of the mouth', (tester) async {
+      final results = await _openSheet(
+        tester,
+        const CheckInPlan(asksFocus: true),
+      );
+      expect(find.text('Tap an area'), findsOneWidget);
+      // Their left is on the right, as a dentist sees it.
+      await _tapArea(tester, AreaAnswer.lowerLeft);
+      expect(find.text('Lower left back'), findsOneWidget);
+      await _tapArea(tester, AreaAnswer.upperFront);
+      expect(find.text('Upper front'), findsOneWidget);
+      // Tapping it again clears it.
+      await _tapArea(tester, AreaAnswer.upperFront);
+      expect(find.text('Tap an area'), findsOneWidget);
+      await _tapArea(tester, AreaAnswer.upperRight);
+      expect(find.text('Upper right back'), findsOneWidget);
+
+      await _tap(tester, 'Continue');
+      expect(results.single!.answers!.focusArea, AreaAnswer.upperRight);
+    });
+
+    testWidgets('names every area on the map for screen readers',
+        (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _openSheet(tester, const CheckInPlan(asksFocus: true));
+      for (final area in AreaAnswer.values) {
+        expect(find.semantics.byLabel(area.label), findsOne);
+      }
+      semantics.dispose();
     });
 
     testWidgets('warns at once about signs that can\'t wait', (tester) async {
       await _openSheet(tester, plan);
       await _tap(tester, 'Swollen gums');
-      expect(find.text('Do you have any of these?'), findsOneWidget);
+      await _nextUntil(tester, 'Do you have any of these?');
       expect(find.text('Get emergency care now'), findsNothing);
 
       await _tap(tester, 'Hard to breathe, swallow or speak');
       expect(find.text('Get emergency care now'), findsOneWidget);
     });
 
-    testWidgets('warns about severe discomfort', (tester) async {
+    testWidgets('warns about severe discomfort and stays to be read',
+        (tester) async {
       await _openSheet(tester, plan);
       await _tap(tester, 'Tooth pain');
+      await _nextUntil(tester, 'How bad is it?');
       await _tap(tester, 'Severe');
-      expect(find.text('Severe discomfort needs prompt attention'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Severe discomfort needs prompt attention'),
+          findsOneWidget);
+      expect(find.text('How bad is it?'), findsOneWidget);
       // Bad pain could be spreading, so the warning signs are asked too.
+      await _tap(tester, 'Next');
       expect(find.text('Do you have any of these?'), findsOneWidget);
     });
 
     testWidgets('skipping stores nothing', (tester) async {
       final results = await _openSheet(tester, plan);
       await _tap(tester, 'Tooth pain');
+      await _tap(tester, 'Next');
       await _tap(tester, 'Skip for now');
       expect(results.single, isNotNull);
       expect(results.single!.answers, isNull);
@@ -418,17 +565,24 @@ void main() {
     testWidgets('continuing with nothing answered stores nothing',
         (tester) async {
       final results = await _openSheet(tester, plan);
-      await _tap(tester, 'Continue');
+      await _continue(tester);
       expect(results.single!.answers, isNull);
     });
 
     testWidgets('keeps only answers that are still showing', (tester) async {
       final results = await _openSheet(tester, plan);
       await _tap(tester, 'Tooth pain');
-      await _tap(tester, 'Upper front');
+      await _tap(tester, 'Next');
+      await _tapArea(tester, AreaAnswer.upperFront);
+      await _nextUntil(tester, 'How bad is it?');
       await _tap(tester, 'Severe');
+      while (find.text('Is anything bothering you today?').evaluate().isEmpty) {
+        await _back(tester);
+      }
       await _tap(tester, 'Tooth pain');
+      await _tap(tester, 'Next');
       await _tap(tester, 'Filling');
+      await _tap(tester, 'Next');
       await _tap(tester, 'Past week');
       await _tap(tester, 'Continue');
       final a = results.single!.answers!;
@@ -447,14 +601,18 @@ void main() {
           prefill: ScanCheckIn(symptoms: {CurrentConcern.sensitivity}),
         ),
       );
+      expect(find.text('1 of 5'), findsOneWidget);
+      await _tap(tester, 'Next');
       expect(find.text('Where is it?'), findsOneWidget);
     });
 
-    for (final (name, size) in [
-      ('small phone', const Size(320, 568)),
-      ('standard phone', const Size(390, 844)),
+    for (final (name, size, scale) in [
+      ('small phone, large text', const Size(320, 568), 1.3),
+      ('standard phone', const Size(390, 844), 1.0),
+      ('large phone, accessibility text', const Size(430, 932), 2.0),
     ]) {
-      testWidgets('lays out without overflow: $name', (tester) async {
+      testWidgets('every question lays out without overflow: $name',
+          (tester) async {
         await _openSheet(
           tester,
           CheckInPlan(
@@ -464,10 +622,20 @@ void main() {
             asksCleaning: true,
             asksFocus: true,
             lastScanAt: DateTime(2026, 10, 5),
+            prefill: const ScanCheckIn(
+              symptoms: {CurrentConcern.toothPain, CurrentConcern.swollenGums},
+              severity: DiscomfortLevel.severe,
+              warningSigns: {WarningSign.hardToBreathe},
+            ),
           ),
           size: size,
+          textScale: scale,
         );
         expect(tester.takeException(), isNull);
+        while (find.text('Continue').evaluate().isEmpty) {
+          await _tap(tester, 'Next');
+          expect(tester.takeException(), isNull);
+        }
       });
     }
   });
