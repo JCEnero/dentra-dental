@@ -13,8 +13,10 @@ import 'package:dentra_mobile/features/scan/widgets/region_selector.dart';
 import 'package:dentra_mobile/features/scan/widgets/guide/region_guide_view.dart';
 import 'package:dentra_mobile/features/scan/widgets/scan_hero.dart';
 import 'package:dentra_mobile/features/scan/services/phone_camera_service.dart';
+import 'package:dentra_mobile/features/scan/services/photo_check_service.dart';
 import 'package:dentra_mobile/features/scan/services/photo_quality.dart';
 import 'package:dentra_mobile/features/scan/services/screening_analysis_service.dart';
+import 'package:dentra_mobile/features/scan/widgets/capture_stage.dart';
 import 'package:dentra_mobile/features/dental_profile/data/models/dental_answers.dart';
 import 'package:dentra_mobile/features/screening/providers/screening_sessions_provider.dart';
 import 'package:dentra_mobile/features/screening/data/models/screening_session.dart';
@@ -86,6 +88,27 @@ class FakeDevice implements DentraDeviceService {
   }
 }
 
+/// Passes every photo unless told otherwise.
+class FakePhotoCheck implements PhotoCheckService {
+  PhotoVerdict answer = const PhotoVerdict.passed();
+
+  /// Thrown instead of answering, when set.
+  Object? error;
+
+  /// When true, each check waits on [held] until the test completes it.
+  bool hold = false;
+  Completer<PhotoVerdict>? held;
+  int calls = 0;
+
+  @override
+  Future<PhotoVerdict> check(Uint8List bytes) {
+    calls++;
+    if (hold) return (held = Completer<PhotoVerdict>()).future;
+    if (error case final e?) return Future.error(e);
+    return Future.value(answer);
+  }
+}
+
 class FakeAnalysis implements ScreeningAnalysisService {
   Completer<ScreeningAnalysisResult>? pending;
   ValueChanged<ScreeningAnalysisProgress>? onProgress;
@@ -116,6 +139,7 @@ Future<ProviderContainer> pumpScan(
   FakeCamera? camera,
   DentraDeviceService? device,
   ScreeningAnalysisService? analysis,
+  FakePhotoCheck? check,
   Size size = const Size(390, 844),
   double textScale = 1.0,
   bool pastIntro = true,
@@ -128,6 +152,7 @@ Future<ProviderContainer> pumpScan(
     phoneCameraServiceProvider.overrideWithValue(camera ?? FakeCamera()),
     if (device != null) dentraDeviceServiceProvider.overrideWithValue(device),
     screeningAnalysisServiceProvider.overrideWithValue(analysis),
+    photoCheckServiceProvider.overrideWithValue(check ?? FakePhotoCheck()),
   ]);
   addTearDown(container.dispose);
 
@@ -742,6 +767,24 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('a rejected photo lays out without overflow: $name',
+        (tester) async {
+      final camera = FakeCamera();
+      final check = FakePhotoCheck()
+        ..answer = const PhotoVerdict.rejected(PhotoProblem.noTeeth);
+      await pumpScan(tester,
+          camera: camera, check: check, size: size, textScale: scale);
+      await tapText(tester, 'Capture with device');
+      camera.deliver();
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      final action = tester.getRect(find.text('Retake photo'));
+      expect(action.bottom,
+          lessThanOrEqualTo(tester.getRect(find.byType(AppBottomNav)).top));
+      await tester.ensureVisible(find.text('Keep fingers and tongue out of the way'));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('the 3D scan lays out without overflow: $name', (tester) async {
       final camera = FakeCamera();
       final analysis = FakeAnalysis();
@@ -1041,6 +1084,175 @@ void main() {
       expect(areaOutcome(MouthArea.upperRight, outcomes), ViewOutcome.clear);
       // A side photo reaches one canine, but says nothing about the front.
       expect(areaOutcome(MouthArea.lowerFront, outcomes), isNull);
+    });
+  });
+
+  group('the photo check', () {
+    Future<void> deliverPhoto(WidgetTester tester, FakeCamera camera) async {
+      await tapText(tester, 'Capture with device');
+      camera.deliver();
+      await settle(tester);
+    }
+
+    testWidgets('a photo can only be kept once the check has passed it',
+        (tester) async {
+      final camera = FakeCamera();
+      final check = FakePhotoCheck()..hold = true;
+      final container =
+          await pumpScan(tester, camera: camera, check: check);
+      await deliverPhoto(tester, camera);
+
+      expect(check.calls, 1);
+      expect(find.text('Checking your photo…'), findsOneWidget);
+      expect(find.text('Use photo'), findsNothing);
+      // Not even by asking the scan directly.
+      container.read(scanSessionProvider.notifier).acceptPending();
+      expect(container.read(scanSessionProvider).captures, isEmpty);
+
+      check.held!.complete(const PhotoVerdict.passed());
+      await settle(tester);
+      expect(find.text('Teeth found, photo is clear'), findsOneWidget);
+      await tapText(tester, 'Use photo');
+      expect(progressText(tester), '1 of 9 views captured');
+    });
+
+    testWidgets('a rejected photo says why and how to fix it, and stays out',
+        (tester) async {
+      final camera = FakeCamera();
+      final check = FakePhotoCheck()
+        ..answer = const PhotoVerdict.rejected(PhotoProblem.noTeeth);
+      final container =
+          await pumpScan(tester, camera: camera, check: check);
+      await deliverPhoto(tester, camera);
+
+      expect(find.text('No teeth found'), findsOneWidget);
+      expect(find.text('How to fix it'), findsOneWidget);
+      expect(find.text('Lift your lips so your teeth show'), findsOneWidget);
+      expect(find.text('Retake photo'), findsOneWidget);
+      expect(find.text('Back'), findsOneWidget);
+      expect(find.text('Use photo'), findsNothing);
+      container.read(scanSessionProvider.notifier).acceptPending();
+      expect(container.read(scanSessionProvider).captures, isEmpty);
+      expect(progressText(tester), '0 of 9 views captured');
+    });
+
+    testWidgets('retake goes straight back to the camera and keeps the scan',
+        (tester) async {
+      final camera = FakeCamera();
+      final check = FakePhotoCheck();
+      final container =
+          await pumpScan(tester, camera: camera, check: check);
+      await captureCurrent(tester, camera);
+
+      check.answer = const PhotoVerdict.rejected(PhotoProblem.blurry);
+      await deliverPhoto(tester, camera);
+      expect(find.text('Photo is blurry'), findsOneWidget);
+      expect(find.text('Hold the device steady'), findsOneWidget);
+      await tapText(tester, 'Retake photo');
+      expect(camera.calls, hasLength(3));
+
+      check.answer = const PhotoVerdict.passed();
+      camera.deliver();
+      await settle(tester);
+      await tapText(tester, 'Use photo');
+      expect(
+        container.read(scanSessionProvider).captures.keys,
+        ['front', 'upper-occlusal'],
+      );
+    });
+
+    testWidgets('back returns to the same view without starting over',
+        (tester) async {
+      final camera = FakeCamera();
+      final check = FakePhotoCheck();
+      final container =
+          await pumpScan(tester, camera: camera, check: check);
+      await captureCurrent(tester, camera);
+      check.answer = const PhotoVerdict.rejected(PhotoProblem.tooDark);
+      await deliverPhoto(tester, camera);
+      expect(find.text('Too dark'), findsOneWidget);
+      expect(find.text('Turn on the device light'), findsOneWidget);
+
+      await tapText(tester, 'Back');
+      final state = container.read(scanSessionProvider);
+      expect(state.selectedRegionId, 'upper-occlusal');
+      expect(state.pending, isNull);
+      expect(state.captures.keys, ['front']);
+      expect(find.text('Capture with device'), findsOneWidget);
+      expect(progressText(tester), '1 of 9 views captured');
+    });
+
+    testWidgets('a check that cannot finish is never a pass', (tester) async {
+      final camera = FakeCamera();
+      final check = FakePhotoCheck()
+        ..error = const PhotoCheckException(offline: true);
+      final container =
+          await pumpScan(tester, camera: camera, check: check);
+      await deliverPhoto(tester, camera);
+
+      expect(find.text("Couldn't check this photo"), findsOneWidget);
+      expect(find.textContaining('offline'), findsOneWidget);
+      expect(find.text('Use photo'), findsNothing);
+      container.read(scanSessionProvider.notifier).acceptPending();
+      expect(container.read(scanSessionProvider).captures, isEmpty);
+
+      check.error = null;
+      await tapText(tester, 'Check again');
+      expect(check.calls, 2);
+      await tapText(tester, 'Use photo');
+      expect(progressText(tester), '1 of 9 views captured');
+    });
+
+    testWidgets('a check that never answers can be tried again',
+        (tester) async {
+      final camera = FakeCamera();
+      final check = FakePhotoCheck()..hold = true;
+      await pumpScan(tester, camera: camera, check: check);
+      await deliverPhoto(tester, camera);
+
+      await tester.pump(
+          ScanSessionNotifier.photoCheckTimeout + const Duration(seconds: 1));
+      await settle(tester);
+      expect(find.text("Couldn't check this photo"), findsOneWidget);
+      expect(find.text('Check again'), findsOneWidget);
+      expect(find.text('Use photo'), findsNothing);
+    });
+
+    testWidgets('a chosen photo that fails asks for another one',
+        (tester) async {
+      final camera = FakeCamera(hasCamera: false);
+      final check = FakePhotoCheck()
+        ..answer = const PhotoVerdict.rejected(
+          PhotoProblem.other,
+          message: 'Use a JPEG, PNG or WebP photo.',
+        );
+      await pumpScan(tester, camera: camera, check: check);
+      await tapText(tester, 'Choose a photo');
+      camera.deliver();
+      await settle(tester);
+
+      expect(find.text("This photo can't be used"), findsOneWidget);
+      expect(find.text('Use a JPEG, PNG or WebP photo.'), findsOneWidget);
+      await tapText(tester, 'Choose another');
+      expect(camera.calls, [CaptureSource.photoLibrary, CaptureSource.photoLibrary]);
+    });
+
+    test('every problem says what to do, in the device\'s words', () {
+      for (final problem in PhotoProblem.values) {
+        final copy = photoProblemCopy(problem, 'From the server.');
+        expect(copy.title, isNotEmpty);
+        expect(copy.why, isNotEmpty);
+        expect(copy.steps, isNotEmpty);
+        final words =
+            '${copy.title} ${copy.why} ${copy.steps.join(' ')}'.toLowerCase();
+        expect(words, isNot(contains('phone')));
+        expect(words, isNot(contains('mirror')));
+      }
+      expect(photoProblemCopy(PhotoProblem.other, 'From the server.').why,
+          'From the server.');
+      expect(PhotoProblem.fromCode('no_teeth'), PhotoProblem.noTeeth);
+      expect(PhotoProblem.fromCode('too_dark'), PhotoProblem.tooDark);
+      expect(PhotoProblem.fromCode('something_new'), PhotoProblem.other);
     });
   });
 

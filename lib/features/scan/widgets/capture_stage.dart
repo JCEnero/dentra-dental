@@ -7,7 +7,7 @@ import '../../../shared/widgets/glass_card.dart';
 import '../data/models/captured_image.dart';
 import '../data/scan_regions.dart';
 import '../providers/scan_session_provider.dart';
-import '../services/photo_quality.dart';
+import '../services/photo_check_service.dart';
 import 'guide/guide_stage.dart';
 import 'scan_feedback_panel.dart';
 import 'scan_motion.dart';
@@ -127,21 +127,7 @@ class CaptureStage extends StatelessWidget {
       );
     }
     if (session.capturePhase == CapturePhase.reviewing) {
-      return Column(
-        key: const ValueKey('review'),
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _QualityRow(quality: session.pendingQuality),
-          const SizedBox(height: 12),
-          const _Steps(
-            title: 'Check your photo',
-            steps: [
-              'Make sure your teeth are sharp and centered',
-              "Retake if they're cut off, dark or blurry",
-            ],
-          ),
-        ],
-      );
+      return _review();
     }
     if (captured != null && session.capturePhase == CapturePhase.idle) {
       return _Steps(
@@ -153,6 +139,171 @@ class CaptureStage extends StatelessWidget {
     return _Steps(
       key: ValueKey('guide-${region.id}'),
       steps: [region.instruction, ...region.tips],
+    );
+  }
+
+  /// The photo check on the photo under review: running, couldn't finish,
+  /// passed, or rejected with what to do about it.
+  Widget _review() {
+    final error = session.pendingCheckError;
+    if (error != null) {
+      return ScanFeedbackPanel(
+        key: const ValueKey('check-failed'),
+        title: "Couldn't check this photo",
+        message: error.message ??
+            (error.offline
+                ? 'You seem to be offline. Check your connection and try again.'
+                : "The photo check isn't responding right now. Please try again."),
+      );
+    }
+    final verdict = session.pendingVerdict;
+    if (verdict == null) {
+      return const _CheckLine(key: ValueKey('checking'), checking: true);
+    }
+    if (verdict.passed) {
+      return Column(
+        key: const ValueKey('passed'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _CheckLine(checking: false, teethChecked: verdict.teethChecked),
+          const SizedBox(height: 12),
+          const _Steps(
+            title: 'Check your photo',
+            steps: [
+              'Make sure it shows the teeth this view asks for',
+              "Retake if they're cut off",
+            ],
+          ),
+        ],
+      );
+    }
+    final copy = photoProblemCopy(verdict.problem!, verdict.message);
+    return Column(
+      key: ValueKey('rejected-${verdict.problem}'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ScanFeedbackPanel(title: copy.title, message: copy.why),
+        const SizedBox(height: 12),
+        _Steps(title: 'How to fix it', steps: copy.steps),
+      ],
+    );
+  }
+}
+
+/// What a rejected photo's notice says: the problem, why it matters, and
+/// what to do. A problem the app has no words for shows the server's.
+({String title, String why, List<String> steps}) photoProblemCopy(
+  PhotoProblem problem, [
+  String? serverMessage,
+]) =>
+    switch (problem) {
+      PhotoProblem.noTeeth => (
+          title: 'No teeth found',
+          why: "This photo doesn't show your teeth clearly enough to check.",
+          steps: const [
+            'Point the device at your teeth',
+            'Lift your lips so your teeth show',
+            'Keep fingers and tongue out of the way',
+          ],
+        ),
+      PhotoProblem.blurry => (
+          title: 'Photo is blurry',
+          why: 'Blurry photos can hide early signs, so this one can’t be '
+              'checked.',
+          steps: const [
+            'Hold the device steady',
+            'Let it focus for a moment before you capture',
+            'Wipe the lens if it’s misty',
+          ],
+        ),
+      PhotoProblem.tooDark => (
+          title: 'Too dark',
+          why: 'Your teeth need more light to be checked.',
+          steps: const [
+            'Turn on the device light',
+            'Move somewhere brighter',
+            'Hold the device a little closer',
+          ],
+        ),
+      PhotoProblem.tooBright => (
+          title: 'Too much glare',
+          why: 'Bright reflections hide the surface of your teeth.',
+          steps: const [
+            'Dry your teeth gently with a tissue',
+            'Tilt the device slightly',
+          ],
+        ),
+      PhotoProblem.tooSmall => (
+          title: 'Photo is too small',
+          why: "There isn't enough detail in it to check.",
+          steps: const [
+            'Take the photo again with the device',
+            'Or choose the original full-size photo',
+          ],
+        ),
+      PhotoProblem.unreadable => (
+          title: "Couldn't open this photo",
+          why: 'The file may be damaged, or in a format DENTRA can’t read.',
+          steps: const ['Take the photo again'],
+        ),
+      PhotoProblem.other => (
+          title: "This photo can't be used",
+          why: serverMessage ?? 'It didn’t pass the photo check.',
+          steps: const ['Take the photo again'],
+        ),
+    };
+
+/// One line on the photo check: running, or passed.
+class _CheckLine extends StatelessWidget {
+  const _CheckLine({
+    super.key,
+    required this.checking,
+    this.teethChecked = true,
+  });
+  final bool checking;
+
+  /// A check that only looked at light and focus doesn't claim teeth.
+  final bool teethChecked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Row(
+        children: [
+          SizedBox.square(
+            dimension: 18,
+            child: checking
+                ? const Padding(
+                    padding: EdgeInsets.all(2.5),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.8,
+                      color: AppColors.g2,
+                    ),
+                  )
+                : const Icon(
+                    Icons.check_circle_rounded,
+                    size: 18,
+                    color: ScanColors.clearInk,
+                  ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              checking
+                  ? 'Checking your photo…'
+                  : teethChecked
+                      ? 'Teeth found, photo is clear'
+                      : 'Photo is clear',
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: checking ? AppColors.secondaryText : ScanColors.clearInk,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -255,8 +406,10 @@ class _VisualFrame extends StatelessWidget {
             ),
             child: photo ?? const SizedBox.shrink(key: ValueKey('none')),
           ),
-          if (reviewing && session.pendingQuality == null)
+          if (session.isCheckingPending)
             const IgnorePointer(child: _PhotoSweep()),
+          if (reviewing && session.pendingVerdict?.passed == false)
+            const IgnorePointer(child: _RejectedVeil()),
           if (busy)
             _BusyVeil(
               receiving: session.capturePhase == CapturePhase.receiving,
@@ -341,122 +494,16 @@ class PhotoSweepPainter extends CustomPainter {
   bool shouldRepaint(PhotoSweepPainter old) => old.t != t;
 }
 
-/// What the device measured on the photo under review. Advice only.
-class _QualityRow extends StatelessWidget {
-  const _QualityRow({required this.quality});
-  final PhotoQuality? quality;
+/// Fades a photo the check rejected, so it doesn't read as kept.
+class _RejectedVeil extends StatelessWidget {
+  const _RejectedVeil();
 
   @override
   Widget build(BuildContext context) {
-    final q = quality;
-    if (q == null) {
-      return Semantics(
-        liveRegion: true,
-        child: Row(
-          children: [
-            const SizedBox.square(
-              dimension: 13,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.8,
-                color: AppColors.g2,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Checking light and focus…',
-                style: GoogleFonts.outfit(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.secondaryText,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    final (lightOk, lightText) = switch (q.light) {
-      PhotoLight.good => (true, 'Good light'),
-      PhotoLight.dark => (false, 'A bit dark'),
-      PhotoLight.glare => (false, 'Too much glare'),
-    };
-    final (focusOk, focusText) = switch (q.focus) {
-      PhotoFocus.sharp => (true, 'In focus'),
-      PhotoFocus.soft => (false, 'Might be blurry'),
-    };
-    return Semantics(
-      liveRegion: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              if (q.tooSmall) const _QualityChip(ok: false, text: 'Too small'),
-              _QualityChip(ok: lightOk, text: lightText),
-              _QualityChip(ok: focusOk, text: focusText),
-            ],
-          ),
-          if (q.tooSmall) ...[
-            const SizedBox(height: 6),
-            Text(
-              "This photo is too small to check, so it won't be read. Use the "
-              'original full-size photo instead.',
-              style: GoogleFonts.outfit(
-                fontSize: 12.5,
-                height: 1.4,
-                color: AppColors.secondaryText,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _QualityChip extends StatelessWidget {
-  const _QualityChip({required this.ok, required this.text});
-
-  final bool ok;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = ok ? ScanColors.clearInk : ScanColors.check;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(7, 4, 10, 4),
-      decoration: BoxDecoration(
-        color: ok
-            ? AppColors.lightLavender
-            : AppColors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: ok ? AppColors.lavender : ScanColors.check.withValues(alpha: 0.6),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            ok ? Icons.check_rounded : Icons.priority_high_rounded,
-            size: 13,
-            color: color,
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              text,
-              style: GoogleFonts.outfit(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-          ),
-        ],
+    return ColoredBox(
+      color: AppColors.white.withValues(alpha: 0.55),
+      child: const Center(
+        child: ScanIconDisc(Icons.refresh_rounded, size: 46, iconSize: 24),
       ),
     );
   }

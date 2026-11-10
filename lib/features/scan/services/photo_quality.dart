@@ -2,8 +2,9 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-/// How one photo measured on the device, right after it was taken. Only
-/// advice: the server's checks decide what gets analyzed.
+/// How one photo measured on the phone, right after it was taken. The photo
+/// check where there's no server one (`LocalPhotoCheckService`); otherwise the
+/// server's check decides.
 class PhotoQuality {
   const PhotoQuality({
     required this.light,
@@ -18,16 +19,17 @@ class PhotoQuality {
   final bool tooSmall;
 
   /// Same thresholds as ml/inference's quality.py, so what this says here is
-  /// close to what the analysis will say later. Checked at about the same size.
+  /// close to what the analysis would say. Checked at about the same size.
+  /// Change them together.
   static const int checkSide = 512;
   static const double minMean = 35;
   static const double maxMean = 225;
   static const double maxClipped = 0.25;
-  static const double minSharpness = 15;
+  static const double minSharpness = 6;
   static const int minSide = 240;
 
   /// Decodes [bytes] small and measures them, or returns null when the photo
-  /// can't be read here. A codec quirk must never hold up a scan.
+  /// can't be read here.
   static Future<PhotoQuality?> measure(Uint8List bytes) async {
     try {
       // Never scaled up: that would blur a small photo into looking soft.

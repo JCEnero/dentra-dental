@@ -11,7 +11,7 @@ import '../data/models/captured_image.dart';
 import '../data/scan_regions.dart';
 import '../services/dentra_device_service.dart';
 import '../services/phone_camera_service.dart';
-import '../services/photo_quality.dart';
+import '../services/photo_check_service.dart';
 import '../services/screening_analysis_service.dart';
 
 enum CapturePhase {
@@ -23,7 +23,8 @@ enum CapturePhase {
   /// An image is transferring from the DENTRA device.
   receiving,
 
-  /// A received image is waiting for the user to keep or retake it.
+  /// A received image is being checked, then waits for the user to keep it
+  /// (only if it passed) or retake it.
   reviewing,
   failed,
 }
@@ -50,7 +51,8 @@ class ScanSessionState {
     this.capturePhase = CapturePhase.idle,
     this.transferProgress,
     this.pending,
-    this.pendingQuality,
+    this.pendingVerdict,
+    this.pendingCheckError,
     this.pendingSource,
     this.captureFailure,
     this.lastSavedRegionId,
@@ -87,8 +89,12 @@ class ScanSessionState {
   final double? transferProgress;
   final CapturedImage? pending;
 
-  /// How the image under review measured on the device, once it has.
-  final PhotoQuality? pendingQuality;
+  /// The photo check's verdict on [pending]. Null while the check runs, and
+  /// when it couldn't reach one ([pendingCheckError]).
+  final PhotoVerdict? pendingVerdict;
+
+  /// Why the check couldn't reach a verdict on [pending].
+  final PhotoCheckException? pendingCheckError;
 
   /// Source of the capture in progress or under review, for retakes.
   final CaptureSource? pendingSource;
@@ -135,6 +141,19 @@ class ScanSessionState {
       capturePhase == CapturePhase.awaitingCamera ||
       capturePhase == CapturePhase.receiving;
 
+  /// The photo under review is still being checked.
+  bool get isCheckingPending =>
+      capturePhase == CapturePhase.reviewing &&
+      pendingVerdict == null &&
+      pendingCheckError == null;
+
+  /// Only a photo the check passed can be kept, so nothing else can reach
+  /// the scan, its upload or the analysis.
+  bool get canAcceptPending =>
+      capturePhase == CapturePhase.reviewing &&
+      pending != null &&
+      (pendingVerdict?.passed ?? false);
+
   /// Regions can be switched unless a capture or review is in progress.
   bool get canChangeRegion =>
       finishPhase == FinishPhase.scanning &&
@@ -152,7 +171,8 @@ class ScanSessionState {
     CapturePhase? capturePhase,
     Object? transferProgress = _unset,
     Object? pending = _unset,
-    Object? pendingQuality = _unset,
+    Object? pendingVerdict = _unset,
+    Object? pendingCheckError = _unset,
     Object? pendingSource = _unset,
     Object? captureFailure = _unset,
     Object? lastSavedRegionId = _unset,
@@ -178,9 +198,12 @@ class ScanSessionState {
           ? this.transferProgress
           : transferProgress as double?,
       pending: pending == _unset ? this.pending : pending as CapturedImage?,
-      pendingQuality: pendingQuality == _unset
-          ? this.pendingQuality
-          : pendingQuality as PhotoQuality?,
+      pendingVerdict: pendingVerdict == _unset
+          ? this.pendingVerdict
+          : pendingVerdict as PhotoVerdict?,
+      pendingCheckError: pendingCheckError == _unset
+          ? this.pendingCheckError
+          : pendingCheckError as PhotoCheckException?,
       pendingSource: pendingSource == _unset
           ? this.pendingSource
           : pendingSource as CaptureSource?,
@@ -218,6 +241,10 @@ class ScanSessionState {
 /// analysis phase runs only while a real analysis request is in flight.
 class ScanSessionNotifier extends Notifier<ScanSessionState> {
   static const Duration deviceCaptureTimeout = Duration(seconds: 45);
+
+  /// A check that hasn't answered by then is offered again.
+  static const Duration photoCheckTimeout = Duration(seconds: 25);
+
   /// Covers uploading and analyzing a full scan, up to 18 photos.
   /// The server gives up on a run at 5 minutes.
   static const Duration analysisTimeout = Duration(minutes: 4);
@@ -276,7 +303,8 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
           ? CapturePhase.receiving
           : CapturePhase.awaitingCamera,
       pending: null,
-      pendingQuality: null,
+      pendingVerdict: null,
+      pendingCheckError: null,
       pendingSource: source,
       captureFailure: null,
       transferProgress: null,
@@ -330,22 +358,56 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
         pending: image,
         transferProgress: null,
       );
-      unawaited(_measure(image));
+      unawaited(_check(image));
     }
   }
 
-  /// Measures the photo under review. Ignored if it has moved on meanwhile.
-  Future<void> _measure(CapturedImage image) async {
-    final quality = await PhotoQuality.measure(image.bytes);
-    if (quality != null && identical(state.pending, image)) {
-      state = state.copyWith(pendingQuality: quality);
+  /// Runs the photo check on the image under review. Ignored if the user has
+  /// moved on meanwhile. Anything but a verdict leaves it unchecked, never
+  /// passed.
+  Future<void> _check(CapturedImage image) async {
+    PhotoVerdict? verdict;
+    PhotoCheckException? error;
+    try {
+      verdict = await ref
+          .read(photoCheckServiceProvider)
+          .check(image.bytes)
+          .timeout(photoCheckTimeout);
+    } on PhotoCheckException catch (e) {
+      error = e;
+    } catch (_) {
+      error = const PhotoCheckException();
     }
+    if (!identical(state.pending, image)) return;
+    state = state.copyWith(pendingVerdict: verdict, pendingCheckError: error);
   }
 
-  /// Keeps the image under review and moves on to the next open region.
+  /// Checks the image under review again after a check that couldn't finish.
+  Future<void> recheckPending() async {
+    final image = state.pending;
+    if (image == null || state.pendingCheckError == null) return;
+    state = state.copyWith(pendingCheckError: null);
+    await _check(image);
+  }
+
+  /// Drops the image under review and goes back to this view's guide, with
+  /// every other photo kept.
+  void discardPending() {
+    if (state.capturePhase != CapturePhase.reviewing) return;
+    state = state.copyWith(
+      capturePhase: CapturePhase.idle,
+      pending: null,
+      pendingVerdict: null,
+      pendingCheckError: null,
+      pendingSource: null,
+    );
+  }
+
+  /// Keeps the image under review and moves on to the next open region. Does
+  /// nothing unless the photo check passed it.
   void acceptPending() {
     final image = state.pending;
-    if (state.capturePhase != CapturePhase.reviewing || image == null) return;
+    if (!state.canAcceptPending || image == null) return;
     final region = state.selectedRegionId;
     final captures = Map<String, CapturedImage>.unmodifiable({
       ...state.captures,
@@ -356,21 +418,24 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
       selectedRegionId: _nextOpenRegion(after: region, captures: captures),
       capturePhase: CapturePhase.idle,
       pending: null,
-      pendingQuality: null,
+      pendingVerdict: null,
+      pendingCheckError: null,
       pendingSource: null,
       lastSavedRegionId: region,
       savedCount: state.savedCount + 1,
     );
   }
 
-  /// Discards the image under review and captures again from the same source.
+  /// Discards the image under review and captures again from the same source,
+  /// for the same view. The rest of the scan stays as it is.
   Future<void> retake() async {
     final source = state.pendingSource;
     if (state.capturePhase != CapturePhase.reviewing || source == null) return;
     state = state.copyWith(
       capturePhase: CapturePhase.idle,
       pending: null,
-      pendingQuality: null,
+      pendingVerdict: null,
+      pendingCheckError: null,
     );
     await capture(source);
   }

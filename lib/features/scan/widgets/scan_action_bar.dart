@@ -20,6 +20,8 @@ class ScanActionBar extends StatelessWidget {
     required this.onCapture,
     required this.onAccept,
     required this.onRetake,
+    required this.onDiscard,
+    required this.onRecheck,
     required this.onSelect,
     required this.onFinish,
     required this.onRetryAnalysis,
@@ -36,6 +38,12 @@ class ScanActionBar extends StatelessWidget {
   final ValueChanged<CaptureSource> onCapture;
   final VoidCallback onAccept;
   final VoidCallback onRetake;
+
+  /// Drops a rejected photo and goes back to this view's guide.
+  final VoidCallback onDiscard;
+
+  /// Runs the photo check again after it couldn't finish.
+  final VoidCallback onRecheck;
   final ValueChanged<String> onSelect;
   final VoidCallback onFinish;
   final VoidCallback onRetryAnalysis;
@@ -139,6 +147,47 @@ class ScanActionBar extends StatelessWidget {
         return const _BusyButton(
             key: ValueKey('recv'), label: 'Receiving image…');
       case CapturePhase.reviewing:
+        // "Use photo" only exists once the check has passed the photo.
+        if (session.pendingCheckError != null) {
+          return _pair(
+            key: 'check-failed',
+            secondary: ('Retake', onRetake),
+            primary: ('Check again', onRecheck),
+          );
+        }
+        final verdict = session.pendingVerdict;
+        if (verdict == null) {
+          return Row(
+            key: const ValueKey('checking'),
+            children: [
+              Expanded(
+                flex: 2,
+                child: PrimaryButton(
+                  label: 'Retake',
+                  variant: ButtonVariant.secondary,
+                  onTap: onRetake,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                flex: 3,
+                child: _BusyButton(label: 'Checking…'),
+              ),
+            ],
+          );
+        }
+        if (!verdict.passed) {
+          return _pair(
+            key: 'rejected',
+            secondary: ('Back', onDiscard),
+            primary: (
+              session.pendingSource == CaptureSource.photoLibrary
+                  ? 'Choose another'
+                  : 'Retake photo',
+              onRetake,
+            ),
+          );
+        }
         return _pair(
           key: 'review',
           secondary: ('Retake', onRetake),

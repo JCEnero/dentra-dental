@@ -297,6 +297,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   onCapture: scan.capture,
                   onAccept: scan.acceptPending,
                   onRetake: scan.retake,
+                  onDiscard: scan.discardPending,
+                  onRecheck: scan.recheckPending,
                   onSelect: scan.selectRegion,
                   onFinish: scan.finish,
                   onRetryAnalysis: scan.retryAnalysis,
