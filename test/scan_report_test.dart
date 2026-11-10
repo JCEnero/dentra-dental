@@ -130,6 +130,17 @@ class _Repo implements ScreeningRepository {
     String modality = 'rgb',
   }) async =>
       null;
+
+  /// Every answer saved, in order: (session, finding, answer).
+  final List<(String, String, ToothPain?)> answers = [];
+
+  @override
+  Future<ScreeningSession> answerFinding(String userId, String sessionId,
+      String findingId, ToothPain? pain) async {
+    answers.add((sessionId, findingId, pain));
+    final i = sessions.indexWhere((s) => s.id == sessionId);
+    return sessions[i] = sessions[i].withAnswer(findingId, pain);
+  }
 }
 
 Future<void> _pumpReport(
@@ -770,14 +781,14 @@ void main() {
     testWidgets('goes through the signs one at a time, the mouth turning along',
         (tester) async {
       await _pumpReport(tester, busy);
-      expect(find.text('1 of 4'), findsOneWidget);
-      expect(find.text('Upper back teeth'), findsOneWidget);
+      expect(find.text('1 of 4 marked teeth'), findsOneWidget);
+      expect(find.text('An upper back tooth'), findsOneWidget);
 
-      final next = find.byTooltip('Next sign');
+      final next = find.byTooltip('Next marked tooth');
       await tester.ensureVisible(next);
       await tester.tap(next);
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('2 of 4'), findsOneWidget);
+      expect(find.text('2 of 4 marked teeth'), findsOneWidget);
       expect(find.text('Whole mouth'), findsOneWidget);
 
       await tester.ensureVisible(find.text('Whole mouth'));
@@ -785,14 +796,17 @@ void main() {
       await tester.tap(find.text('Whole mouth'));
       await settleFrames(tester);
       expect(find.text('Whole mouth'), findsNothing);
-      expect(find.text('2 of 4'), findsOneWidget);
+      expect(find.text('2 of 4 marked teeth'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('says what each strength means, with no figures', (tester) async {
       expect(signMeaning.keys, unorderedEquals(SignStrength.values));
       await _pumpReport(tester, busy);
-      expect(find.text(signMeaning[SignStrength.strong]!), findsOneWidget);
+      expect(
+        find.textContaining(signMeaning[SignStrength.strong]!),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows how the signs split by strength', (tester) async {
@@ -916,7 +930,9 @@ void main() {
 
     testWidgets('names what it can\'t read', (tester) async {
       await _pumpReport(tester, ScreeningReport(_analysis(), _allViews));
-      expect(find.textContaining('Plaque, tartar, gums'), findsOneWidget);
+      expect(find.text('Plaque and tartar'), findsOneWidget);
+      expect(find.text('Gum problems'), findsOneWidget);
+      expect(find.text('Not read'), findsNWidgets(2));
       expect(find.textContaining("can't be read yet"), findsOneWidget);
     });
 

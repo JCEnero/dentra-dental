@@ -61,6 +61,21 @@ class ApiScreeningRepository implements ScreeningRepository {
     return screeningSessionFromApi(_api, body['session'] as Map<String, dynamic>);
   }
 
+  @override
+  Future<ScreeningSession> answerFinding(
+    String userId,
+    String sessionId,
+    String findingId,
+    ToothPain? pain,
+  ) async {
+    final path = '/api/screenings/${Uri.encodeComponent(sessionId)}'
+        '/findings/${Uri.encodeComponent(findingId)}/answer';
+    final body = pain == null
+        ? await _api.send('DELETE', path)
+        : await _api.send('PUT', path, json: {'pain': pain.id});
+    return _sessionFrom(body['session'] as Map<String, dynamic>);
+  }
+
   ScreeningSession _sessionFrom(Map<String, dynamic> json) =>
       screeningSessionFromApi(_api, json);
 }

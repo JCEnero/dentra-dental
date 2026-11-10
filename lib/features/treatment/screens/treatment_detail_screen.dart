@@ -104,6 +104,25 @@ class _TreatmentDetailScreenState extends State<TreatmentDetailScreen> {
                           height: 1.65,
                         ),
                       ),
+                      if (treatment.whyRecommended case final why?) ...[
+                        const SizedBox(height: 32),
+                        const _SectionTitle('Why a dentist may recommend it'),
+                        const SizedBox(height: 10),
+                        Text(
+                          why,
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            color: AppColors.navy.withValues(alpha: 0.78),
+                            height: 1.65,
+                          ),
+                        ),
+                      ],
+                      if (treatment.whenNeeded.isNotEmpty) ...[
+                        const SizedBox(height: 32),
+                        const _SectionTitle('When it may be needed'),
+                        const SizedBox(height: 12),
+                        _PointsCard(points: treatment.whenNeeded),
+                      ],
                       const SizedBox(height: 32),
                       _SectionTitle(
                         'What to expect',
@@ -111,6 +130,18 @@ class _TreatmentDetailScreenState extends State<TreatmentDetailScreen> {
                       ),
                       const SizedBox(height: 12),
                       _StepsCard(steps: treatment.steps),
+                      if (treatment.aftercare.isNotEmpty) ...[
+                        const SizedBox(height: 32),
+                        const _SectionTitle('Recovery and aftercare'),
+                        const SizedBox(height: 12),
+                        _PointsCard(points: treatment.aftercare),
+                      ],
+                      if (treatment.risks.isNotEmpty) ...[
+                        const SizedBox(height: 32),
+                        const _SectionTitle('Risks and things to consider'),
+                        const SizedBox(height: 12),
+                        _PointsCard(points: treatment.risks),
+                      ],
                       const SizedBox(height: 24),
                       const DentraNoteCard(
                         message:
@@ -526,6 +557,54 @@ class _SectionTitle extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Short points in one glass card, each led by a small teal mark.
+class _PointsCard extends StatelessWidget {
+  const _PointsCard({required this.points});
+
+  final List<String> points;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      borderRadius: BorderRadius.circular(20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final (i, point) in points.indexed)
+            Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    margin: const EdgeInsets.only(top: 8, right: 12),
+                    decoration: const BoxDecoration(
+                      color: AppColors.g2,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      point,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: AppColors.navy.withValues(alpha: 0.78),
+                        height: 1.55,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

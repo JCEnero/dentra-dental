@@ -54,14 +54,14 @@ class _TrendSectionState extends State<TrendSection> {
               Expanded(
                 child: _Change(
                   value: trend.stillAreas.length,
-                  label: 'still flagged',
+                  label: 'flagged again',
                   areas: trend.stillAreas,
                 ),
               ),
               Expanded(
                 child: _Change(
                   value: trend.clearedAreas.length,
-                  label: 'gone',
+                  label: 'not flagged now',
                   areas: trend.clearedAreas,
                 ),
               ),
@@ -91,9 +91,10 @@ class _TrendSectionState extends State<TrendSection> {
           if (repeating.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              'Signs keep showing up in: '
-              '${describeAreas(repeating.toSet()).toLowerCase()}. That\'s worth '
-              'showing a dentist, even if they look faint.',
+              'Keep watching: '
+              '${describeAreas(repeating.toSet()).toLowerCase()}. Signs keep '
+              'showing up there, which is worth showing a dentist, even if '
+              'they look faint.',
               style: GoogleFonts.outfit(
                 fontSize: 13,
                 height: 1.4,
@@ -107,8 +108,9 @@ class _TrendSectionState extends State<TrendSection> {
             trend.mixedVersions
                 ? 'Older scans used an earlier version of this check, so some '
                     'change may come from the check, not your teeth.'
-                : 'Light and angle change between scans. What keeps showing up '
-                    'matters more than one small change.',
+                : 'Light and angle change between scans, so an area not '
+                    'flagged now hasn\'t necessarily healed. What keeps showing '
+                    'up matters more than one small change.',
             style: reportNote,
           ),
         ],

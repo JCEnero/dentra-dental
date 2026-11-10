@@ -31,6 +31,16 @@ abstract class ScreeningRepository {
     Uint8List bytes, {
     String modality = 'rgb',
   });
+
+  /// Saves what the user said about the tooth behind [findingId], or takes the
+  /// answer back when [pain] is null, and returns the updated session. The
+  /// answer is kept apart from the finding and never changes it.
+  Future<ScreeningSession> answerFinding(
+    String userId,
+    String sessionId,
+    String findingId,
+    ToothPain? pain,
+  );
 }
 
 /// Device-local [ScreeningRepository] backed by SharedPreferences.
@@ -78,6 +88,10 @@ class LocalScreeningRepository implements ScreeningRepository {
       analysis: session.analysis,
       reportedContext: session.reportedContext ?? existing?.reportedContext,
       checkIn: session.checkIn ?? existing?.checkIn,
+      // Answers change through answerFinding; saving the scan again keeps them.
+      findingAnswers: session.findingAnswers.isEmpty
+          ? existing?.findingAnswers ?? const []
+          : session.findingAnswers,
       createdAt: existing?.createdAt ?? session.createdAt ?? now,
       updatedAt: now,
     );
@@ -110,6 +124,25 @@ class LocalScreeningRepository implements ScreeningRepository {
     String modality = 'rgb',
   }) async =>
       null;
+
+  @override
+  Future<ScreeningSession> answerFinding(
+    String userId,
+    String sessionId,
+    String findingId,
+    ToothPain? pain,
+  ) async {
+    final current = await fetchSessions(userId);
+    final session = current.where((s) => s.id == sessionId).firstOrNull;
+    if (session == null) {
+      throw StateError('That screening is no longer in your history.');
+    }
+    final updated = session.withAnswer(findingId, pain);
+    await _write(userId, [
+      for (final s in current) s.id == sessionId ? updated : s,
+    ]);
+    return updated;
+  }
 
   Future<void> _write(String userId, List<ScreeningSession> sessions) async {
     final prefs = await SharedPreferences.getInstance();

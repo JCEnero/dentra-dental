@@ -47,6 +47,22 @@ class FakeScreeningRepository implements ScreeningRepository {
           String userId, String sessionId, String regionId, Uint8List bytes,
           {String modality = 'rgb'}) async =>
       null;
+
+  /// Every answer saved, in order: (session, finding, answer).
+  final List<(String, String, ToothPain?)> answers = [];
+
+  /// Thrown by the next answerFinding while set.
+  Object? answerError;
+
+  @override
+  Future<ScreeningSession> answerFinding(String userId, String sessionId,
+      String findingId, ToothPain? pain) async {
+    if (answerError case final error?) throw error;
+    answers.add((sessionId, findingId, pain));
+    final i = sessions.indexWhere((s) => s.id == sessionId);
+    if (i < 0) throw const ApiException(404, 'not_found', 'Gone.');
+    return sessions[i] = sessions[i].withAnswer(findingId, pain);
+  }
 }
 
 /// Dental records held in memory, with predictable ids.

@@ -73,6 +73,35 @@ abstract class TreatmentData {
       iconColor: Color(0xFF4CAF93),
       iconBackground: Color(0xFFE8F5F1),
       duration: '30 – 60 minutes',
+      whyRecommended:
+          'To repair a tooth with a cavity: decay that has made a hole in the '
+          'enamel or the layer under it. Removing the decay and sealing the '
+          'tooth stops it spreading and lets you bite and chew normally '
+          'again.',
+      whenNeeded: [
+        'Decay has made a hole (a cavity) that fluoride alone can\'t '
+            'reverse.',
+        'A tooth is chipped, cracked or worn, or an old filling has broken.',
+        'Enough healthy tooth is left around the cavity to hold a filling.',
+      ],
+      aftercare: [
+        'Your mouth may stay numb for a few hours. Avoid hot drinks and '
+            'chewing on that side until it wears off.',
+        'Some sensitivity to cold or biting is common for a few days to a '
+            'couple of weeks.',
+        'Tell your dentist if your bite feels high, or the tooth still '
+            'hurts after a few weeks.',
+        'Brush twice a day with fluoride toothpaste and clean between your '
+            'teeth to protect the filling.',
+      ],
+      risks: [
+        'Short-term sensitivity, especially after a deep filling.',
+        'Fillings can wear, chip or leak over the years and may need '
+            'replacing.',
+        'If the decay was deep, the nerve can become inflamed later and '
+            'need root canal treatment.',
+        'Rarely, an allergy to a filling material.',
+      ],
       steps: [
         TreatmentStep(
           title: 'Local Anaesthesia',
@@ -124,6 +153,37 @@ abstract class TreatmentData {
       iconBackground: Color(0xFFFDF0EB),
       duration: '60 – 90 minutes',
       requiresFollowUp: true,
+      whyRecommended:
+          'To save a tooth whose nerve (the pulp) is inflamed or infected, '
+          'often from deep decay, a crack or an injury. Removing the damaged '
+          'pulp relieves the pain and stops the infection spreading, so the '
+          'tooth can stay.',
+      whenNeeded: [
+        'Lasting pain, especially to hot or cold that lingers, or pain that '
+            'wakes you at night.',
+        'Decay or a crack has reached the pulp.',
+        'An abscess or infection at the root, sometimes with a swollen gum.',
+        'An X-ray and tests show the pulp can\'t heal on its own.',
+      ],
+      aftercare: [
+        'The tooth may be tender for a few days. Pain relief from a '
+            'pharmacy usually helps; follow the pack or your dentist\'s advice.',
+        'Avoid chewing hard food on that tooth until the permanent filling '
+            'or crown is in place.',
+        'Go back for the crown or final filling, which protects the treated '
+            'tooth from breaking.',
+        'Contact your dentist if swelling appears, or the pain gets worse '
+            'after a few days.',
+      ],
+      risks: [
+        'A treated tooth can become brittle, which is why a crown is often '
+            'advised.',
+        'Sometimes infection comes back and the treatment needs redoing, or '
+            'a small operation at the root tip.',
+        'Rarely, a canal can\'t be fully cleaned or an instrument breaks '
+            'inside it.',
+        'If the tooth can\'t be saved, it may still need to come out.',
+      ],
       steps: [
         TreatmentStep(
           title: 'X-Ray & Diagnosis',
@@ -175,6 +235,40 @@ abstract class TreatmentData {
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: '20 – 45 minutes',
+      whyRecommended:
+          'To remove a tooth that can\'t be saved or is causing problems: a '
+          'tooth badly broken or decayed, a severe infection, advanced gum '
+          'disease, or teeth that crowd others or can\'t come through '
+          'properly.',
+      whenNeeded: [
+        'Decay or a break has destroyed too much of the tooth to repair.',
+        'Infection that a root canal can\'t treat, or a root canal that has '
+            'failed.',
+        'The tooth is very loose from advanced gum disease.',
+        'Wisdom teeth or crowded teeth are causing pain or damage, or '
+            'before braces.',
+      ],
+      aftercare: [
+        'Bite firmly on the gauze for 30 to 45 minutes so a blood clot can '
+            'form.',
+        'For the first day, don\'t rinse hard, spit, smoke or drink through '
+            'a straw, so the clot stays in place.',
+        'Eat soft food and chew on the other side. After 24 hours, rinse '
+            'gently with warm salt water.',
+        'Some swelling and soreness for a few days is normal. Contact your '
+            'dentist if bleeding won\'t stop, pain gets worse after 2 to 3 days, '
+            'or you get a fever.',
+        'Ask about replacing the tooth with an implant, bridge or denture, '
+            'so the teeth around it don\'t shift.',
+      ],
+      risks: [
+        'Dry socket: the clot comes away and the socket becomes very '
+            'painful, usually 2 to 4 days later.',
+        'Infection, bleeding or swelling.',
+        'Rarely, for lower back teeth, numbness of the lip or tongue from '
+            'an irritated nerve.',
+        'Neighbouring teeth can drift into the gap if it isn\'t filled.',
+      ],
       steps: [
         TreatmentStep(
           title: 'X-Ray Review',
@@ -545,6 +639,35 @@ abstract class TreatmentData {
       iconBackground: Color(0xFFE8F8F7),
       duration: '2 visits (1 hour each)',
       requiresFollowUp: true,
+      whyRecommended:
+          'To cover and protect a tooth that is too damaged or weak for a '
+          'filling alone: after large decay, a crack, or root canal '
+          'treatment.',
+      whenNeeded: [
+        'A cavity or old filling is too big for the tooth to hold a filling '
+            'well.',
+        'A tooth is cracked or badly worn.',
+        'After root canal treatment, especially on back teeth.',
+        'To cover a dental implant or hold a bridge.',
+      ],
+      aftercare: [
+        'With a temporary crown, avoid sticky or hard food and chew on the '
+            'other side.',
+        'Some sensitivity for a few days is common once the permanent crown '
+            'is fitted.',
+        'Brush and clean between your teeth as normal, especially where the '
+            'crown meets the gum.',
+        'Tell your dentist if the crown feels high or loose.',
+      ],
+      risks: [
+        'The tooth underneath can still decay at the edge of the crown.',
+        'Crowns can chip, loosen or come off, and may need replacing after '
+            'years of use.',
+        'Shaping the tooth can sometimes inflame the nerve, which then '
+            'needs root canal treatment.',
+        'Some sensitivity, or a darker line at the gum with metal-based '
+            'crowns.',
+      ],
       steps: [
         TreatmentStep(
           title: 'Tooth Preparation',
@@ -698,6 +821,35 @@ abstract class TreatmentData {
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '15 – 30 minutes',
+      whyRecommended:
+          'To strengthen enamel and help stop early decay. Fluoride helps '
+          'weakened enamel take back minerals, so very early decay that '
+          'hasn\'t made a hole can sometimes be stopped or reversed.',
+      whenNeeded: [
+        'Early decay, such as chalky white spots, before a cavity forms.',
+        'A higher risk of decay: frequent cavities, dry mouth, braces, or '
+            'gums that have pulled back.',
+        'Children\'s teeth, which dentists often protect with fluoride '
+            'varnish.',
+        'Sensitive teeth, which fluoride can help settle.',
+      ],
+      aftercare: [
+        'Don\'t eat, drink or rinse for at least 30 minutes, or as long as '
+            'your dentist says.',
+        'After varnish, skip hot drinks, hard or sticky food and brushing '
+            'until the next morning, if you\'re told to.',
+        'Keep brushing twice a day with fluoride toothpaste, and cut down '
+            'on sugary food and drinks.',
+      ],
+      risks: [
+        'Very safe in the amounts dentists use.',
+        'Teeth can look slightly yellow or dull until the varnish brushes '
+            'off the next day.',
+        'Swallowing gel can upset the stomach, which is why only a little '
+            'is used.',
+        'It helps early decay, but a cavity that has already formed still '
+            'needs a filling.',
+      ],
       steps: [
         TreatmentStep(
           title: 'Teeth Cleaning',
@@ -1183,6 +1335,14 @@ abstract class TreatmentData {
       ],
     ),
   ];
+
+  /// The treatment with [id], or null if there's none.
+  static TreatmentModel? byId(String id) {
+    for (final t in all) {
+      if (t.id == id) return t;
+    }
+    return null;
+  }
 
   /// Returns treatments filtered by [category], or all treatments if null.
   static List<TreatmentModel> byCategory(TreatmentCategory? category) {

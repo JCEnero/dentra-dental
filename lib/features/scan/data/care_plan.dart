@@ -13,10 +13,12 @@ library;
 import '../../../core/utils/dentra_dates.dart';
 import '../../dental_profile/data/models/dental_answers.dart';
 import '../../dental_records/data/models/dental_record.dart';
+import '../../screening/data/models/finding_answer.dart';
 import '../../screening/data/models/scan_check_in.dart';
 import 'patient_context.dart';
 import 'scan_outcomes.dart';
 import 'scan_report.dart';
+import 'tooth_guidance.dart';
 
 /// Where a piece of advice comes from.
 enum CareSource {
@@ -99,9 +101,22 @@ class CarePlan {
     required this.questions,
     required this.dailyCare,
     required this.report,
+    required this.teeth,
   });
 
   final ScreeningReport report;
+
+  /// What to say about each marked tooth, in the report's order.
+  final List<ToothGuidance> teeth;
+
+  /// What the user said about the marked teeth, as lines for a dentist or Rabi.
+  /// Their words, so they go under their own heading, never with the findings.
+  List<String> get toothAnswerLines => [
+        for (final g in teeth)
+          if (g.pain case final pain?)
+            'The tooth marked in the ${g.spot.photo.label} photo: '
+                '${pain.short.toLowerCase()}',
+      ];
 
   /// Most pressing first. Empty when nothing calls for anything in particular.
   final List<CareStep> steps;
@@ -134,11 +149,13 @@ class CarePlan {
       steps.firstOrNull?.why ??
       'Nothing here calls for an earlier visit, but photos can miss things.';
 
+  /// [answers] is what the user said about the marked teeth, by finding id.
   factory CarePlan.of(
     ScreeningReport report,
     PatientContext context,
-    ScanTrend trend,
-  ) {
+    ScanTrend trend, {
+    Map<String, ToothPain> answers = const {},
+  }) {
     final steps = <CareStep>[];
     final links = <ContextLink>[];
     final now = context.symptoms;
@@ -173,6 +190,40 @@ class CarePlan {
       steps.addAll(_symptomSteps(now, toothCovered: sameArea.isNotEmpty));
     }
     final current = now != null && !now.old ? now : null;
+
+    // ── What they told us about the teeth the check marked ──
+    final teeth = toothGuidanceFor(report, answers: answers, symptoms: current);
+    final hurting = [
+      for (final g in teeth)
+        if (g.pain?.hurts ?? false) g,
+    ];
+    if (hurting.isNotEmpty) {
+      final one = hurting.length == 1;
+      final first = hurting.first;
+      final felt = first.pain == ToothPain.yes
+          ? 'has hurt'
+          : 'is sometimes sensitive';
+      steps.add(CareStep(
+        level: hurting
+            .map((g) => g.urgency)
+            .reduce(ToothUrgency.max)
+            .careLevel,
+        title: one
+            ? 'Have the tooth that hurts examined'
+            : 'Have the teeth that hurt examined',
+        detail: one
+            ? 'You told us the tooth the check marked in your '
+                '${first.spot.photo.label} photo $felt. Pain or sensitivity '
+                'in a marked tooth is a good reason to have it examined.'
+            : 'You told us ${hurting.length} of the teeth the check marked '
+                'have hurt or been sensitive. That\'s a good reason to have '
+                'them examined.',
+        why: one
+            ? 'Because you told us a tooth the check marked $felt.'
+            : 'Because you told us teeth the check marked have hurt.',
+        sources: const {CareSource.check, CareSource.you},
+      ));
+    }
 
     // ── Where symptoms and marks meet, or don't ──
     if (current != null) {
@@ -336,8 +387,14 @@ class CarePlan {
       report: report,
       steps: List.unmodifiable(steps),
       links: List.unmodifiable(links),
-      questions: List.unmodifiable(_questions(report, context, trend)),
+      questions: List.unmodifiable([
+        // A symptom from the check-in already asks the same about the mark.
+        if (hurting.isNotEmpty && !(current?.aboutTeeth ?? false))
+          'Could the marked tooth be causing my pain, and what does it need?',
+        ..._questions(report, context, trend),
+      ].take(3)),
       dailyCare: List.unmodifiable(_dailyCare(report, context)),
+      teeth: List.unmodifiable(teeth),
     );
   }
 

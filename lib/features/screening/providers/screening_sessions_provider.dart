@@ -87,6 +87,32 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
   /// analysis, without writing it back.
   void showSaved(ScreeningSession session) => _replaceLocal(session);
 
+  /// Saves what the user said about one marked tooth, or takes it back when
+  /// [pain] is null. The page shows it at once; if saving fails, the earlier
+  /// answer comes back and the error is rethrown for the caller to report.
+  Future<void> answerFinding(
+    String sessionId,
+    String findingId,
+    ToothPain? pain,
+  ) async {
+    try {
+      await future;
+    } catch (_) {}
+    ScreeningSession? stored() =>
+        state.valueOrNull?.where((s) => s.id == sessionId).firstOrNull;
+    final before = stored()?.painByFinding[findingId];
+    if (stored() case final s?) _replaceLocal(s.withAnswer(findingId, pain));
+    try {
+      _replaceLocal(
+        await _repo.answerFinding(_userId, sessionId, findingId, pain),
+      );
+    } catch (_) {
+      // Only this answer goes back, so another one saved meanwhile stays.
+      if (stored() case final s?) _replaceLocal(s.withAnswer(findingId, before));
+      rethrow;
+    }
+  }
+
   /// Deletes one session. Restores it and rethrows if the delete fails.
   Future<void> delete(String sessionId) async {
     final previous = state.valueOrNull ?? const <ScreeningSession>[];

@@ -229,6 +229,34 @@ class AreaReport {
 /// When the analysis says to see a dentist, least to most pressing.
 enum ReportLevel { none, nextVisit, soon, prompt }
 
+/// What a row of the chart by type counts.
+enum ConditionKind { sign, faint, dentalWork, notRead }
+
+/// One kind of thing the check looks for, and how much of it was marked.
+class ConditionRow {
+  const ConditionRow(
+    this.name,
+    this.note, {
+    required this.kind,
+    this.count,
+    this.strong = 0,
+  });
+
+  final String name;
+  final ConditionKind kind;
+
+  /// What the count means, in a few words.
+  final String note;
+
+  /// How many were marked, or null for something this check can't read.
+  final int? count;
+
+  /// Of [count], how many were strong signs.
+  final int strong;
+
+  bool get read => count != null;
+}
+
 /// One finished analysis, for the results page.
 class ScreeningReport {
   ScreeningReport(this.analysis, List<String> photoIds)
@@ -344,6 +372,77 @@ class ScreeningReport {
   int get viewsTotal => guided ? scanRegions.length : photoIds.length;
 
   int get areasFlagged => areas.values.where((a) => a.state.flagged).length;
+
+  /// Areas with a sign the advice is based on.
+  int get areasToCheck => areas.values
+      .where((a) =>
+          a.state == AreaState.possible || a.state == AreaState.strong)
+      .length;
+
+  /// Areas with only a faint sign.
+  int get areasToWatch =>
+      areas.values.where((a) => a.state == AreaState.faint).length;
+
+  /// Areas read with nothing marked.
+  int get areasClear =>
+      areas.values.where((a) => a.state == AreaState.clear).length;
+
+  /// Areas no photo could speak for: none taken, none usable, or none read yet.
+  int get areasUnread => areas.values.where((a) => !a.state.read).length;
+
+  /// What the check looked for and how much of each it marked, for the chart
+  /// by type. What it can't read is listed too, with no count, so a short list
+  /// is never taken for a clean one.
+  List<ConditionRow> get conditions {
+    final counted = spots.where((s) => s.strength != SignStrength.faint);
+    final labels = {for (final s in counted) s.finding.label};
+    return [
+      if (labels.isEmpty)
+        const ConditionRow(
+          'Possible tooth decay',
+          'Nothing marked in the photos read',
+          kind: ConditionKind.sign,
+          count: 0,
+        )
+      else
+        for (final label in labels)
+          ConditionRow(
+            label,
+            'The signs your advice is based on',
+            kind: ConditionKind.sign,
+            count: counted.where((s) => s.finding.label == label).length,
+            strong: counted
+                .where((s) =>
+                    s.finding.label == label &&
+                    s.strength == SignStrength.strong)
+                .length,
+          ),
+      ConditionRow(
+        'Faint signs',
+        'Too unsure to act on. Compared on your next scan',
+        kind: ConditionKind.faint,
+        count: faintCount,
+      ),
+      // Only said when seen: not every model looks for dental work.
+      if (analysis.dentalWork.isNotEmpty)
+        ConditionRow(
+          'Fillings and crowns',
+          'Told apart from decay. Not a concern',
+          kind: ConditionKind.dentalWork,
+          count: analysis.dentalWork.length,
+        ),
+      const ConditionRow(
+        'Plaque and tartar',
+        'Not read by this check yet',
+        kind: ConditionKind.notRead,
+      ),
+      const ConditionRow(
+        'Gum problems',
+        'Not read by this check yet',
+        kind: ConditionKind.notRead,
+      ),
+    ];
+  }
 
   /// For each surface, in order: how many of its six areas were read, and how
   /// many have a saved photo no model can read. Null for an old five-region scan.

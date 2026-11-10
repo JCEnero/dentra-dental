@@ -2,29 +2,46 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../../../screening/data/models/finding_answer.dart';
 import '../../data/scan_report.dart';
+import '../../data/tooth_guidance.dart';
 import '../scan_motion.dart';
 import 'mouth_3d.dart';
 import 'report_charts.dart';
 import 'report_style.dart';
 import 'spot_photo.dart';
+import 'tooth_card.dart';
 
-/// One sign at a time: the real photo in close on it, a small 3D mouth saying
-/// where that is, and how sure the model was. Swipe or use the arrows for the
-/// next one, and the big mouth at the top of the page turns with it.
+/// One marked tooth at a time: the real photo in close on it, a small 3D mouth
+/// saying where that is, and everything about that tooth under it. Swipe or use
+/// the arrows for the next one, and the big mouth at the top of the page turns
+/// with it.
 class SignsSection extends StatefulWidget {
   const SignsSection({
     super.key,
     required this.report,
+    required this.guidance,
     required this.imageOf,
     required this.focus,
+    this.onAnswer,
+    this.onLearnMore,
   });
 
   final ScreeningReport report;
+
+  /// One per sign, in the report's order.
+  final List<ToothGuidance> guidance;
   final ImageProvider? Function(String photoId) imageOf;
 
   /// The sign being shown, shared with the 3D mouth.
   final ValueNotifier<ReportSpot?> focus;
+
+  /// Saves an answer about the finding with this id. Null when answers can't be
+  /// saved, which leaves the question out.
+  final void Function(String findingId, ToothPain? pain)? onAnswer;
+
+  /// Opens a procedure's page in the Treatment tab.
+  final ValueChanged<String>? onLearnMore;
 
   @override
   State<SignsSection> createState() => _SignsSectionState();
@@ -35,9 +52,9 @@ class _SignsSectionState extends State<SignsSection> {
   /// report at any time, and the choice should survive that.
   int _index = 0;
 
-  List<ReportSpot> get _spots => widget.report.spots;
+  List<ReportSpot> get _spots => [for (final g in widget.guidance) g.spot];
 
-  ReportSpot get _spot => _spots[_index.clamp(0, _spots.length - 1)];
+  int get _at => _index.clamp(0, widget.guidance.length - 1);
 
   @override
   void initState() {
@@ -54,19 +71,19 @@ class _SignsSectionState extends State<SignsSection> {
   void _onFocus() {
     final spot = widget.focus.value;
     if (spot == null) return;
-    final i = _spots.indexWhere((s) => identical(s.finding, spot.finding));
+    final i = widget.guidance
+        .indexWhere((g) => identical(g.spot.finding, spot.finding));
     if (i >= 0 && i != _index) setState(() => _index = i);
   }
 
   void _step(int by) {
-    final next = (_index + by).clamp(0, _spots.length - 1);
+    final next = (_index + by).clamp(0, widget.guidance.length - 1);
     if (next == _index) return;
     setState(() => _index = next);
-    widget.focus.value = _spots[next];
+    widget.focus.value = widget.guidance[next].spot;
   }
 
-  void _open(ImageProvider image) {
-    final s = _spot;
+  void _open(ImageProvider image, ReportSpot s) {
     openSpotPhoto(
       context,
       image: image,
@@ -77,10 +94,13 @@ class _SignsSectionState extends State<SignsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final s = _spot;
+    final g = widget.guidance[_at];
+    final s = g.spot;
     final image = widget.imageOf(s.photoId);
-    final many = _spots.length > 1;
+    final many = widget.guidance.length > 1;
     final work = widget.report.dentalWorkLine;
+    final save = widget.onAnswer;
+    final findingId = s.finding.id;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -113,11 +133,11 @@ class _SignsSectionState extends State<SignsSection> {
                         else
                           Semantics(
                             button: true,
-                            label: '${s.photo.label} photo, with the sign '
+                            label: '${s.photo.label} photo, with the tooth '
                                 'marked. Opens full size.',
                             excludeSemantics: true,
                             child: GestureDetector(
-                              onTap: () => _open(image),
+                              onTap: () => _open(image, s),
                               child: SpotPhoto(
                                 image: image,
                                 markers:
@@ -162,47 +182,22 @@ class _SignsSectionState extends State<SignsSection> {
                   child: AnimatedSwitcher(
                     duration: ScanMotion.of(context, ScanMotion.fast),
                     child: Semantics(
-                      key: ValueKey(_index),
+                      key: ValueKey(_at),
                       container: true,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(s.where, style: reportCardTitle),
-                                    const SizedBox(height: 1),
-                                    Text(s.strength.label, style: reportNote),
-                                  ],
-                                ),
-                              ),
-                              if (s.finding.confidence case final c?)
-                                Semantics(
-                                  label: '${(c * 100).round()} percent model '
-                                      'confidence',
-                                  excludeSemantics: true,
-                                  child: ConfidenceGauge(
-                                    value: c,
-                                    color: ReportColors.ofSign(s.strength),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(signMeaning[s.strength]!, style: reportBody),
-                        ],
+                      child: ToothDetails(
+                        guidance: g,
+                        onAnswer: save == null || findingId == null
+                            ? null
+                            : (pain) => save(findingId, pain),
+                        onLearnMore: widget.onLearnMore,
                       ),
                     ),
                   ),
                 ),
                 if (many)
                   _Pager(
-                    index: _index,
-                    count: _spots.length,
+                    index: _at,
+                    count: widget.guidance.length,
                     onStep: _step,
                   ),
               ],
@@ -249,9 +244,17 @@ class _Pager extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        arrow(Icons.chevron_left_rounded, 'Previous sign', -1, index > 0),
-        Text('${index + 1} of $count', style: reportNote),
-        arrow(Icons.chevron_right_rounded, 'Next sign', 1, index < count - 1),
+        arrow(Icons.chevron_left_rounded, 'Previous marked tooth', -1,
+            index > 0),
+        Flexible(
+          child: Text(
+            '${index + 1} of $count marked teeth',
+            textAlign: TextAlign.center,
+            style: reportNote,
+          ),
+        ),
+        arrow(Icons.chevron_right_rounded, 'Next marked tooth', 1,
+            index < count - 1),
       ],
     );
   }

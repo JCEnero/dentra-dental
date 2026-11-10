@@ -11,6 +11,7 @@ import '../../data/patient_context.dart';
 import '../../data/scan_outcomes.dart';
 import '../../data/scan_regions.dart';
 import '../../data/scan_report.dart';
+import '../../data/tooth_guidance.dart';
 import '../scan_motion.dart';
 import '../scan_theme.dart';
 import 'mouth_3d.dart';
@@ -61,6 +62,7 @@ class _ReportHeroState extends State<ReportHero> {
   /// An area tapped on the model that has nothing to show.
   MouthArea? _tapped;
 
+  /// Shows the area's marked teeth one after another, tap by tap.
   void _onAreaTap(MouthArea area) {
     final spots = widget.report.areas[area]!.spots;
     if (spots.isEmpty) {
@@ -68,7 +70,11 @@ class _ReportHeroState extends State<ReportHero> {
       return;
     }
     setState(() => _tapped = null);
-    widget.onSeeSpot(spots.first);
+    final shown = widget.focus.value;
+    final i = shown == null
+        ? -1
+        : spots.indexWhere((s) => identical(s.finding, shown.finding));
+    widget.onSeeSpot(spots[(i + 1) % spots.length]);
   }
 
   @override
@@ -293,8 +299,16 @@ class _ResultCard extends StatelessWidget {
   String get _meaning {
     if (report.photosRead == 0) return report.analysis.summary;
     if (report.signCount > 0) {
-      return 'This is a screening, not a diagnosis. Only a dentist can say what '
-          'these marks are.';
+      final counted = [
+        for (final s in report.spots)
+          if (s.strength != SignStrength.faint) s,
+      ];
+      final lead = counted.length == 1
+          ? '${toothPlace(counted.single, capital: true)} may have tooth decay.'
+          : 'Areas to have checked: '
+              '${describeAreas({for (final s in counted) ...s.areas}).toLowerCase()}.';
+      return '$lead This is a screening, not a diagnosis. Only a dentist can '
+          'say what these marks are.';
     }
     if (report.faintCount > 0) {
       return 'Too unsure to act on. We\'ll compare them on your next scan.';
@@ -563,14 +577,17 @@ class _Figures extends StatelessWidget {
     final surfacesRead = surfaces?.fold<int>(0, (sum, s) => sum + s.$2);
     final tiles = <Widget>[
       _Figure(
-        label: 'Areas flagged',
-        value: '${report.areasFlagged}',
+        label: 'Areas checked',
+        value: '${report.areasRead}',
         unit: ' of ${MouthArea.values.length}',
-        caption: flagged.isEmpty
+        caption: flagged.isEmpty && report.areasUnread == 0
             ? 'Nothing marked'
-            : flagged.length > 2
-                ? 'Darker means a stronger sign'
-                : describeAreas(flagged.toSet()),
+            : [
+                if (report.areasToCheck > 0) '${report.areasToCheck} to check',
+                if (report.areasToWatch > 0) '${report.areasToWatch} to watch',
+                if (report.areasClear > 0) '${report.areasClear} clear',
+                if (report.areasUnread > 0) '${report.areasUnread} not read',
+              ].join(', '),
         visual: _AreaCells(report: report),
       ),
       if (range != null)
@@ -659,7 +676,7 @@ class _Figures extends StatelessWidget {
     }
     if (trend.clearedAreas.isNotEmpty) {
       final n = trend.clearedAreas.length;
-      return '$n fewer';
+      return '$n not flagged';
     }
     return 'No change';
   }
@@ -670,7 +687,7 @@ class _Figures extends StatelessWidget {
     if (trend.repeating.isNotEmpty) return 'One area keeps being marked';
     if (trend.newAreas.isNotEmpty) return describeAreas(trend.newAreas.toSet());
     if (trend.clearedAreas.isNotEmpty) {
-      return 'Not flagged this time: '
+      return 'Flagged last time, not now: '
           '${describeAreas(trend.clearedAreas.toSet()).toLowerCase()}';
     }
     return 'Same areas flagged';

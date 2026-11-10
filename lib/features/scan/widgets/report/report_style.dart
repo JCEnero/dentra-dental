@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../data/scan_report.dart';
+import '../scan_motion.dart';
 import '../scan_theme.dart';
 
 // Shared look for the results page. Every state is a shade of one teal ramp,
@@ -71,6 +72,92 @@ final TextStyle reportNote = GoogleFonts.outfit(
   height: 1.4,
   color: AppColors.secondaryText,
 );
+
+/// A small teal label over a part of a card, e.g. "What we found".
+final TextStyle reportLabel = GoogleFonts.outfit(
+  fontSize: 11.5,
+  height: 1.3,
+  fontWeight: FontWeight.w700,
+  color: ScanColors.clearInk,
+);
+
+/// A row that opens to show more: its title and a chevron, closed until tapped,
+/// so the detail is there for anyone who wants it without crowding the page.
+class ReportFold extends StatefulWidget {
+  const ReportFold({
+    super.key,
+    required this.title,
+    required this.child,
+    this.count,
+  });
+
+  final String title;
+
+  /// How many things are inside, shown beside the title.
+  final int? count;
+  final Widget child;
+
+  @override
+  State<ReportFold> createState() => _ReportFoldState();
+}
+
+class _ReportFoldState extends State<ReportFold> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = ScanMotion.of(context, ScanMotion.fast);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          button: true,
+          expanded: _open,
+          label: widget.count == null
+              ? widget.title
+              : '${widget.title}, ${widget.count}',
+          excludeSemantics: true,
+          child: InkWell(
+            onTap: () => setState(() => _open = !_open),
+            borderRadius: BorderRadius.circular(10),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 44),
+              child: Row(
+                children: [
+                  Expanded(child: Text(widget.title, style: reportCardTitle)),
+                  if (widget.count case final n?) ...[
+                    Text('$n', style: reportNote),
+                    const SizedBox(width: 6),
+                  ],
+                  AnimatedRotation(
+                    turns: _open ? 0.5 : 0,
+                    duration: motion,
+                    child: const Icon(
+                      Icons.expand_more_rounded,
+                      size: 22,
+                      color: AppColors.g2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: motion,
+          curve: ScanMotion.curve,
+          alignment: Alignment.topCenter,
+          child: _open
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: widget.child,
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+      ],
+    );
+  }
+}
 
 /// A section's heading and, under it, one line on what it shows.
 class ReportHeading extends StatelessWidget {

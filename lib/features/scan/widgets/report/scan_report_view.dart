@@ -13,10 +13,12 @@ import '../../../profile/providers/profile_provider.dart';
 import '../../../screening/data/models/scan_check_in.dart';
 import '../../../screening/data/models/screening_session.dart';
 import '../../../screening/providers/screening_sessions_provider.dart';
+import '../../../treatment/treatment_links.dart';
 import '../../data/care_plan.dart';
 import '../../data/patient_context.dart';
 import '../../data/scan_regions.dart';
 import '../../data/scan_report.dart';
+import '../../data/tooth_guidance.dart';
 import '../../services/report_download.dart';
 import '../scan_motion.dart';
 import '../scan_theme.dart';
@@ -103,11 +105,57 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
     );
   }
 
-  void _askRabi(AiChatController chat, PatientContext patient) {
+  void _askRabi(AiChatController chat, PatientContext patient, CarePlan plan) {
     chat.open();
     chat.sendMessage(
       'Can you explain my scan results?',
-      prompt: rabiPromptFor(widget.report, reported: patient.reportedLines),
+      prompt: rabiPromptFor(
+        widget.report,
+        reported: [...patient.reportedLines, ...plan.toothAnswerLines],
+      ),
+    );
+  }
+
+  /// The scan as stored now: answers saved since the page opened are in the
+  /// history, which the server's copy from the end of the scan doesn't have.
+  ScreeningSession? _stored(List<ScreeningSession> sessions) {
+    final id = widget.sessionId ?? widget.saved?.id;
+    if (id == null) return null;
+    return sessions.where((s) => s.id == id).firstOrNull;
+  }
+
+  /// Saves what the user said about one marked tooth. The page shows it at
+  /// once, and puts it back with a note if it couldn't be saved.
+  Future<void> _answer(String sessionId, String findingId, ToothPain? pain) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(screeningSessionsProvider.notifier)
+          .answerFinding(sessionId, findingId, pain);
+    } catch (_) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(dentraSnackBar(
+          'Couldn\'t save your answer. Please try again.',
+          tone: DentraFeedbackTone.error,
+        ));
+    }
+  }
+
+  /// Opens a procedure's page in the Treatment tab. From the scan tab, its
+  /// clinic button closes the page and goes on to Clinics.
+  void _learnMore(String treatmentId) {
+    final clinics = widget.onClinics;
+    final navigator = Navigator.of(context);
+    openTreatment(
+      context,
+      treatmentId,
+      onFindClinic: clinics == null
+          ? null
+          : () {
+              navigator.pop();
+              clinics();
+            },
     );
   }
 
@@ -158,11 +206,13 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
           await loaded(ref.read(screeningSessionsProvider.future)) ??
               const <ScreeningSession>[];
       if (!mounted) return;
+      final stored = _stored(sessions) ?? widget.saved;
       await downloadScreeningReport(
         report: widget.report,
         patient:
             _patientFrom(profile, ref.read(dentalRecordsProvider), sessions),
         trend: ScanTrend.of(sessions, currentId: widget.sessionId),
+        answers: answersIn(widget.report, stored?.findingAnswers ?? const []),
         person: person,
         sessionId: widget.sessionId ?? widget.saved?.id,
         imageOf: widget.imageOf,
@@ -196,7 +246,14 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
       ref.watch(dentalRecordsProvider),
       sessions,
     );
-    final plan = CarePlan.of(report, patient, trend);
+    final stored = _stored(sessions);
+    final answers = answersIn(
+      report,
+      (stored ?? widget.saved)?.findingAnswers ?? const [],
+    );
+    final plan = CarePlan.of(report, patient, trend, answers: answers);
+    // Answers are saved against the stored scan, so only one can take them.
+    final answerTo = stored?.id;
     final hasContext = plan.links.isNotEmpty ||
         patient.records.isNotEmpty ||
         patient.recordsUnavailable ||
@@ -225,12 +282,20 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
           key: _signsKey,
           heading: ReportHeading(
             report.signCount == 0 ? 'Faint signs to watch' : 'What we spotted',
-            subtitle: '${spots.first.finding.label}, on your own photos.',
+            subtitle: report.signCount == 0
+                ? 'On your own photos, one at a time.'
+                : 'Each marked tooth on your own photo, what it could mean and '
+                    'what to do.',
           ),
           child: SignsSection(
             report: report,
+            guidance: plan.teeth,
             imageOf: widget.imageOf,
             focus: _focus,
+            onAnswer: answerTo == null
+                ? null
+                : (findingId, pain) => _answer(answerTo, findingId, pain),
+            onLearnMore: _learnMore,
           ),
         ),
       if (hasContext)
@@ -253,7 +318,7 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
           downloading: _downloading,
           onAskRabi: !widget.showActions || chat == null
               ? null
-              : () => _askRabi(chat, patient),
+              : () => _askRabi(chat, patient, plan),
           onClinics: widget.showActions ? widget.onClinics : null,
         ),
       if (read && surfaces != null)
@@ -282,6 +347,14 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
         ),
       if (read)
         _Section(
+          heading: const ReportHeading(
+            'What the check looked for',
+            subtitle: 'What it marked of each, and what it can\'t read yet.',
+          ),
+          child: FindingsByType(report: report),
+        ),
+      if (read)
+        _Section(
           heading: const ReportHeading('Over time'),
           child: TrendSection(trend: trend),
         ),
@@ -289,11 +362,6 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
         const _Section(
           heading: ReportHeading('How decay grows'),
           child: DecayStages(),
-        ),
-      if (read)
-        const _Section(
-          heading: ReportHeading('What this check can read'),
-          child: WhatItReads(),
         ),
       _Section(
         heading: ReportHeading(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/widgets/glass_card.dart';
 import '../../data/scan_report.dart';
 import '../scan_theme.dart';
 import 'report_motion.dart';
@@ -292,6 +293,174 @@ class StrengthBar extends StatelessWidget {
                 ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What the check looked for, one bar each, scaled to the most marked, with what
+/// it can't read yet on rows of their own and no bar, so a short result is
+/// never taken for a clean one. Then what it often misses or mistakes.
+class FindingsByType extends StatelessWidget {
+  const FindingsByType({super.key, required this.report});
+
+  final ScreeningReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = report.conditions;
+    final most = rows.fold<int>(1, (m, r) => math.max(m, r.count ?? 0));
+    return GlassCard(
+      width: double.infinity,
+      borderRadius: BorderRadius.circular(24),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      child: InViewAnimation(
+        builder: (context, t) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, row) in rows.indexed) ...[
+              if (i > 0) const SizedBox(height: 12),
+              _TypeRow(row: row, most: most, t: t),
+            ],
+            const SizedBox(height: 13),
+            Divider(height: 1, thickness: 1, color: ReportColors.rule),
+            const SizedBox(height: 11),
+            const _Note(
+              title: 'Often misses',
+              text: 'Small or early cavities, and decay between teeth or at '
+                  'the gumline.',
+            ),
+            const SizedBox(height: 7),
+            const _Note(
+              title: 'Can look like decay',
+              text: 'Stained grooves, old fillings and shadows.',
+            ),
+            const SizedBox(height: 7),
+            const _Note(
+              title: 'Confidence',
+              text: 'How sure the model is, not how bad a spot is.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TypeRow extends StatelessWidget {
+  const _TypeRow({required this.row, required this.most, required this.t});
+
+  final ConditionRow row;
+  final int most;
+  final double t;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = row.count;
+    final split = row.strong > 0 && count != null
+        ? '${row.strong} strong${count > row.strong ? ', ${count - row.strong} possible' : ''}'
+        : null;
+    final caption = [row.note, if (split != null) split].join(' · ');
+    return Semantics(
+      label: count == null
+          ? '${row.name}: ${row.note}.'
+          : '${row.name}: $count marked. $caption.',
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(child: Text(row.name, style: reportCardTitle)),
+              Text(
+                count == null ? 'Not read' : '$count',
+                style: count == null
+                    ? reportNote
+                    : figureText(size: 15, weight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          SizedBox(
+            height: 8,
+            child: count == null
+                ? DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: ReportColors.hollowEdge),
+                    ),
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ColoredBox(color: _track),
+                        FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: t * count / most,
+                          child: Row(
+                            // Bare boxes take no height unless stretched.
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (row.strong > 0)
+                                Expanded(
+                                  flex: row.strong,
+                                  child: const ColoredBox(
+                                    color: ReportColors.strong,
+                                  ),
+                                ),
+                              if (count > row.strong)
+                                Expanded(
+                                  flex: count - row.strong,
+                                  child: ColoredBox(color: _fillOf(row)),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 4),
+          Text(caption, style: reportNote),
+        ],
+      ),
+    );
+  }
+
+  /// Decay in the teal of a possible sign, faint ones paler, dental work calm.
+  static Color _fillOf(ConditionRow row) => switch (row.kind) {
+        ConditionKind.faint => ReportColors.faint,
+        ConditionKind.dentalWork => ReportColors.clear,
+        _ => ReportColors.possible,
+      };
+}
+
+class _Note extends StatelessWidget {
+  const _Note({required this.title, required this.text});
+
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        style: reportNote,
+        children: [
+          TextSpan(
+            text: '$title  ',
+            style: GoogleFonts.outfit(
+              fontSize: 11.5,
+              height: 1.4,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+          ),
+          TextSpan(text: text),
         ],
       ),
     );

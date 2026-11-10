@@ -118,6 +118,17 @@ class _Repo implements ScreeningRepository {
     String modality = 'rgb',
   }) async =>
       null;
+
+  /// Every answer saved, in order: (session, finding, answer).
+  final List<(String, String, ToothPain?)> answers = [];
+
+  @override
+  Future<ScreeningSession> answerFinding(String userId, String sessionId,
+      String findingId, ToothPain? pain) async {
+    answers.add((sessionId, findingId, pain));
+    final i = sessions.indexWhere((s) => s.id == sessionId);
+    return sessions[i] = sessions[i].withAnswer(findingId, pain);
+  }
 }
 
 class _Records extends DentalRecordsNotifier {

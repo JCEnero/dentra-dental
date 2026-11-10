@@ -61,6 +61,18 @@ class TreatmentModel {
   final String duration;
   final bool requiresFollowUp;
 
+  /// Why a dentist might recommend it. Null where it hasn't been written yet.
+  final String? whyRecommended;
+
+  /// When it may be needed.
+  final List<String> whenNeeded;
+
+  /// Recovery and aftercare.
+  final List<String> aftercare;
+
+  /// Possible risks and things to consider.
+  final List<String> risks;
+
   const TreatmentModel({
     required this.id,
     required this.name,
@@ -75,5 +87,9 @@ class TreatmentModel {
     required this.steps,
     required this.duration,
     this.requiresFollowUp = false,
+    this.whyRecommended,
+    this.whenNeeded = const [],
+    this.aftercare = const [],
+    this.risks = const [],
   });
 }

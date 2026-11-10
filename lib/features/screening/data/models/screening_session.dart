@@ -1,6 +1,9 @@
 import '../../../dental_profile/data/models/dental_answers.dart';
 import '../../../scan/data/scan_regions.dart';
+import 'finding_answer.dart';
 import 'scan_check_in.dart';
+
+export 'finding_answer.dart';
 
 /// A finished scan session, as recorded in the user's screening history.
 ///
@@ -38,6 +41,10 @@ class ScreeningSession {
   /// self-reported, and also kept apart from [analysis].
   final ScanCheckIn? checkIn;
 
+  /// What the user said about the teeth the check marked, one per finding they
+  /// answered. Self-reported too: it shapes advice and never a finding.
+  final List<FindingAnswer> findingAnswers;
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -51,9 +58,15 @@ class ScreeningSession {
     this.analysis,
     this.reportedContext,
     this.checkIn,
+    this.findingAnswers = const [],
     this.createdAt,
     this.updatedAt,
   });
+
+  /// The answers by finding id.
+  Map<String, ToothPain> get painByFinding => {
+        for (final a in findingAnswers) a.findingId: a.pain,
+      };
 
   /// Views with a photo. A view's second photo doesn't count again.
   int get capturedViewCount => capturedRegions.map(baseRegionId).toSet().length;
@@ -74,6 +87,7 @@ class ScreeningSession {
     String? userId,
     List<ScreeningCapture>? captures,
     ScreeningAnalysis? analysis,
+    List<FindingAnswer>? findingAnswers,
     DateTime? updatedAt,
   }) {
     return ScreeningSession(
@@ -86,10 +100,26 @@ class ScreeningSession {
       analysis: analysis ?? this.analysis,
       reportedContext: reportedContext,
       checkIn: checkIn,
+      findingAnswers: findingAnswers ?? this.findingAnswers,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  /// This session with [pain] as the answer about [findingId], or with no
+  /// answer about it when [pain] is null.
+  ScreeningSession withAnswer(String findingId, ToothPain? pain) => copyWith(
+        findingAnswers: [
+          for (final a in findingAnswers)
+            if (a.findingId != findingId) a,
+          if (pain != null)
+            FindingAnswer(
+              findingId: findingId,
+              pain: pain,
+              answeredAt: DateTime.now(),
+            ),
+        ],
+      );
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -102,6 +132,7 @@ class ScreeningSession {
         'analysis': analysis?.toJson(),
         'reported_context': reportedContext?.toJson(),
         'check_in': checkIn?.toJson(),
+        'finding_answers': [for (final a in findingAnswers) a.toJson()],
         'created_at': createdAt?.toUtc().toIso8601String(),
         'updated_at': updatedAt?.toUtc().toIso8601String(),
       };
@@ -138,6 +169,12 @@ class ScreeningSession {
       checkIn: checkIn == null
           ? null
           : ScanCheckIn.fromJson(checkIn as Map<String, dynamic>),
+      findingAnswers: [
+        for (final a in (json['finding_answers'] as List<dynamic>?) ?? const [])
+          if (FindingAnswer.fromJson(a as Map<String, dynamic>)
+              case final answer?)
+            answer,
+      ],
       createdAt: date('created_at'),
       updatedAt: date('updated_at'),
     );
@@ -379,6 +416,9 @@ class ScreeningQualityIssue {
 
 /// One AI-reported observation, optionally tied to a region or tooth.
 class ScreeningFinding {
+  /// The server's id for it, which answers about it refer to. Null for results
+  /// stored before ids were sent.
+  final String? id;
   final String label;
   final String? detail;
   final String? regionId;
@@ -404,6 +444,7 @@ class ScreeningFinding {
 
   const ScreeningFinding({
     required this.label,
+    this.id,
     this.detail,
     this.regionId,
     this.tooth,
@@ -416,6 +457,7 @@ class ScreeningFinding {
   });
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'label': label,
         'detail': detail,
         'region_id': regionId,
@@ -430,6 +472,11 @@ class ScreeningFinding {
 
   factory ScreeningFinding.fromJson(Map<String, dynamic> json) =>
       ScreeningFinding(
+        id: switch (json['id']) {
+          final String id => id,
+          final int id => '$id',
+          _ => null,
+        },
         label: json['label'] as String,
         detail: json['detail'] as String?,
         regionId: json['region_id'] as String?,

@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 
 import '../../../core/utils/dentra_dates.dart';
 import '../../profile/data/models/user_profile.dart';
+import '../../screening/data/models/finding_answer.dart';
 import '../data/care_plan.dart';
 import '../data/patient_context.dart';
 import '../data/scan_report.dart';
@@ -24,6 +25,7 @@ Future<void> downloadScreeningReport({
   required PatientContext patient,
   required ScanTrend trend,
   required ImageProvider? Function(String photoId) imageOf,
+  Map<String, ToothPain> answers = const {},
   UserProfile? person,
   String? sessionId,
 }) async {
@@ -31,7 +33,7 @@ Future<void> downloadScreeningReport({
     ReportPdfData(
       report: report,
       patient: patient,
-      plan: CarePlan.of(report, patient, trend),
+      plan: CarePlan.of(report, patient, trend, answers: answers),
       trend: trend,
       person: person,
       sessionId: sessionId,

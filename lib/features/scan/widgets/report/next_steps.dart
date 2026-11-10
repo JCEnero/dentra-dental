@@ -7,6 +7,7 @@ import '../../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../data/care_plan.dart';
 import '../../data/patient_context.dart';
+import '../../data/tooth_guidance.dart';
 import '../scan_theme.dart';
 import 'report_motion.dart';
 import 'report_style.dart';
@@ -29,7 +30,7 @@ class NextSteps extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     final text = plan.report.summaryForDentist(
       date,
-      reported: context_.reportedLines,
+      reported: [...context_.reportedLines, ...plan.toothAnswerLines],
     );
     Clipboard.setData(ClipboardData(text: text)).then(
       (_) => messenger
@@ -159,8 +160,8 @@ class NextSteps extends StatelessWidget {
             Divider(height: 1, thickness: 1, color: ReportColors.rule),
             const SizedBox(height: 10),
             Text(
-              'See a dentist sooner for pain, swelling, a broken tooth, or '
-              'bleeding that won\'t stop.',
+              'See a dentist sooner for pain, a broken tooth, or bleeding that '
+              'won\'t stop. $urgentCareWarning',
               style: reportNote,
             ),
           ],

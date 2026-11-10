@@ -11,6 +11,7 @@ import '../data/patient_context.dart';
 import '../data/scan_outcomes.dart';
 import '../data/scan_regions.dart';
 import '../data/scan_report.dart';
+import '../data/tooth_guidance.dart';
 
 /// A photo ready for the PDF.
 class ReportPhoto {
@@ -240,6 +241,7 @@ class _Report {
         if (plan.isEmergency) ...[_emergency(), pw.SizedBox(height: 12)],
         _summary(),
         ..._checkSaw(),
+        ..._teeth(),
         ..._comparison(),
         ..._told(),
         ..._records(),
@@ -365,7 +367,8 @@ class _Report {
   pw.Widget _summary() {
     final range = r.confidenceRange;
     final figures = <(String, String)>[
-      ('Areas flagged', '${r.areasFlagged} of ${MouthArea.values.length}'),
+      ('Areas read', '${r.areasRead} of ${MouthArea.values.length}'),
+      ('Areas flagged', '${r.areasFlagged}'),
       (
         r.faintCount > 0 ? 'Signs, plus ${r.faintCount} faint' : 'Signs',
         '${r.signCount}',
@@ -616,6 +619,7 @@ class _Report {
         pw.SizedBox(height: 6),
         _t('Also seen, not counted as a sign: $work.', _body),
       ],
+      _byType(),
       ..._photos(),
       if (issues.isNotEmpty) ...[
         _heading('Photos to retake'),
@@ -785,17 +789,11 @@ class _Report {
                   ),
                   for (final s in spots)
                     if (s.box case final b?)
-                      pw.Positioned(
-                        left: b.left * w,
-                        top: b.top * h,
-                        child: pw.Container(
-                          width: b.width * w,
-                          height: b.height * h,
-                          decoration: pw.BoxDecoration(
-                            borderRadius: pw.BorderRadius.circular(4),
-                            border: pw.Border.all(color: _white, width: 1.4),
-                          ),
-                        ),
+                      ..._ring(
+                        b.left * w,
+                        b.top * h,
+                        b.width * w,
+                        b.height * h,
                       ),
                 ],
               ),
@@ -811,6 +809,303 @@ class _Report {
             _small,
           ),
         ],
+      ),
+    );
+  }
+
+  /// What the check looked for, a bar each, and what it can't read yet.
+  pw.Widget _byType() {
+    final rows = r.conditions;
+    final most = rows.fold<int>(1, (m, x) => (x.count ?? 0) > m ? x.count! : m);
+    PdfColor fill(ConditionRow row) => switch (row.kind) {
+          ConditionKind.faint => _faint,
+          ConditionKind.dentalWork => _clear,
+          _ => _possible,
+        };
+    return _together([
+      _heading(
+        'What the check looked for',
+        note: 'Marks of each kind in the photos read. Rows with no bar are '
+            'not read by this check yet.',
+      ),
+      for (final row in rows)
+        pw.Padding(
+          padding: const pw.EdgeInsets.only(bottom: 5),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.SizedBox(width: 120, child: _t(row.name, _h3)),
+              pw.Expanded(
+                child: row.count == null
+                    ? pw.Container(
+                        height: 7,
+                        decoration: pw.BoxDecoration(
+                          borderRadius: pw.BorderRadius.circular(3),
+                          border: pw.Border.all(color: _edge, width: 0.6),
+                        ),
+                      )
+                    : pw.Container(
+                        height: 7,
+                        decoration: pw.BoxDecoration(
+                          color: _tint,
+                          borderRadius: pw.BorderRadius.circular(3),
+                        ),
+                        child: pw.Row(
+                          children: [
+                            if (row.count! > 0)
+                              pw.Expanded(
+                                flex: row.count!,
+                                child: pw.Row(
+                                  children: [
+                                    if (row.strong > 0)
+                                      pw.Expanded(
+                                        flex: row.strong,
+                                        child: pw.Container(color: _strong),
+                                      ),
+                                    if (row.count! > row.strong)
+                                      pw.Expanded(
+                                        flex: row.count! - row.strong,
+                                        child: pw.Container(color: fill(row)),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            if (most > row.count!)
+                              pw.Expanded(
+                                flex: most - row.count!,
+                                child: pw.SizedBox(),
+                              ),
+                          ],
+                        ),
+                      ),
+              ),
+              pw.SizedBox(width: 8),
+              pw.SizedBox(
+                width: 150,
+                child: _t(
+                  row.count == null
+                      ? row.note
+                      : '${row.count}${row.strong > 0 ? ' (${row.strong} strong)' : ''}. ${row.note}',
+                  _small,
+                ),
+              ),
+            ],
+          ),
+        ),
+    ]);
+  }
+
+  // ── Tooth by tooth ────────────────────────────────────────────────
+
+  /// Each tooth the check marked, on its own: where, what was found, what it
+  /// could mean, what the user said about it, what to do, and what a dentist
+  /// may consider. Faint signs are listed after, more briefly.
+  List<pw.Widget> _teeth() {
+    final counted = [
+      for (final g in plan.teeth)
+        if (!g.faint) g,
+    ];
+    final faint = [
+      for (final g in plan.teeth)
+        if (g.faint) g,
+    ];
+    if (counted.isEmpty && faint.isEmpty) return const [];
+    return [
+      if (counted.isNotEmpty) ...[
+        _together([
+          _heading(
+            'Tooth by tooth',
+            note: 'Each marked tooth from the check, with its photo. Where a '
+                'tooth is comes from the photo\'s view: the check can\'t give '
+                'a tooth number. What you told us is labelled as yours.',
+          ),
+          _toothEntry(counted.first, 1, counted.length),
+        ]),
+        for (final (i, g) in counted.skip(1).indexed)
+          _together([_toothEntry(g, i + 2, counted.length)]),
+      ],
+      if (faint.isNotEmpty)
+        _together([
+          _heading(
+            'Faint signs to watch',
+            note: 'Too unsure to act on. Compared on the next scan.',
+          ),
+          _table(
+            widths: const [3.4, 2.2, 1.2],
+            head: const ['Where', 'Photo', 'Confidence'],
+            rows: [
+              for (final g in faint)
+                [
+                  g.where,
+                  g.spot.photo.label,
+                  g.spot.percent == null
+                      ? 'Not reported'
+                      : '${g.spot.percent}%',
+                ],
+            ],
+          ),
+        ]),
+    ];
+  }
+
+  pw.Widget _toothEntry(ToothGuidance g, int n, int of) {
+    final s = g.spot;
+    pw.Widget part(String label, String text) => pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 4),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              _t(label,
+                  pw.TextStyle(font: f.semiBold, fontSize: 8, color: _ink)),
+              _t(text, _body),
+            ],
+          ),
+        );
+    final facts = [
+      'Photo: ${s.photo.label}',
+      s.strength.label,
+      if (s.percent case final p?) '$p% model confidence',
+    ].join(' · ');
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(bottom: 10),
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: _rule, width: 0.7),
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          _toothCrop(s),
+          pw.SizedBox(width: 10),
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _t('Marked tooth $n of $of', _label),
+                _t('${g.title}: ${g.where}', _h3),
+                _t(facts, _small),
+                part('What we found', g.found),
+                part('What this could mean', g.meaning),
+                if (g.pain case final pain?)
+                  part(
+                    'You told us (not detected by the check)',
+                    '${pain.label}${g.answerNote == null ? '' : ' ${g.answerNote}'}'
+                        '${g.symptomsToWatch.isEmpty ? '' : ' ${g.symptomsToWatch.join('; ')}.'}',
+                  )
+                else if (g.asks)
+                  part(
+                    'Pain or sensitivity in this tooth',
+                    'Not answered.',
+                  ),
+                part(
+                  'What to do next: ${g.urgency.title}',
+                  '${g.nextStep} ${g.urgencyWhy}',
+                ),
+                if (g.treatments.isNotEmpty)
+                  part(
+                    'Treatments a dentist may consider (not a diagnosis)',
+                    [
+                      for (final t in g.treatments) '${t.name}: ${t.when}',
+                      if (g.treatmentNote case final note?) note,
+                    ].join(' '),
+                  ),
+                part('Why it matters', g.why),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A ring around a marked tooth, as in the app: white with a dark edge, so it
+  /// shows on light teeth and dark photos alike.
+  List<pw.Widget> _ring(double x, double y, double w, double h) => [
+        pw.Positioned(
+          left: x - 1.2,
+          top: y - 1.2,
+          child: pw.Container(
+            width: w + 2.4,
+            height: h + 2.4,
+            decoration: pw.BoxDecoration(
+              borderRadius: pw.BorderRadius.circular(5),
+              border: pw.Border.all(color: _strong, width: 1.2),
+            ),
+          ),
+        ),
+        pw.Positioned(
+          left: x,
+          top: y,
+          child: pw.Container(
+            width: w,
+            height: h,
+            decoration: pw.BoxDecoration(
+              borderRadius: pw.BorderRadius.circular(4),
+              border: pw.Border.all(color: _white, width: 1.4),
+            ),
+          ),
+        ),
+      ];
+
+  /// The marked tooth, cut from its photo with its ring, or a plain box when
+  /// the photo couldn't be loaded.
+  pw.Widget _toothCrop(ReportSpot s) {
+    const w = 104.0, h = 78.0;
+    final photo = d.photos[s.photoId];
+    final box = s.box;
+    if (photo == null || box == null) {
+      return pw.Container(
+        width: w,
+        height: h,
+        alignment: pw.Alignment.center,
+        decoration: pw.BoxDecoration(
+          color: _tint,
+          borderRadius: pw.BorderRadius.circular(6),
+        ),
+        child: _t('Photo not in this report', _small, align: pw.TextAlign.center),
+      );
+    }
+    // A window around the box with the frame's shape, inside the photo.
+    final aspect = photo.width / photo.height;
+    final side = (box.width > box.height ? box.width : box.height) * 2.6;
+    var vw = side.clamp(0.2, 1.0);
+    var vh = (vw * aspect * h / w).clamp(0.2, 1.0);
+    vw = vh * w / h / aspect;
+    if (vw > 1) {
+      vh = vh / vw;
+      vw = 1;
+    }
+    final vx = (box.center.dx - vw / 2).clamp(0.0, 1 - vw);
+    final vy = (box.center.dy - vh / 2).clamp(0.0, 1 - vh);
+    final scaleX = w / vw, scaleY = h / vh;
+    return pw.ClipRRect(
+      horizontalRadius: 6,
+      verticalRadius: 6,
+      child: pw.SizedBox(
+        width: w,
+        height: h,
+        child: pw.Stack(
+          overflow: pw.Overflow.clip,
+          children: [
+            pw.Positioned(
+              left: -vx * scaleX,
+              top: -vy * scaleY,
+              child: pw.Image(
+                pw.MemoryImage(photo.jpeg),
+                width: scaleX,
+                height: scaleY,
+                fit: pw.BoxFit.fill,
+              ),
+            ),
+            ..._ring(
+              (box.left - vx) * scaleX,
+              (box.top - vy) * scaleY,
+              box.width * scaleX,
+              box.height * scaleY,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1012,6 +1307,9 @@ class _Report {
     final facts = [
       ...p.symptomFacts,
       ...p.treatmentFacts,
+      for (final g in plan.teeth)
+        if (g.pain case final pain?)
+          ContextFact('Marked tooth, ${g.spot.photo.label} photo', pain.label),
       ...p.backgroundFacts,
     ];
     if (facts.isEmpty) return const [];
