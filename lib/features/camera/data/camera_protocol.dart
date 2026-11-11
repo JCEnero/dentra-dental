@@ -56,6 +56,21 @@
 ///
 /// The stream runs on its own server (port 81) so captures and settings on
 /// port 80 still answer while it streams.
+///
+/// ## The website (through the DENTRA API)
+///
+/// A web page can't use any of the above: iPhone browsers have no Bluetooth,
+/// and an HTTPS page can't load the camera's plain-HTTP pictures. So:
+///
+/// - Setup mode also opens a Wi-Fi hotspot named like the Bluetooth name,
+///   with a setup page at http://192.168.4.1 that phones open by themselves.
+///   The user picks the home Wi-Fi there and types the code the website
+///   shows (POST /api/cam/pairings), which links the camera to the account.
+/// - Once linked, the camera keeps a WebSocket open to the API (through
+///   dentrascan.site/relay, see dentra_mobile/functions/), and the website
+///   opens another (`CloudCamClient`). The API passes pictures, photos and
+///   commands between them; the messages are described in
+///   backend/src/modules/cam/cam.hub.ts.
 library;
 
 import 'dart:convert';

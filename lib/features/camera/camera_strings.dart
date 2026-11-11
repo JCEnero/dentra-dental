@@ -223,6 +223,11 @@ abstract final class CamText {
   static const disconnectedTitle = 'Camera disconnected';
   static const disconnectedBody =
       'Check that your Dentra Cam is on and near your Wi-Fi router.';
+  // On the website the camera comes through the internet, and lets go of
+  // its link after a while unused.
+  static const disconnectedBodyCloud =
+      "Check that your Dentra Cam is on and near your Wi-Fi router. If it's "
+      'been on a while, press its BOOT button once to connect it again.';
   static const retry = 'Retry';
   static const checkDevice = 'Check device';
   static const statusConnected = 'Connected';
@@ -336,9 +341,99 @@ abstract final class CamText {
   static String choiceCamBody(String? name) => name == null
       ? "We'll help you connect it first."
       : 'Use $name.';
+  // Only where the camera can't be used at all (desktop builds).
   static const choiceCamAppOnly =
-      'Works in the DENTRA phone app. On this website, use your own camera.';
+      'Works in the DENTRA phone app and on dentrascan.site.';
   static const choiceOwn = 'My own camera';
   static const choiceOwnBody = 'No device? Take the photos with your phone.';
   static const choiceOwnPhotos = 'No device? Choose photos you already have.';
+
+  // ── Website setup: the camera's own hotspot ─────────────────────
+  // iPhone browsers have no Bluetooth, so on the website the camera is set
+  // up through its own Wi-Fi network and a code that links it to the
+  // account.
+  static const hotspotStepNames = [
+    'Welcome',
+    'Turn on the camera',
+    'Connect',
+    'Ready',
+  ];
+  static const hotspotWelcomeItems = <(String, String)>[
+    (
+      'Camera charged and on',
+      'Top it up over USB-C if the battery is low.',
+    ),
+    (
+      'Your Wi-Fi name and password',
+      'The camera joins your home Wi-Fi, just like your phone.',
+    ),
+    (
+      'A 2.4 GHz Wi-Fi network',
+      'The camera works on 2.4 GHz. Most home routers offer 2.4 GHz and 5 GHz '
+          'together, so you are probably set. If you see two networks, pick '
+          'the one without "5G" in its name.',
+    ),
+    (
+      'This page open',
+      "You'll leave it for a moment to give the camera your Wi-Fi. It moves "
+          'on by itself when you come back.',
+    ),
+  ];
+  static const hotspotWelcomeRabi =
+      "Hi, I'm Rabi. No Bluetooth needed here: the camera makes its own Wi-Fi "
+      'for setup.';
+
+  static const hotspotPowerBody =
+      'Power on your Dentra Cam. A new camera starts in setup mode by itself.';
+  static const hotspotPowerResetBody =
+      'Hold the BOOT button for 5 seconds. It restarts in setup mode.';
+  static const hotspotPowerRabi =
+      'In setup mode the camera makes its own Wi-Fi network, named "Dentra '
+      'Cam" and four letters or numbers.';
+
+  static const hotspotJoinTitle = 'Give the camera your Wi-Fi';
+  static const hotspotCodeLabel = 'Your code';
+  static const hotspotCodeHint = 'You type this on the camera\'s setup page. '
+      'It works for 15 minutes.';
+  static const hotspotCopyCode = 'Copy code';
+  static const hotspotCodeCopied = 'Code copied';
+  static const hotspotSteps = <(String, String)>[
+    (
+      "Join the camera's Wi-Fi",
+      'Open your Wi-Fi settings and join the network named "Dentra Cam" and '
+          'four letters or numbers.',
+    ),
+    (
+      'Wait for the setup page',
+      "It opens by itself. If it doesn't, open your browser and go to "
+          '192.168.4.1.',
+    ),
+    (
+      'Pick your home Wi-Fi',
+      'Type its password and the code above, then tap Connect.',
+    ),
+    (
+      'Come back to this page',
+      'Your phone returns to your home Wi-Fi by itself, and this page moves '
+          'on once the camera is linked.',
+    ),
+  ];
+  static const hotspotGettingCode = 'Getting a code…';
+  static const hotspotWaiting = 'Waiting for your Dentra Cam…';
+  static const hotspotWaitingButton = 'Waiting for your camera';
+  static const hotspotSlowTitle = 'Still waiting';
+  static const hotspotSlowBody =
+      "If the setup page said something didn't work, join the camera's Wi-Fi "
+      'again to see it and try once more. The camera needs a 2.4 GHz network.';
+  static const hotspotExpiredTitle = 'This code has expired';
+  static const hotspotExpiredBody =
+      "Get a new one, then type it on the camera's setup page.";
+  static const hotspotCodeFailed =
+      "Couldn't get a code. Check your internet connection and try again.";
+  static const hotspotNewCode = 'Get a new code';
+  static const hotspotJoinRabi =
+      "Your phone may say the camera's Wi-Fi has no internet. That's expected: "
+      "it's only for setup.";
+  static const hotspotSuccessBody =
+      "It's linked to your account. Use it here whenever it's on.";
 }

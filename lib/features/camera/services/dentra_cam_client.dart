@@ -73,13 +73,46 @@ class CamStatus {
   }
 }
 
+/// What the live camera needs from a Dentra Cam, however it's reached: on
+/// the home network ([DentraCamClient], the phone apps) or through the
+/// DENTRA API's relay (CloudCamClient, the website).
+///
+/// Failures throw [DentraCamException].
+abstract interface class CamClient {
+  /// How long the picture may pause before it counts as dropped.
+  Duration get stallAfter;
+
+  /// How long to keep trying before the camera counts as disconnected.
+  Duration get giveUpAfter;
+
+  Future<CamStatus> status({Duration timeout});
+
+  Future<void> setLight({required bool on, required int level});
+
+  /// A sensor setting: 'framesize', 'vflip' or 'hmirror'.
+  Future<void> setControl(String name, int value);
+
+  /// Takes one photo at [size].
+  Future<Uint8List> capture({
+    required CamFrameSize size,
+    required bool light,
+    Duration timeout,
+  });
+
+  /// The live picture, one JPEG per event. The stream ends, after an error,
+  /// when the connection drops; cancelling the subscription closes it.
+  Stream<Uint8List> frames();
+
+  void close();
+}
+
 /// Talks to one Dentra Cam over the home network.
 ///
 /// Plain HTTP, since the camera has no certificate. This goes through
 /// dart:io sockets, which Android's cleartext policy and iOS App Transport
 /// Security don't govern, so release builds reach the camera without
 /// loosening either for the rest of the app.
-class DentraCamClient {
+class DentraCamClient implements CamClient {
   DentraCamClient(
     this.host, {
     http.Client? client,
@@ -89,6 +122,12 @@ class DentraCamClient {
 
   /// The camera's IPv4 address.
   final String host;
+
+  @override
+  Duration get stallAfter => CameraConfig.frameStall;
+
+  @override
+  Duration get giveUpAfter => CameraConfig.giveUpAfter;
 
   final http.Client _client;
 
@@ -111,6 +150,7 @@ class DentraCamClient {
       Uri(scheme: 'http', host: host, path: path, queryParameters: query);
 
   /// Throws [DentraCamException] when the camera doesn't answer.
+  @override
   Future<CamStatus> status({
     Duration timeout = const Duration(seconds: 3),
   }) async {
@@ -129,6 +169,7 @@ class DentraCamClient {
     }
   }
 
+  @override
   Future<void> setLight({required bool on, required int level}) => _command(
         _uri(CamHttp.lightPath, {
           'on': on ? '1' : '0',
@@ -136,12 +177,12 @@ class DentraCamClient {
         }),
       );
 
-  /// A sensor setting: 'framesize', 'vflip' or 'hmirror'.
+  @override
   Future<void> setControl(String name, int value) => _command(
         _uri(CamHttp.controlPath, {'var': name, 'val': '$value'}),
       );
 
-  /// Takes one photo at [size]. Throws [DentraCamException].
+  @override
   Future<Uint8List> capture({
     required CamFrameSize size,
     required bool light,
@@ -161,8 +202,7 @@ class DentraCamClient {
     return res.bodyBytes;
   }
 
-  /// The live picture, one JPEG per event. The stream ends, after an error,
-  /// when the connection drops; cancelling the subscription closes it.
+  @override
   Stream<Uint8List> frames() {
     late final StreamController<Uint8List> out;
     http.Client? client;
@@ -217,6 +257,7 @@ class DentraCamClient {
     return out.stream;
   }
 
+  @override
   void close() => _client.close();
 
   Future<void> _command(Uri uri) async {

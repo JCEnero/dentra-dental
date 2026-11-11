@@ -17,8 +17,8 @@ enum LivePhase {
   /// The picture stopped; trying again every [CameraConfig.reconnectEvery].
   reconnecting,
 
-  /// Nothing for [CameraConfig.giveUpAfter]. [LiveCameraController.retry]
-  /// starts again.
+  /// Nothing for the client's [CamClient.giveUpAfter].
+  /// [LiveCameraController.retry] starts again.
   disconnected,
 }
 
@@ -30,7 +30,7 @@ enum LivePhase {
 /// a second don't rebuild the whole screen.
 class LiveCameraController extends ChangeNotifier {
   LiveCameraController({
-    required DentraCamClient client,
+    required CamClient client,
     required CameraViewSettings settings,
     this.onSettingsChanged,
     @visibleForTesting DateTime Function()? clock,
@@ -38,7 +38,7 @@ class LiveCameraController extends ChangeNotifier {
         _settings = settings,
         _now = clock ?? DateTime.now;
 
-  final DentraCamClient _client;
+  final CamClient _client;
   final DateTime Function() _now;
 
   /// Called with every change, to keep it for next time.
@@ -46,8 +46,6 @@ class LiveCameraController extends ChangeNotifier {
 
   /// The latest picture, as JPEG bytes. Held still while a photo is taken.
   final ValueNotifier<Uint8List?> frame = ValueNotifier(null);
-
-  String get host => _client.host;
 
   LivePhase _phase = LivePhase.connecting;
   LivePhase get phase => _phase;
@@ -106,7 +104,7 @@ class LiveCameraController extends ChangeNotifier {
   void stop() => unawaited(_halt());
 
   /// Starts over after [LivePhase.disconnected], with a fresh
-  /// [CameraConfig.giveUpAfter].
+  /// [CamClient.giveUpAfter].
   void retry() {
     if (_disposed) return;
     if (!_running) {
@@ -250,7 +248,7 @@ class LiveCameraController extends ChangeNotifier {
 
   /// Starts the clock on giving up, unless it's already running.
   void _troubleStarted() {
-    _giveUp ??= Timer(CameraConfig.giveUpAfter, () {
+    _giveUp ??= Timer(_client.giveUpAfter, () {
       _giveUp = null;
       if (!_running || _phase == LivePhase.live) return;
       _attempt++;
@@ -265,7 +263,7 @@ class LiveCameraController extends ChangeNotifier {
   void _checkStall() {
     if (_phase != LivePhase.live || _capturing) return;
     final last = _lastFrame;
-    if (last != null && _now().difference(last) > CameraConfig.frameStall) {
+    if (last != null && _now().difference(last) > _client.stallAfter) {
       _dropped(_attempt);
     }
   }

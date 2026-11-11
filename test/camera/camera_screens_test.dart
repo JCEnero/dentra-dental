@@ -13,10 +13,14 @@ import 'package:dentra_mobile/features/scan/screens/scan_screen.dart';
 import 'package:dentra_mobile/features/scan/services/phone_camera_service.dart';
 import 'package:dentra_mobile/features/scan/services/photo_check_service.dart';
 import 'package:dentra_mobile/features/scan/services/screening_analysis_service.dart';
+import 'package:dentra_mobile/core/network/api_client.dart';
+import 'package:dentra_mobile/features/camera/services/cloud_cam_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'camera_fakes.dart';
@@ -265,12 +269,16 @@ void main() {
       FakeSetupLink? link,
       FakeCamClient? cam,
       bool camAvailable = true,
+      CamLink? camLink,
+      CloudCamApi? cloudApi,
     }) async {
       tester.view.physicalSize = const Size(390, 844) * 3;
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
       final container = ProviderContainer(overrides: [
         dentraCamAvailableProvider.overrideWithValue(camAvailable),
+        if (camLink != null) camLinkProvider.overrideWithValue(camLink),
+        if (cloudApi != null) cloudCamApiProvider.overrideWithValue(cloudApi),
         cameraSetupLinkProvider.overrideWithValue(link ?? FakeSetupLink()),
         camClientFactoryProvider
             .overrideWithValue((_) => cam ?? FakeCamClient()),
@@ -376,7 +384,7 @@ void main() {
       expect(find.text('Take photo'), findsOneWidget);
     });
 
-    testWidgets('on the website the Dentra Cam is listed but not offered',
+    testWidgets("where it can't be used, the Dentra Cam is listed, not offered",
         (tester) async {
       await pumpScanTab(tester, camAvailable: false);
       await tapText(tester, 'Start scan');
@@ -390,6 +398,46 @@ void main() {
       await tapText(tester, CamText.choiceOwn);
       expect(find.text(CamText.choiceTitle), findsNothing);
       expect(find.text('Take photo'), findsOneWidget);
+    });
+
+    testWidgets('on the website, the Dentra Cam is set up through its hotspot',
+        (tester) async {
+      // An account with no camera yet.
+      final api = CloudCamApi(ApiClient(
+        baseUrl: 'https://api.example',
+        accessToken: () async => 'user-token',
+        client: MockClient((req) async => switch (req.url.path) {
+              '/api/cam/devices' => http.Response('{"devices":[]}', 200),
+              '/api/cam/pairings' => http.Response(
+                  jsonEncode({
+                    'pairing': {
+                      'id': 'p1',
+                      'code': 'K7P2QX',
+                      'expires_at': '2026-11-11T09:15:00Z',
+                    },
+                  }),
+                  201,
+                ),
+              _ => http.Response(
+                  '{"pairing":{"id":"p1","status":"pending"}}',
+                  200,
+                ),
+            }),
+      ));
+      await pumpScanTab(tester, camLink: CamLink.cloud, cloudApi: api);
+      await startScan(tester, CamText.choiceCam);
+      expect(find.text(CamText.welcomeTitle), findsOneWidget);
+      await tapText(tester, CamText.welcomeStart);
+      await tapText(tester, CamText.powerReady);
+      expect(find.text('K7P 2QX'), findsOneWidget,
+          reason: 'a code, not a Bluetooth search');
+      expect(find.text(CamText.findTitle), findsNothing);
+
+      await tester.tap(find.byTooltip(CamText.closeSetup));
+      await settle(tester);
+      // Nothing linked yet: the scan goes on with the user's own camera.
+      expect(find.text('Take photo'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 });
 }

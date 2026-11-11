@@ -12,8 +12,6 @@ import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../auth/widgets/auth_password_field.dart';
 import '../../auth/widgets/auth_text_field.dart';
-import '../../dental_profile/widgets/question_block.dart'
-    show QuestionnaireProgress;
 import '../../profile/utils/device_settings.dart';
 import '../../scan/widgets/scan_theme.dart';
 import '../camera_strings.dart';
@@ -25,6 +23,7 @@ import '../state/camera_setup_controller.dart';
 import '../state/live_camera_controller.dart';
 import '../widgets/camera_bits.dart';
 import '../widgets/live_view.dart';
+import '../widgets/setup_page.dart';
 
 /// What the user chose at the end of setup.
 enum SetupOutcome { startCapturing, done }
@@ -76,7 +75,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
       // The password has done its job.
       _password.clear();
       _preview = LiveCameraController(
-        client: ref.read(camClientFactoryProvider)(saved.host),
+        client: ref.read(camClientFactoryProvider)(saved.host!),
         settings: _settings,
       )..start();
     }
@@ -132,9 +131,10 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _TopBar(
+                        SetupTopBar(
                           step: step.index,
                           total: SetupStep.values.length,
+                          label: CamText.stepNames[step.index],
                           onClose: () => _close(),
                         ),
                         Divider(
@@ -167,45 +167,10 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
       SetupStep.connect => _setup.saved == null ? 'progress' : 'done',
       _ => '',
     };
-    final key = ValueKey('${_setup.step.name}-$sub');
-    final motion = camMotion(context);
-    final scroll = SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      child: AnimatedSize(
-        duration: motion,
-        curve: Curves.easeOutCubic,
-        alignment: Alignment.topCenter,
-        child: AnimatedSwitcher(
-          duration: motion,
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          layoutBuilder: (current, previous) => Stack(
-            alignment: Alignment.topCenter,
-            children: [
-              for (final old in previous)
-                Positioned(top: 0, left: 0, right: 0, child: old),
-              if (current != null) current,
-            ],
-          ),
-          transitionBuilder: (child, animation) {
-            // In from the side we're heading to; out toward the other.
-            final incoming = child.key == key;
-            final dx = 0.12 * _setup.direction * (incoming ? 1 : -1);
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween(begin: Offset(dx, 0), end: Offset.zero)
-                    .animate(animation),
-                child: child,
-              ),
-            );
-          },
-          child: KeyedSubtree(key: key, child: _content()),
-        ),
-      ),
+    final scroll = SetupBody(
+      contentKey: ValueKey('${_setup.step.name}-$sub'),
+      direction: _setup.direction,
+      child: _content(),
     );
     final pullToRescan = _setup.step == SetupStep.wifi &&
         _setup.chosen == null &&
@@ -235,7 +200,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
     Icons.router_outlined,
   ];
 
-  Widget _welcome() => _Page(
+  Widget _welcome() => SetupPage(
         art: const SetupArt(
           step: 0,
           icon: Icons.videocam_rounded,
@@ -261,7 +226,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
     final android = _setup.canLinkTurnOnBluetooth;
     final busy =
         p == PermissionState.checking || p == PermissionState.requesting;
-    return _Page(
+    return SetupPage(
       art: SetupArt(
         step: 1,
         icon: Icons.bluetooth_rounded,
@@ -292,26 +257,26 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
               title: CamText.permissionGranted,
             ),
           PermissionState.needed => const SizedBox.shrink(),
-          PermissionState.denied => _Notice(
+          PermissionState.denied => SetupNotice(
               title: CamText.permissionDeniedTitle,
               body: android
                   ? CamText.permissionDeniedAndroid
                   : CamText.permissionDeniedIos,
             ),
-          PermissionState.bluetoothOff => _Notice(
+          PermissionState.bluetoothOff => SetupNotice(
               title: CamText.bluetoothOffTitle,
               body: android
                   ? CamText.bluetoothOffAndroid
                   : CamText.bluetoothOffIos,
             ),
           PermissionState.unsupported =>
-            const _Notice(body: CamText.bluetoothUnsupported),
+            const SetupNotice(body: CamText.bluetoothUnsupported),
         },
       ],
     );
   }
 
-  Widget _power() => const _Page(
+  Widget _power() => const SetupPage(
         art: SetupArt(
           step: 2,
           icon: Icons.power_settings_new_rounded,
@@ -339,7 +304,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
     final cameras = _setup.cameras;
     final searching = _setup.searching;
     final connecting = _setup.connecting;
-    return _Page(
+    return SetupPage(
       art: SetupArt(
         step: 3,
         icon: Icons.bluetooth_searching_rounded,
@@ -415,17 +380,17 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
     final networks = _setup.networks;
     final Widget status;
     if (_setup.linkLost) {
-      status = const _Notice(body: CamText.errorLinkLost);
+      status = const SetupNotice(body: CamText.errorLinkLost);
     } else if (_setup.wifiLoading && networks.isEmpty) {
       status = const CamBusyLine(CamText.wifiLoading);
     } else if (_setup.wifiFailed) {
-      status = const _Notice(body: CamText.wifiFailed);
+      status = const SetupNotice(body: CamText.wifiFailed);
     } else if (networks.isEmpty) {
       status = Text(CamText.wifiEmpty, style: camBodyStyle());
     } else {
       status = const SizedBox.shrink();
     }
-    return _Page(
+    return SetupPage(
       art: SetupArt(
         step: 4,
         icon: Icons.wifi_rounded,
@@ -468,7 +433,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
 
   Widget _passwordStep() {
     final network = _setup.chosen!;
-    return _Page(
+    return SetupPage(
       art: SetupArt(
         step: 4,
         icon: Icons.wifi_password_rounded,
@@ -489,7 +454,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
             autofillHints: const [AutofillHints.password],
           )
         else ...[
-          const _Notice(body: CamText.wifiOpenNote),
+          const SetupNotice(body: CamText.wifiOpenNote),
           if (_setup.passwordError != null)
             DentraInlineNotice(message: _setup.passwordError),
         ],
@@ -515,7 +480,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
             JoinStage.restarting,
             JoinStage.finding,
           ];
-    return _Page(
+    return SetupPage(
       art: SetupArt(
         step: 5,
         icon: Icons.wifi_tethering_rounded,
@@ -544,14 +509,14 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
             ],
           ),
         ),
-        if (problem != null) _Notice(body: _problemText(problem)),
+        if (problem != null) SetupNotice(body: _problemText(problem)),
       ],
     );
   }
 
   Widget _success() {
     final preview = _preview;
-    return _Page(
+    return SetupPage(
       title: CamText.successTitle,
       body: CamText.successBody(_setup.saved?.ssid),
       rabi: CamText.successRabi,
@@ -745,166 +710,6 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
 }
 
 // ── Pieces ───────────────────────────────────────────────────────────
-
-class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.step,
-    required this.total,
-    required this.onClose,
-  });
-
-  final int step;
-  final int total;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 12, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  CamText.setupTitle,
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                    color: AppColors.secondaryText,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                QuestionnaireProgress(
-                  step: step,
-                  total: total,
-                  label: CamText.stepNames[step],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: onClose,
-            tooltip: CamText.closeSetup,
-            style: IconButton.styleFrom(
-              backgroundColor: AppColors.white.withValues(alpha: 0.7),
-              foregroundColor: AppColors.navy,
-              fixedSize: const Size(44, 44),
-            ),
-            icon: const Icon(Icons.close_rounded, size: 20),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One step's layout: picture, title, text, its own content, then Rabi.
-class _Page extends StatelessWidget {
-  const _Page({
-    this.art,
-    required this.title,
-    this.body,
-    required this.rabi,
-    this.children = const [],
-  });
-
-  final Widget? art;
-  final String title;
-  final String? body;
-  final String rabi;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (art != null) ...[art!, const SizedBox(height: 8)],
-        Semantics(
-          header: true,
-          child: Text(title, style: camTitleStyle()),
-        ),
-        if (body != null) ...[
-          const SizedBox(height: 6),
-          Text(body!, style: camBodyStyle()),
-        ],
-        for (final child in children) ...[
-          const SizedBox(height: 14),
-          child,
-        ],
-        const SizedBox(height: 22),
-        RabiTip(rabi),
-      ],
-    );
-  }
-}
-
-/// A soft teal panel for something to know or do.
-class _Notice extends StatelessWidget {
-  const _Notice({this.title, required this.body});
-
-  final String? title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      liveRegion: true,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 13),
-        decoration: BoxDecoration(
-          color: AppColors.g2.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.g2.withValues(alpha: 0.26)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(top: 1),
-              child: Icon(
-                Icons.info_outline_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (title != null) ...[
-                    Text(
-                      title!,
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                  ],
-                  Text(
-                    body,
-                    style: GoogleFonts.outfit(
-                      fontSize: 13.5,
-                      color: AppColors.navy,
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _CameraRow extends StatelessWidget {
   const _CameraRow({

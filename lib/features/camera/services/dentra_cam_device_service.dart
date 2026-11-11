@@ -8,17 +8,18 @@ import 'dentra_cam_client.dart';
 
 /// The Dentra Cam behind the scan's device card and device captures.
 ///
-/// "Connected" means the saved camera answered on the network just now. The
-/// live camera screen keeps its own, continuous watch on the stream.
+/// "Connected" means the saved camera answered just now, on the network or
+/// through the API. The live camera screen keeps its own, continuous watch
+/// on the stream.
 class DentraCamDeviceService implements DentraDeviceService {
   DentraCamDeviceService({
     required Future<SavedCamera?> Function() camera,
-    required DentraCamClient Function(String host) client,
+    required CamClient Function(SavedCamera camera) client,
   })  : _camera = camera,
         _client = client;
 
   final Future<SavedCamera?> Function() _camera;
-  final DentraCamClient Function(String host) _client;
+  final CamClient Function(SavedCamera camera) _client;
 
   @override
   bool get isSupported => true;
@@ -43,10 +44,10 @@ class DentraCamDeviceService implements DentraDeviceService {
         return dentraCamImage(bytes);
       });
 
-  Future<T> _withCamera<T>(Future<T> Function(DentraCamClient) run) async {
+  Future<T> _withCamera<T>(Future<T> Function(CamClient) run) async {
     final camera = await _camera();
     if (camera == null) throw const DeviceException(DeviceFailure.notFound);
-    final client = _client(camera.host);
+    final client = _client(camera);
     try {
       return await run(client);
     } on DentraCamException catch (e) {

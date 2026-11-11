@@ -47,7 +47,7 @@ abstract class DentraDeviceService {
   Future<CapturedImage> capture({ValueChanged<double>? onProgress});
 }
 
-/// For builds that can't reach the device (the web app), so the scan says so
+/// For builds that can't reach the device (desktop), so the scan says so
 /// instead of pretending to connect.
 class UnsupportedDentraDeviceService implements DentraDeviceService {
   const UnsupportedDentraDeviceService();
@@ -70,14 +70,15 @@ class UnsupportedDentraDeviceService implements DentraDeviceService {
       throw const DeviceException(DeviceFailure.unsupported);
 }
 
-/// The Dentra Cam over Wi-Fi in the phone apps (see
-/// `camera/data/camera_protocol.dart`); unsupported elsewhere.
+/// The Dentra Cam: over Wi-Fi in the phone apps (see
+/// `camera/data/camera_protocol.dart`), through the API on the website;
+/// unsupported elsewhere.
 final dentraDeviceServiceProvider = Provider<DentraDeviceService>((ref) {
   if (!ref.watch(dentraCamAvailableProvider)) {
     return const UnsupportedDentraDeviceService();
   }
   return DentraCamDeviceService(
     camera: () => ref.read(savedCameraProvider.future),
-    client: ref.watch(camClientFactoryProvider),
+    client: ref.watch(cameraClientProvider),
   );
 });

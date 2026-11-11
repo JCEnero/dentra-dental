@@ -77,6 +77,9 @@ class LiveCaptureScreen extends ConsumerStatefulWidget {
 class _LiveCaptureScreenState extends ConsumerState<LiveCaptureScreen>
     with SingleTickerProviderStateMixin {
   late LiveCameraController _live;
+
+  /// Which camera [_live] shows (its address, or its id on the API).
+  late String _cameraKey;
   late final GuidedCaptureController _guide;
   late final CameraStore _store;
   late CameraViewSettings _settings;
@@ -97,7 +100,8 @@ class _LiveCaptureScreenState extends ConsumerState<LiveCaptureScreen>
     super.initState();
     _store = ref.read(cameraStoreProvider);
     _settings = widget.settings;
-    _live = _liveFor(widget.camera.host);
+    _cameraKey = widget.camera.key;
+    _live = _liveFor(widget.camera);
     // Captured once: a photo that passes after this page closes still
     // reaches the scan.
     final scan = ref.read(scanSessionProvider.notifier);
@@ -119,8 +123,8 @@ class _LiveCaptureScreenState extends ConsumerState<LiveCaptureScreen>
     }
   }
 
-  LiveCameraController _liveFor(String host) => LiveCameraController(
-        client: ref.read(camClientFactoryProvider)(host),
+  LiveCameraController _liveFor(SavedCamera camera) => LiveCameraController(
+        client: ref.read(cameraClientProvider)(camera),
         settings: _settings,
         onSettingsChanged: (s) {
           _settings = s;
@@ -229,9 +233,10 @@ class _LiveCaptureScreenState extends ConsumerState<LiveCaptureScreen>
     if (!mounted) return;
     final camera = await ref.read(savedCameraProvider.future);
     if (!mounted) return;
-    if (camera != null && camera.host != _live.host) {
+    if (camera != null && camera.key != _cameraKey) {
       final old = _live;
-      setState(() => _live = _liveFor(camera.host));
+      _cameraKey = camera.key;
+      setState(() => _live = _liveFor(camera));
       old.dispose();
     }
     // Starting again gives a fresh 15 seconds, so it also retries.
@@ -287,6 +292,7 @@ class _LiveCaptureScreenState extends ConsumerState<LiveCaptureScreen>
                               area: area,
                               flash: _flash,
                               onRetry: _live.retry,
+                              cloud: widget.camera.cloudId != null,
                               onCheckDevice: _checkDevice,
                               onToggleLight: _toggleLight,
                               onControls: () =>
@@ -436,6 +442,7 @@ class _Viewport extends StatelessWidget {
     required this.live,
     required this.area,
     required this.flash,
+    required this.cloud,
     required this.onRetry,
     required this.onCheckDevice,
     required this.onToggleLight,
@@ -445,6 +452,9 @@ class _Viewport extends StatelessWidget {
   final LiveCameraController live;
   final ScanRegion area;
   final Animation<double> flash;
+
+  /// The camera comes through the internet (the website).
+  final bool cloud;
   final VoidCallback onRetry;
   final VoidCallback onCheckDevice;
   final VoidCallback onToggleLight;
@@ -490,6 +500,7 @@ class _Viewport extends StatelessWidget {
                       key: const ValueKey('disconnected'),
                       opacity: 0.8,
                       child: _Disconnected(
+                        cloud: cloud,
                         onRetry: onRetry,
                         onCheckDevice: onCheckDevice,
                       ),
@@ -577,8 +588,14 @@ class _Veil extends StatelessWidget {
 }
 
 class _Disconnected extends StatelessWidget {
-  const _Disconnected({required this.onRetry, required this.onCheckDevice});
+  const _Disconnected({
+    required this.cloud,
+    required this.onRetry,
+    required this.onCheckDevice,
+  });
 
+  /// Reached through the internet (the website), not the home network.
+  final bool cloud;
   final VoidCallback onRetry;
   final VoidCallback onCheckDevice;
 
@@ -604,7 +621,7 @@ class _Disconnected extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              CamText.disconnectedBody,
+              cloud ? CamText.disconnectedBodyCloud : CamText.disconnectedBody,
               textAlign: TextAlign.center,
               style: GoogleFonts.outfit(
                 fontSize: 13,

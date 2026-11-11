@@ -1,17 +1,26 @@
 import 'camera_config.dart';
 import 'camera_protocol.dart';
 
-/// The camera this phone was set up with. The Wi-Fi password is never kept.
+/// The camera this phone was set up with, or (on the website) the one
+/// linked to the account. The Wi-Fi password is never kept.
 class SavedCamera {
   const SavedCamera({
-    required this.host,
+    this.host,
+    this.cloudId,
     required this.name,
     required this.savedAt,
     this.ssid,
-  });
+  }) : assert(host != null || cloudId != null);
 
-  /// Its IPv4 address on the home network.
-  final String host;
+  /// Its IPv4 address on the home network, for the phone apps.
+  final String? host;
+
+  /// Its id on the DENTRA API, for the website, which reaches it through
+  /// the API's relay.
+  final String? cloudId;
+
+  /// Which camera this is, either way.
+  String get key => cloudId ?? host!;
 
   /// As it advertised itself, e.g. "Dentra Cam 3F2A".
   final String name;
@@ -21,6 +30,8 @@ class SavedCamera {
 
   final DateTime savedAt;
 
+  /// Only the phone apps keep their camera on the device; the website asks
+  /// the API, so a cloud camera is never stored.
   Map<String, Object?> toJson() => {
         'host': host,
         'name': name,
