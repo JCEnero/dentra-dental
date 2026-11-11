@@ -175,15 +175,29 @@ Future<ProviderContainer> pumpScan(
     ),
   ));
   await settle(tester, steps: 3);
-  if (pastIntro) await startScan(tester);
+  // With a paired device, closing the choice leaves the scan on it.
+  if (pastIntro) await startScan(tester, ownCamera: device == null);
   return container;
 }
 
-/// Taps Start and skips the check-in that opens.
-Future<void> startScan(WidgetTester tester) async {
+/// Taps Start, skips the check-in that opens, then picks the user's own
+/// camera, or with [ownCamera] false closes that choice.
+Future<void> startScan(WidgetTester tester, {bool ownCamera = true}) async {
   await tapText(tester, 'Start scan');
   await settle(tester, steps: 5);
   await tapText(tester, 'Skip for now');
+  await settle(tester, steps: 5);
+  await chooseHowToCapture(tester, ownCamera: ownCamera);
+}
+
+Future<void> chooseHowToCapture(WidgetTester tester,
+    {bool ownCamera = true}) async {
+  expect(find.text('How will you take your photos?'), findsOneWidget);
+  if (ownCamera) {
+    await tapText(tester, 'My own camera');
+  } else {
+    await tester.tapAt(const Offset(20, 20));
+  }
   await settle(tester, steps: 5);
 }
 
@@ -241,7 +255,7 @@ Future<void> tapText(WidgetTester tester, String text) async {
 }
 
 Future<void> captureCurrent(WidgetTester tester, FakeCamera camera) async {
-  await tapText(tester, 'Capture with device');
+  await tapText(tester, 'Take photo');
   camera.deliver();
   await settle(tester);
   await tapText(tester, 'Use photo');
@@ -274,7 +288,7 @@ void main() {
       await showRegion(tester, r.label);
       expect(regionCard(r.label), findsOneWidget);
     }
-    expect(find.text('Capture with device'), findsOneWidget);
+    expect(find.text('Take photo'), findsOneWidget);
     expect(find.text('What your device should see'), findsOneWidget);
     expect(find.text('Start over'), findsNothing);
     // No fabricated quality scores or analysis numbers.
@@ -347,7 +361,7 @@ void main() {
     final camera = FakeCamera();
     final container = await pumpScan(tester, camera: camera);
 
-    await tapText(tester, 'Capture with device');
+    await tapText(tester, 'Take photo');
     expect(camera.calls, [CaptureSource.phoneCamera]);
     expect(find.text('Waiting for device…'), findsWidgets);
     expect(progressText(tester), '0 of 9 views captured');
@@ -373,10 +387,10 @@ void main() {
       (tester) async {
     final camera = FakeCamera();
     await pumpScan(tester, camera: camera);
-    await tapText(tester, 'Capture with device');
+    await tapText(tester, 'Take photo');
     camera.cancel();
     await settle(tester);
-    expect(find.text('Capture with device'), findsOneWidget);
+    expect(find.text('Take photo'), findsOneWidget);
     expect(find.text('Waiting for device…'), findsNothing);
     expect(progressText(tester), '0 of 9 views captured');
   });
@@ -385,7 +399,7 @@ void main() {
       (tester) async {
     final camera = FakeCamera();
     await pumpScan(tester, camera: camera);
-    await tapText(tester, 'Capture with device');
+    await tapText(tester, 'Take photo');
     camera.fail(CameraFailure.permissionDenied);
     await settle(tester);
 
@@ -418,7 +432,7 @@ void main() {
     final camera = FakeCamera();
     await pumpScan(tester, camera: camera);
 
-    await tapText(tester, 'Capture with device');
+    await tapText(tester, 'Take photo');
     camera.deliver();
     await settle(tester);
     await tapText(tester, 'Retake');
@@ -700,6 +714,7 @@ void main() {
       }
       await tapText(tester, 'Continue');
       await settle(tester, steps: 5);
+      await chooseHowToCapture(tester);
       final said = container.read(scanSessionProvider).checkIn;
       expect(said?.symptoms, {CurrentConcern.toothPain});
 
@@ -753,12 +768,12 @@ void main() {
       expect(tester.takeException(), isNull);
 
       // Main action stays on screen, above the tab bar.
-      final action = tester.getRect(find.text('Capture with device'));
+      final action = tester.getRect(find.text('Take photo'));
       final nav = tester.getRect(find.byType(AppBottomNav));
       expect(action.bottom, lessThanOrEqualTo(nav.top));
       expect(action.top, greaterThanOrEqualTo(0));
 
-      await tapText(tester, 'Capture with device');
+      await tapText(tester, 'Take photo');
       camera.deliver();
       await settle(tester);
       expect(tester.takeException(), isNull);
@@ -774,7 +789,7 @@ void main() {
         ..answer = const PhotoVerdict.rejected(PhotoProblem.noTeeth);
       await pumpScan(tester,
           camera: camera, check: check, size: size, textScale: scale);
-      await tapText(tester, 'Capture with device');
+      await tapText(tester, 'Take photo');
       camera.deliver();
       await settle(tester);
       expect(tester.takeException(), isNull);
@@ -1089,7 +1104,7 @@ void main() {
 
   group('the photo check', () {
     Future<void> deliverPhoto(WidgetTester tester, FakeCamera camera) async {
-      await tapText(tester, 'Capture with device');
+      await tapText(tester, 'Take photo');
       camera.deliver();
       await settle(tester);
     }
@@ -1178,7 +1193,7 @@ void main() {
       expect(state.selectedRegionId, 'upper-occlusal');
       expect(state.pending, isNull);
       expect(state.captures.keys, ['front']);
-      expect(find.text('Capture with device'), findsOneWidget);
+      expect(find.text('Take photo'), findsOneWidget);
       expect(progressText(tester), '1 of 9 views captured');
     });
 

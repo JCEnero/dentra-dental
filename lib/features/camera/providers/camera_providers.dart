@@ -62,3 +62,20 @@ class ScanStartRequests extends Notifier<int> {
 
 final scanStartRequestProvider =
     NotifierProvider<ScanStartRequests, int>(ScanStartRequests.new);
+
+/// How this scan's photos are taken, chosen at Start.
+enum CaptureChoice { dentraCam, ownCamera }
+
+/// Null until chosen, or when the choice sheet was closed: then a set-up
+/// Dentra Cam is used if there is one.
+class CaptureChoiceNotifier extends Notifier<CaptureChoice?> {
+  @override
+  CaptureChoice? build() => null;
+
+  void choose(CaptureChoice? choice) => state = choice;
+}
+
+final captureChoiceProvider =
+    NotifierProvider<CaptureChoiceNotifier, CaptureChoice?>(
+  CaptureChoiceNotifier.new,
+);

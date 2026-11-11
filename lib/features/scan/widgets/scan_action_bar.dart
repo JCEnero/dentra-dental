@@ -29,6 +29,7 @@ class ScanActionBar extends StatelessWidget {
     required this.onNewScan,
     required this.onStart,
     required this.onRetakeFlagged,
+    this.onUseOwnCamera,
   });
 
   final ScanSessionState session;
@@ -51,6 +52,9 @@ class ScanActionBar extends StatelessWidget {
   final VoidCallback onNewScan;
   final VoidCallback onStart;
   final VoidCallback onRetakeFlagged;
+
+  /// Switches a Dentra Cam scan to the user's own camera.
+  final VoidCallback? onUseOwnCamera;
 
   @override
   Widget build(BuildContext context) {
@@ -256,9 +260,11 @@ class ScanActionBar extends StatelessWidget {
         children: [
           Expanded(
             child: GlowButton(
-              label: source == CaptureSource.photoLibrary
-                  ? 'Choose a photo'
-                  : 'Capture with device',
+              label: switch (source) {
+                CaptureSource.photoLibrary => 'Choose a photo',
+                CaptureSource.phoneCamera => 'Take photo',
+                CaptureSource.device => 'Capture with device',
+              },
               icon: source == CaptureSource.photoLibrary
                   ? Icons.photo_library_outlined
                   : Icons.photo_camera_outlined,
@@ -266,11 +272,16 @@ class ScanActionBar extends StatelessWidget {
               onTap: () => onCapture(source),
             ),
           ),
-          if (source == CaptureSource.phoneCamera) ...[
+          if (source == CaptureSource.phoneCamera ||
+              (source == CaptureSource.device && onUseOwnCamera != null)) ...[
             const SizedBox(width: 8),
             IconButton(
-              onPressed: () => onCapture(CaptureSource.photoLibrary),
-              tooltip: 'Choose a photo instead',
+              onPressed: source == CaptureSource.device
+                  ? onUseOwnCamera
+                  : () => onCapture(CaptureSource.photoLibrary),
+              tooltip: source == CaptureSource.device
+                  ? 'Use my own camera'
+                  : 'Choose a photo instead',
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.white.withValues(alpha: 0.6),
                 foregroundColor: AppColors.g2,
@@ -280,7 +291,12 @@ class ScanActionBar extends StatelessWidget {
                   side: const BorderSide(color: AppColors.lavender),
                 ),
               ),
-              icon: const Icon(Icons.photo_library_outlined, size: 20),
+              icon: Icon(
+                source == CaptureSource.device
+                    ? Icons.photo_camera_outlined
+                    : Icons.photo_library_outlined,
+                size: 20,
+              ),
             ),
           ],
         ],

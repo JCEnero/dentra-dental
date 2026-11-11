@@ -10,6 +10,7 @@ import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/primary_button.dart';
 import '../../camera/camera_flow.dart';
 import '../../camera/providers/camera_providers.dart';
+import '../../camera/widgets/capture_choice_sheet.dart';
 import '../../dental_profile/providers/dental_profile_providers.dart';
 import '../../dental_records/providers/dental_records_provider.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
@@ -83,13 +84,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     showScanChamber(context).whenComplete(() => _chamberOpen = false);
   }
 
-  /// Start asks only what isn't known yet, once per scan. Closing the sheet
-  /// without choosing stays on the start page.
-  Future<void> _start() async {
+  /// Start asks only what isn't known yet, once per scan, then how the
+  /// photos are taken; a known [choice] skips that question. Closing the
+  /// check-in without choosing stays on the start page.
+  Future<void> _start({CaptureChoice? choice}) async {
     final scan = ref.read(scanSessionProvider.notifier);
     if (ref.read(scanSessionProvider).checkInSeen) {
       scan.start();
-      return _captureWithCamera(offerSetup: true);
+      return _chooseHowToCapture(choice);
     }
     final plan = CheckInPlan.of(
       now: DateTime.now(),
@@ -99,25 +101,46 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     );
     if (plan.isEmpty) {
       scan.start();
-      return _captureWithCamera(offerSetup: true);
+      return _chooseHowToCapture(choice);
     }
     final result = await showCheckInSheet(context, plan);
     if (result == null || !mounted) return;
     scan.start(checkIn: result.answers);
-    return _captureWithCamera(offerSetup: true);
+    return _chooseHowToCapture(choice);
+  }
+
+  /// The Dentra Cam or the user's own camera, for this scan. Closing the
+  /// sheet leaves it to whatever is set up.
+  Future<void> _chooseHowToCapture([CaptureChoice? known]) async {
+    final camAvailable = ref.read(dentraCamAvailableProvider);
+    var choice = known;
+    if (choice == null) {
+      final camera =
+          camAvailable ? await ref.read(savedCameraProvider.future) : null;
+      if (!mounted) return;
+      choice = await showCaptureChoice(
+        context,
+        camAvailable: camAvailable,
+        cameraName: camera?.name,
+        canUseCamera: ref.read(phoneCameraServiceProvider).supportsCamera,
+      );
+      if (!mounted) return;
+    }
+    ref.read(captureChoiceProvider.notifier).choose(choice);
+    if (choice == CaptureChoice.dentraCam) {
+      await _captureWithCamera(offerSetup: true);
+    }
   }
 
   /// With a Dentra Cam set up, capturing happens in its live view. Without
-  /// one, [offerSetup] opens the setup guide, but only the first time ever;
-  /// closing it leaves the phone-camera scan as it was.
+  /// one, [offerSetup] opens the setup guide; closing it leaves the scan on
+  /// the user's own camera.
   Future<void> _captureWithCamera({bool offerSetup = false}) async {
     if (!ref.read(dentraCamAvailableProvider) || !mounted) return;
     final camera = await ref.read(savedCameraProvider.future);
     if (!mounted) return;
     if (camera == null) {
-      final store = ref.read(cameraStoreProvider);
-      if (!offerSetup || await store.setupOffered() || !mounted) return;
-      unawaited(store.markSetupOffered());
+      if (!offerSetup) return;
       final outcome = await openCameraSetup(context);
       if (!mounted) return;
       _checkDevice();
@@ -149,7 +172,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (outcome != SetupOutcome.startCapturing) return;
     final session = ref.read(scanSessionProvider);
     if (session.finishPhase != FinishPhase.scanning) return;
-    await (session.started ? _captureWithCamera() : _start());
+    await _useDentraCam(session.started);
+  }
+
+  /// Switches this scan to the Dentra Cam, starting one if needed.
+  Future<void> _useDentraCam(bool started) async {
+    if (!started) return _start(choice: CaptureChoice.dentraCam);
+    ref.read(captureChoiceProvider.notifier).choose(CaptureChoice.dentraCam);
+    await _captureWithCamera();
   }
 
   /// Refreshes the device card after the camera may have changed.
@@ -193,7 +223,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     ref.listen(scanStartRequestProvider, (_, __) {
       final s = ref.read(scanSessionProvider);
       if (s.finishPhase != FinishPhase.scanning) return;
-      unawaited(s.started ? _captureWithCamera() : _start());
+      unawaited(_useDentraCam(s.started));
     });
     // A tile may be far below the guide it changes, so bring the guide back.
     ref.listen(scanSessionProvider.select((s) => s.selectedRegionId), (_, __) {
@@ -211,7 +241,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final camAvailable = ref.watch(dentraCamAvailableProvider);
     final savedCamera = camAvailable ? ref.watch(savedCameraProvider) : null;
     final hasCamera = savedCamera?.valueOrNull != null;
-    final source = hasCamera || device.isConnected
+    final ownCamera =
+        ref.watch(captureChoiceProvider) == CaptureChoice.ownCamera;
+    final source = !ownCamera && (hasCamera || device.isConnected)
         ? CaptureSource.device
         : camera.supportsCamera
             ? CaptureSource.phoneCamera
@@ -313,7 +345,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                                       enabled: session.canChangeRegion,
                                       onSelect: scan.selectRegion,
                                     ),
-                                    if (deviceStatus != null)
+                                    // Not while the user's own camera is
+                                    // chosen; the next scan asks again.
+                                    if (deviceStatus != null && !ownCamera)
                                       Padding(
                                         padding: const EdgeInsets.fromLTRB(
                                             AppSpacing.screenH,
@@ -392,6 +426,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   onSkipAnalysis: scan.skipAnalysis,
                   onNewScan: scan.reset,
                   onStart: _start,
+                  onUseOwnCamera: () => ref
+                      .read(captureChoiceProvider.notifier)
+                      .choose(CaptureChoice.ownCamera),
                   onRetakeFlagged: scan.retakeFlagged,
                 ),
               ),

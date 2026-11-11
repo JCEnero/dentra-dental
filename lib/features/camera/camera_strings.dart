@@ -328,4 +328,17 @@ abstract final class CamText {
   static String settingsSaved(String name, String? ssid) =>
       ssid == null ? name : '$name on $ssid';
   static const settingsNone = 'Connect your Dentra Cam to Wi-Fi';
+
+  // ── Choosing how to capture, at Start ───────────────────────────
+  static const choiceTitle = 'How will you take your photos?';
+  static const choiceSubtitle = 'You can choose again at your next scan.';
+  static const choiceCam = 'Dentra Cam';
+  static String choiceCamBody(String? name) => name == null
+      ? "We'll help you connect it first."
+      : 'Use $name.';
+  static const choiceCamAppOnly =
+      'Works in the DENTRA phone app. On this website, use your own camera.';
+  static const choiceOwn = 'My own camera';
+  static const choiceOwnBody = 'No device? Take the photos with your phone.';
+  static const choiceOwnPhotos = 'No device? Choose photos you already have.';
 }

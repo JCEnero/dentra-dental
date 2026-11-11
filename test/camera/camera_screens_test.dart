@@ -264,12 +264,13 @@ void main() {
       WidgetTester tester, {
       FakeSetupLink? link,
       FakeCamClient? cam,
+      bool camAvailable = true,
     }) async {
       tester.view.physicalSize = const Size(390, 844) * 3;
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
       final container = ProviderContainer(overrides: [
-        dentraCamAvailableProvider.overrideWithValue(true),
+        dentraCamAvailableProvider.overrideWithValue(camAvailable),
         cameraSetupLinkProvider.overrideWithValue(link ?? FakeSetupLink()),
         camClientFactoryProvider
             .overrideWithValue((_) => cam ?? FakeCamClient()),
@@ -286,24 +287,25 @@ void main() {
       return container;
     }
 
-    Future<void> startScan(WidgetTester tester) async {
+    /// Start, skip the check-in, then pick [choice] from the sheet.
+    Future<void> startScan(WidgetTester tester, String choice) async {
       await tapText(tester, 'Start scan');
       await tapText(tester, 'Skip for now');
+      expect(find.text(CamText.choiceTitle), findsOneWidget);
+      await tapText(tester, choice);
     }
 
-    testWidgets('offers setup by itself once, then from the device card',
+    testWidgets('choosing the Dentra Cam without one opens the setup guide',
         (tester) async {
       await pumpScanTab(tester);
       expect(find.text(CamText.cardNotSetUpTitle), findsOneWidget);
 
-      await startScan(tester);
+      await startScan(tester, CamText.choiceCam);
       expect(find.text(CamText.welcomeTitle), findsOneWidget);
       await tapText(tester, CamText.welcomeLater);
-      // The phone-camera scan carries on.
+      // The scan carries on with the phone's own camera.
       expect(find.text(CamText.welcomeTitle), findsNothing);
-      expect(find.text('Capture with device'), findsOneWidget);
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('dentra_cam.v1.setup_offered'), isTrue);
+      expect(find.text('Take photo'), findsOneWidget);
 
       await tapText(tester, CamText.cardSetUp);
       expect(find.text(CamText.welcomeTitle), findsOneWidget);
@@ -320,7 +322,7 @@ void main() {
       });
       final cam = FakeCamClient();
       await pumpScanTab(tester, cam: cam);
-      await startScan(tester);
+      await startScan(tester, CamText.choiceCam);
 
       // Tips first, with "Don't show again".
       expect(find.text(CamText.tipsTitle), findsOneWidget);
@@ -341,5 +343,53 @@ void main() {
       await tester.tap(find.byTooltip(CamText.closeCamera));
       await settle(tester);
     });
-  });
+  
+    testWidgets('choosing your own camera skips the Dentra Cam, even set up',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'dentra_cam.v1.camera': jsonEncode(_camera.toJson()),
+      });
+      final cam = FakeCamClient();
+      await pumpScanTab(tester, cam: cam);
+      await startScan(tester, CamText.choiceOwn);
+      expect(find.text(CamText.tipsTitle), findsNothing);
+      expect(find.text(CamText.connecting), findsNothing);
+      expect(find.text('Take photo'), findsOneWidget);
+      expect(cam.opened, 0);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a Dentra Cam scan can switch to your own camera',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'dentra_cam.v1.camera': jsonEncode(_camera.toJson()),
+        'dentra_cam.v1.tips_hidden': true,
+      });
+      await pumpScanTab(tester);
+      await startScan(tester, CamText.choiceCam);
+      await tester.tap(find.byTooltip(CamText.closeCamera));
+      await settle(tester);
+      expect(find.text('Capture with device'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Use my own camera'));
+      await settle(tester);
+      expect(find.text('Take photo'), findsOneWidget);
+    });
+
+    testWidgets('on the website the Dentra Cam is listed but not offered',
+        (tester) async {
+      await pumpScanTab(tester, camAvailable: false);
+      await tapText(tester, 'Start scan');
+      await tapText(tester, 'Skip for now');
+      expect(find.text(CamText.choiceCamAppOnly), findsOneWidget);
+      await tester.tap(find.text(CamText.choiceCam));
+      await settle(tester);
+      expect(find.text(CamText.choiceTitle), findsOneWidget,
+          reason: "can't be chosen here");
+
+      await tapText(tester, CamText.choiceOwn);
+      expect(find.text(CamText.choiceTitle), findsNothing);
+      expect(find.text('Take photo'), findsOneWidget);
+    });
+});
 }
