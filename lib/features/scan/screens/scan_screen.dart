@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +8,8 @@ import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/primary_button.dart';
+import '../../camera/camera_flow.dart';
+import '../../camera/providers/camera_providers.dart';
 import '../../dental_profile/providers/dental_profile_providers.dart';
 import '../../dental_records/providers/dental_records_provider.dart';
 import '../../screening/providers/screening_sessions_provider.dart';
@@ -48,6 +52,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   final _scroll = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    // Once a saved Dentra Cam is known, the device card checks it's there.
+    if (ref.read(dentraCamAvailableProvider)) {
+      ref.listenManual(savedCameraProvider, (previous, next) {
+        if (previous?.valueOrNull != null || next.valueOrNull == null) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _checkDevice();
+        });
+      }, fireImmediately: true);
+    }
+  }
+
+  @override
   void dispose() {
     _scroll.dispose();
     super.dispose();
@@ -71,7 +89,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final scan = ref.read(scanSessionProvider.notifier);
     if (ref.read(scanSessionProvider).checkInSeen) {
       scan.start();
-      return;
+      return _captureWithCamera(offerSetup: true);
     }
     final plan = CheckInPlan.of(
       now: DateTime.now(),
@@ -81,11 +99,63 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     );
     if (plan.isEmpty) {
       scan.start();
-      return;
+      return _captureWithCamera(offerSetup: true);
     }
     final result = await showCheckInSheet(context, plan);
     if (result == null || !mounted) return;
     scan.start(checkIn: result.answers);
+    return _captureWithCamera(offerSetup: true);
+  }
+
+  /// With a Dentra Cam set up, capturing happens in its live view. Without
+  /// one, [offerSetup] opens the setup guide, but only the first time ever;
+  /// closing it leaves the phone-camera scan as it was.
+  Future<void> _captureWithCamera({bool offerSetup = false}) async {
+    if (!ref.read(dentraCamAvailableProvider) || !mounted) return;
+    final camera = await ref.read(savedCameraProvider.future);
+    if (!mounted) return;
+    if (camera == null) {
+      final store = ref.read(cameraStoreProvider);
+      if (!offerSetup || await store.setupOffered() || !mounted) return;
+      unawaited(store.markSetupOffered());
+      final outcome = await openCameraSetup(context);
+      if (!mounted) return;
+      _checkDevice();
+      if (outcome != SetupOutcome.startCapturing) return;
+    }
+    final session = ref.read(scanSessionProvider);
+    if (!session.started || session.finishPhase != FinishPhase.scanning) {
+      return;
+    }
+    final save = await openLiveCapture(
+      context,
+      ref,
+      startAt: session.selectedRegionId,
+    );
+    if (!mounted) return;
+    if (save) {
+      unawaited(ref.read(scanSessionProvider.notifier).finish());
+    } else {
+      _checkDevice();
+    }
+  }
+
+  /// The device card's "Set up": the guide, then straight into the scan if
+  /// the user asks to start capturing.
+  Future<void> _setUpCamera() async {
+    final outcome = await openCameraSetup(context);
+    if (!mounted) return;
+    _checkDevice();
+    if (outcome != SetupOutcome.startCapturing) return;
+    final session = ref.read(scanSessionProvider);
+    if (session.finishPhase != FinishPhase.scanning) return;
+    await (session.started ? _captureWithCamera() : _start());
+  }
+
+  /// Refreshes the device card after the camera may have changed.
+  void _checkDevice() {
+    if (ref.read(savedCameraProvider).valueOrNull == null) return;
+    unawaited(ref.read(deviceConnectionProvider.notifier).connect());
   }
 
   @override
@@ -119,6 +189,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     ref.listen(scanSessionProvider.select((s) => s.started), (_, __) {
       if (_scroll.hasClients) _scroll.jumpTo(0);
     });
+    // "Start capturing" at the end of a setup opened elsewhere (Profile).
+    ref.listen(scanStartRequestProvider, (_, __) {
+      final s = ref.read(scanSessionProvider);
+      if (s.finishPhase != FinishPhase.scanning) return;
+      unawaited(s.started ? _captureWithCamera() : _start());
+    });
     // A tile may be far below the guide it changes, so bring the guide back.
     ref.listen(scanSessionProvider.select((s) => s.selectedRegionId), (_, __) {
       if (!_scroll.hasClients) return;
@@ -130,7 +206,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       }
     });
 
-    final source = device.isConnected
+    // A Dentra Cam that's set up is the capture source, reachable or not:
+    // its live view handles connecting.
+    final camAvailable = ref.watch(dentraCamAvailableProvider);
+    final savedCamera = camAvailable ? ref.watch(savedCameraProvider) : null;
+    final hasCamera = savedCamera?.valueOrNull != null;
+    final source = hasCamera || device.isConnected
         ? CaptureSource.device
         : camera.supportsCamera
             ? CaptureSource.phoneCamera
@@ -142,6 +223,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         ? null
         : DeviceStatusCard(
             state: device,
+            needsSetup: (savedCamera?.hasValue ?? false) && !hasCamera,
+            onSetUp: _setUpCamera,
             onConnect: () =>
                 ref.read(deviceConnectionProvider.notifier).connect(),
             onCancel: () =>
@@ -294,7 +377,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 child: ScanActionBar(
                   session: session,
                   source: source,
-                  onCapture: scan.capture,
+                  // The Dentra Cam captures in its live view, at this view.
+                  onCapture: (from) =>
+                      from == CaptureSource.device && camAvailable
+                          ? _captureWithCamera()
+                          : scan.capture(from),
                   onAccept: scan.acceptPending,
                   onRetake: scan.retake,
                   onDiscard: scan.discardPending,

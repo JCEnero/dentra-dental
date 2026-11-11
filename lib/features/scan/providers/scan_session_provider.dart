@@ -426,6 +426,49 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     );
   }
 
+  /// Keeps a photo the photo check has already passed, such as one from the
+  /// live Dentra Cam, which checks its photos itself. Ignored unless
+  /// [verdict] passed, so nothing unchecked reaches the scan, its upload or
+  /// the analysis.
+  void keepCheckedPhoto(
+    String regionId,
+    CapturedImage image,
+    PhotoVerdict verdict,
+  ) {
+    if (!verdict.passed ||
+        state.finishPhase != FinishPhase.scanning ||
+        scanRegionIndex(regionId) < 0) {
+      return;
+    }
+    final captures = Map<String, CapturedImage>.unmodifiable({
+      ...state.captures,
+      regionId: image,
+    });
+    state = state.copyWith(
+      captures: captures,
+      // Leaves a photo under review on the scan page where it is.
+      selectedRegionId: state.canChangeRegion
+          ? _nextOpenRegion(after: regionId, captures: captures)
+          : null,
+      lastSavedRegionId: regionId,
+      savedCount: state.savedCount + 1,
+    );
+  }
+
+  /// Drops a kept photo, e.g. one deleted or replaced in the live camera.
+  /// The rest of the scan stays.
+  void removePhoto(String regionId) {
+    if (state.finishPhase != FinishPhase.scanning ||
+        !state.captures.containsKey(regionId)) {
+      return;
+    }
+    state = state.copyWith(
+      captures: Map<String, CapturedImage>.unmodifiable(
+        {...state.captures}..remove(regionId),
+      ),
+    );
+  }
+
   /// Discards the image under review and captures again from the same source,
   /// for the same view. The rest of the scan stays as it is.
   Future<void> retake() async {

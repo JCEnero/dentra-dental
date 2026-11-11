@@ -9,6 +9,9 @@ import '../../../shared/widgets/dentra_page_header.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../app_tour/providers/app_tour_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../camera/camera_flow.dart';
+import '../../camera/camera_strings.dart';
+import '../../camera/providers/camera_providers.dart';
 import '../../dental_profile/data/dental_profile_repository.dart';
 import '../../dental_profile/data/models/dental_answers.dart';
 import '../../dental_profile/providers/dental_profile_providers.dart';
@@ -44,6 +47,9 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
   /// Index of the History tab in `AppShell`.
   static const historyTab = 2;
+
+  /// Index of the Scan tab in `AppShell`.
+  static const scanTab = 1;
 
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
@@ -235,6 +241,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ..showSnackBar(dentraSnackBar(message, tone: DentraFeedbackTone.info));
   }
 
+  // ── Dentra Cam ────────────────────────────────────────────────
+
+  /// Runs the setup guide again, e.g. after a new router. "Start capturing"
+  /// at the end goes to the Scan tab and starts a scan there.
+  Future<void> _setUpCamera() async {
+    final outcome = await openCameraSetup(context);
+    if (!mounted || outcome != SetupOutcome.startCapturing) return;
+    widget.onNavigate?.call(ProfileScreen.scanTab);
+    ref.read(scanStartRequestProvider.notifier).request();
+  }
+
+  Widget _cameraSettings() {
+    final camera = ref.watch(savedCameraProvider).valueOrNull;
+    return ProfileSettingsGroup(
+      title: CamText.settingsGroup,
+      children: [
+        ProfileSettingsTile(
+          icon: Icons.videocam_outlined,
+          title: CamText.settingsSetupAgain,
+          subtitle: camera == null
+              ? CamText.settingsNone
+              : CamText.settingsSaved(camera.name, camera.ssid),
+          onTap: _setUpCamera,
+        ),
+      ],
+    );
+  }
+
   // ── Build ─────────────────────────────────────────────────────
 
   @override
@@ -364,6 +398,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
               const SizedBox(height: 24),
+              if (ref.watch(dentraCamAvailableProvider)) ...[
+                _cameraSettings(),
+                const SizedBox(height: 24),
+              ],
               ProfileSettingsGroup(
                 title: 'Support',
                 children: [

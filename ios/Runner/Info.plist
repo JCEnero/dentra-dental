@@ -63,6 +63,12 @@
 	<string>DENTRA uses your location to show dental clinics near you and how far away they are.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Microphone access is not used but required by the camera plugin.</string>
+	<!-- universal_ble: Dentra Cam setup -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>DENTRA uses Bluetooth to find your Dentra Cam and send it your Wi-Fi details during setup.</string>
+	<!-- The Dentra Cam's live picture and photos come over the home Wi-Fi -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>DENTRA connects to your Dentra Cam on your Wi-Fi to show its live picture and take photos.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

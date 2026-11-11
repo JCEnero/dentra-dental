@@ -4,6 +4,7 @@ import '../../../shared/widgets/glass_card.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
+import '../../camera/camera_strings.dart';
 import '../providers/device_connection_provider.dart';
 import '../services/dentra_device_service.dart';
 import 'scan_motion.dart';
@@ -16,20 +17,34 @@ class DeviceStatusCard extends StatelessWidget {
     required this.state,
     required this.onConnect,
     required this.onCancel,
+    this.needsSetup = false,
+    this.onSetUp,
   });
 
   final DeviceConnectionState state;
   final VoidCallback onConnect;
   final VoidCallback onCancel;
 
+  /// No camera has been set up on this phone yet: the card offers [onSetUp]
+  /// instead of connecting.
+  final bool needsSetup;
+  final VoidCallback? onSetUp;
+
   bool get _active =>
-      state.status == DeviceStatus.connecting ||
-      state.status == DeviceStatus.connected ||
-      state.status == DeviceStatus.reconnecting;
+      !needsSetup &&
+      (state.status == DeviceStatus.connecting ||
+          state.status == DeviceStatus.connected ||
+          state.status == DeviceStatus.reconnecting);
 
   @override
   Widget build(BuildContext context) {
-    final copy = _DeviceCopy.of(state);
+    final copy = needsSetup
+        ? const _DeviceCopy(
+            CamText.cardNotSetUpTitle,
+            CamText.cardNotSetUpBody,
+            CamText.cardSetUp,
+          )
+        : _DeviceCopy.of(state);
     final duration = ScanMotion.of(context, ScanMotion.slow);
     final onColor = _active ? AppColors.white : AppColors.navy;
     final subColor = _active
@@ -72,7 +87,11 @@ class DeviceStatusCard extends StatelessWidget {
                       children: [
                         ExcludeSemantics(
                           child: _DeviceEmblem(
-                              status: state.status, onActive: _active),
+                            status: needsSetup
+                                ? DeviceStatus.disconnected
+                                : state.status,
+                            onActive: _active,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -89,8 +108,8 @@ class DeviceStatusCard extends StatelessWidget {
                                 ],
                               ),
                               child: Column(
-                                key: ValueKey(
-                                    '${state.status}-${state.failure}-${state.isSlow}'),
+                                key: ValueKey('$needsSetup-${state.status}-'
+                                    '${state.failure}-${state.isSlow}'),
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -135,10 +154,13 @@ class DeviceStatusCard extends StatelessWidget {
                           _CardAction(
                             label: copy.action!,
                             onActive: _active,
-                            onTap: state.status == DeviceStatus.connecting ||
-                                    state.status == DeviceStatus.reconnecting
-                                ? onCancel
-                                : onConnect,
+                            onTap: needsSetup
+                                ? onSetUp ?? onConnect
+                                : state.status == DeviceStatus.connecting ||
+                                        state.status ==
+                                            DeviceStatus.reconnecting
+                                    ? onCancel
+                                    : onConnect,
                           ),
                         ],
                       ],

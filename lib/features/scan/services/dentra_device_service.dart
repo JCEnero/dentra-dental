@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../camera/providers/camera_providers.dart';
+import '../../camera/services/dentra_cam_device_service.dart';
 import '../data/models/captured_image.dart';
 
 /// Link state reported by the device driver after `connect` succeeds.
@@ -45,12 +47,8 @@ abstract class DentraDeviceService {
   Future<CapturedImage> capture({ValueChanged<double>? onProgress});
 }
 
-/// PLACEHOLDER: the project has no DENTRA device driver yet (no Wi-Fi protocol,
-/// SDK or image-transfer code), so this reports the device as unsupported
+/// For builds that can't reach the device (the web app), so the scan says so
 /// instead of pretending to connect.
-///
-/// To integrate the hardware, implement [DentraDeviceService] and override
-/// [dentraDeviceServiceProvider] with it.
 class UnsupportedDentraDeviceService implements DentraDeviceService {
   const UnsupportedDentraDeviceService();
 
@@ -72,6 +70,14 @@ class UnsupportedDentraDeviceService implements DentraDeviceService {
       throw const DeviceException(DeviceFailure.unsupported);
 }
 
-final dentraDeviceServiceProvider = Provider<DentraDeviceService>(
-  (ref) => const UnsupportedDentraDeviceService(),
-);
+/// The Dentra Cam over Wi-Fi in the phone apps (see
+/// `camera/data/camera_protocol.dart`); unsupported elsewhere.
+final dentraDeviceServiceProvider = Provider<DentraDeviceService>((ref) {
+  if (!ref.watch(dentraCamAvailableProvider)) {
+    return const UnsupportedDentraDeviceService();
+  }
+  return DentraCamDeviceService(
+    camera: () => ref.read(savedCameraProvider.future),
+    client: ref.watch(camClientFactoryProvider),
+  );
+});
