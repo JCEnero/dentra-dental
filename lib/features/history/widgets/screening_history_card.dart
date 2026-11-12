@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/dentra_dates.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../dental_records/widgets/record_source_label.dart';
 import '../../scan/data/scan_regions.dart';
@@ -250,7 +251,9 @@ class ScreeningCardSkeleton extends StatelessWidget {
   }
 }
 
-/// Centered message with an icon and up to two actions.
+/// Centered message with an icon and up to two actions. For the pages'
+/// first-time and couldn't-load states, pass [mascot] and Rabi stands in
+/// for the icon.
 class HistoryMessage extends StatelessWidget {
   const HistoryMessage({
     super.key,
@@ -259,9 +262,13 @@ class HistoryMessage extends StatelessWidget {
     required this.message,
     this.actions = const [],
     this.danger = false,
+    this.mascot,
   });
 
   final IconData icon;
+
+  /// Rabi in this mood, in place of [icon].
+  final MascotMood? mascot;
   final String title;
   final String message;
   final List<Widget> actions;
@@ -277,16 +284,21 @@ class HistoryMessage extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         child: Column(
           children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+            if (mascot != null) ...[
+              DentraMascot(mood: mascot!, size: 104, stage: true),
+              const SizedBox(height: 10),
+            ] else ...[
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 26),
               ),
-              child: Icon(icon, color: color, size: 26),
-            ),
-            const SizedBox(height: 14),
+              const SizedBox(height: 14),
+            ],
             Text(
               title,
               textAlign: TextAlign.center,

@@ -9,6 +9,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../dental_profile/widgets/question_block.dart'
     show QuestionnaireProgress;
 import '../../scan/data/scan_regions.dart';
@@ -608,8 +609,8 @@ class _Disconnected extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const ScanIconDisc(Icons.videocam_off_outlined, size: 44),
-            const SizedBox(height: 10),
+            const DentraMascot(mood: MascotMood.worried, size: 92),
+            const SizedBox(height: 6),
             Text(
               CamText.disconnectedTitle,
               textAlign: TextAlign.center,

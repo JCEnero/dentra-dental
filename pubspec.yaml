@@ -40,6 +40,7 @@ flutter:
   assets:
     - .env
     - assets/images/
+    - assets/images/mascot/
     - assets/images/treatments/
     - assets/images/treatments/icons/
     - assets/videos/

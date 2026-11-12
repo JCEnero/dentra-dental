@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../dental_profile/widgets/question_block.dart'
     show QuestionnaireProgress;
 import '../camera_strings.dart';
@@ -126,18 +127,28 @@ class SetupBody extends StatelessWidget {
   }
 }
 
-/// One step's layout: picture, title, text, its own content, then Rabi.
+/// One step's layout: Rabi with his tip, then the title, text and the
+/// step's own content.
 class SetupPage extends StatelessWidget {
   const SetupPage({
     super.key,
-    this.art,
+    this.step,
+    this.mood = MascotMood.point,
+    this.busy = false,
     required this.title,
     this.body,
     required this.rabi,
     this.children = const [],
   });
 
-  final Widget? art;
+  /// Index into `CameraConfig.setupArt`, for a step with its own picture.
+  final int? step;
+
+  /// How Rabi stands for what is happening right now.
+  final MascotMood mood;
+
+  /// Something is under way: rings ripple behind him.
+  final bool busy;
   final String title;
   final String? body;
   final String rabi;
@@ -145,10 +156,13 @@ class SetupPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final art = step != null && SetupArt.has(step!);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (art != null) ...[art!, const SizedBox(height: 8)],
+        RabiTip(rabi, mood: mood, busy: busy),
+        const SizedBox(height: 14),
+        if (art) ...[SetupArt(step: step!), const SizedBox(height: 8)],
         Semantics(
           header: true,
           child: Text(title, style: camTitleStyle()),
@@ -161,8 +175,6 @@ class SetupPage extends StatelessWidget {
           const SizedBox(height: 14),
           child,
         ],
-        const SizedBox(height: 22),
-        RabiTip(rabi),
       ],
     );
   }

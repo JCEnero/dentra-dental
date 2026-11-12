@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../camera_strings.dart';
 import 'camera_bits.dart';
 
@@ -45,6 +46,8 @@ class _TipsState extends State<_Tips> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const RabiTip(CamText.tipsRabi, mood: MascotMood.point, size: 88),
+        const SizedBox(height: 18),
         for (var i = 0; i < CamText.tips.length; i++) ...[
           CamInfoRow(
             icon: _icons[i % _icons.length],

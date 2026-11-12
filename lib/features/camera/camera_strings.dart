@@ -320,6 +320,7 @@ abstract final class CamText {
       'Wipe it before you start, and again if the picture looks misty.',
     ),
   ];
+  static const tipsRabi = "Take your time. I'll name each area as we go.";
   static const tipsDontShow = "Don't show again";
   static const tipsGotIt = 'Got it';
 

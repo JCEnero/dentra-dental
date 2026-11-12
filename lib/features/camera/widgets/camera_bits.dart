@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../scan/widgets/scan_motion.dart';
 import '../../scan/widgets/scan_theme.dart';
 import '../camera_strings.dart';
@@ -90,11 +91,24 @@ class StatusDot extends StatelessWidget {
   }
 }
 
-/// Rabi, the app's bunny, with a short tip in a speech bubble.
+/// Rabi, the app's mascot, saying a short tip. His [mood] follows what is
+/// happening on the page: pointing at what to do, thinking while it works,
+/// cheering when it's done, worried when it needs another try.
 class RabiTip extends StatelessWidget {
-  const RabiTip(this.text, {super.key});
+  const RabiTip(
+    this.text, {
+    super.key,
+    this.mood = MascotMood.wave,
+    this.busy = false,
+    this.size = 104,
+  });
 
   final String text;
+  final MascotMood mood;
+
+  /// Rings ripple behind him while something is under way.
+  final bool busy;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -103,22 +117,16 @@ class RabiTip extends StatelessWidget {
       label: '${CamText.rabiSays}: $text',
       excludeSemantics: true,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Image.asset(
-            'assets/images/rabi_avatar.png',
-            width: 52,
-            height: 52,
-            cacheWidth: 156,
-            excludeFromSemantics: true,
-          ),
-          const SizedBox(width: 8),
+          // Turned so his free arm is on the bubble's side.
+          DentraMascot(mood: mood, size: size, mirrored: true, busy: busy),
+          const SizedBox(width: 6),
           Expanded(
             child: AnimatedSwitcher(
               duration: ScanMotion.of(context, ScanMotion.medium),
               transitionBuilder: ScanMotion.fadeRise,
               layoutBuilder: (current, previous) => Stack(
-                alignment: Alignment.bottomLeft,
+                alignment: Alignment.centerLeft,
                 children: [...previous, if (current != null) current],
               ),
               child: Container(
@@ -154,181 +162,34 @@ class RabiTip extends StatelessWidget {
   }
 }
 
-/// A setup step's picture: the image set in [CameraConfig.setupArt], or a
-/// built-in placeholder of the step's icon on a white disc, with rings that
-/// pulse while something is under way.
-class SetupArt extends StatefulWidget {
-  const SetupArt({
-    super.key,
-    required this.step,
-    required this.icon,
-    this.badge,
-    this.active = false,
-    this.height = 150,
-  });
+/// A setup step's own picture, when one is set in [CameraConfig.setupArt].
+/// Steps without one show nothing here: Rabi leads the page instead.
+class SetupArt extends StatelessWidget {
+  const SetupArt({super.key, required this.step, this.height = 150});
 
   /// Index into [CameraConfig.setupArt].
   final int step;
-  final IconData icon;
-
-  /// A smaller second icon, bottom right.
-  final IconData? badge;
-  final bool active;
   final double height;
 
-  @override
-  State<SetupArt> createState() => _SetupArtState();
-}
-
-class _SetupArtState extends State<SetupArt>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  );
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _sync();
-  }
-
-  @override
-  void didUpdateWidget(SetupArt old) {
-    super.didUpdateWidget(old);
-    _sync();
-  }
-
-  void _sync() {
-    if (widget.active && !ScanMotion.reduced(context)) {
-      if (!_pulse.isAnimating) _pulse.repeat();
-    } else {
-      _pulse
-        ..stop()
-        ..value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
+  /// Whether [step] has a picture.
+  static bool has(int step) =>
+      step < CameraConfig.setupArt.length &&
+      CameraConfig.setupArt[step] != null;
 
   @override
   Widget build(BuildContext context) {
-    final asset = widget.step < CameraConfig.setupArt.length
-        ? CameraConfig.setupArt[widget.step]
-        : null;
-    final placeholder = _placeholder();
+    if (!has(step)) return const SizedBox.shrink();
     return ExcludeSemantics(
       child: SizedBox(
-        height: widget.height,
-        child: asset == null
-            ? placeholder
-            : Image.asset(
-                asset,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => placeholder,
-              ),
-      ),
-    );
-  }
-
-  Widget _placeholder() {
-    final size = widget.height;
-    return Center(
-      child: SizedBox.square(
-        dimension: size,
-        child: AnimatedBuilder(
-          animation: _pulse,
-          builder: (context, _) => CustomPaint(
-            painter: _RingsPainter(widget.active ? _pulse.value : null),
-            child: Center(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: size * 0.56,
-                    height: size * 0.56,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.white,
-                      border: Border.all(
-                        color: AppColors.g2.withValues(alpha: 0.16),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.g2.withValues(alpha: 0.14),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      size: size * 0.26,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  if (widget.badge != null)
-                    Positioned(
-                      right: -size * 0.04,
-                      bottom: -size * 0.02,
-                      child: ScanIconDisc(
-                        widget.badge!,
-                        size: size * 0.22,
-                        iconSize: size * 0.11,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
+        height: height,
+        child: Image.asset(
+          CameraConfig.setupArt[step]!,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
         ),
       ),
     );
   }
-}
-
-class _RingsPainter extends CustomPainter {
-  const _RingsPainter(this.pulse);
-
-  /// 0–1 while pulsing; null for still rings.
-  final double? pulse;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero);
-    final base = size.shortestSide * 0.28;
-    final fill = Paint()..color = AppColors.lightLavender.withValues(alpha: 0.9);
-    canvas.drawCircle(c, base * 1.32, fill);
-    for (final r in [1.62, 1.86]) {
-      canvas.drawCircle(
-        c,
-        base * r,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2
-          ..color = AppColors.g2.withValues(alpha: 0.12),
-      );
-    }
-    final p = pulse;
-    if (p == null) return;
-    for (final t in [p, (p + 0.5) % 1]) {
-      canvas.drawCircle(
-        c,
-        base * (1.1 + 0.8 * t),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = AppColors.g1.withValues(alpha: 0.55 * (1 - t)),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_RingsPainter old) => old.pulse != pulse;
 }
 
 /// The big round capture button.

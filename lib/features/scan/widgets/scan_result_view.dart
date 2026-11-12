@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../dental_profile/data/models/dental_answers.dart';
 import '../../dental_profile/providers/dental_profile_providers.dart';
@@ -103,16 +104,16 @@ class _Analyzing extends StatelessWidget {
       label: 'Analyzing images',
       child: _Card(
         children: [
-          Text('Analyzing images…', style: _title),
-          const SizedBox(height: 4),
-          Text(
-            progress == null
+          _MascotHeading(
+            mood: MascotMood.think,
+            busy: true,
+            title: 'Analyzing images…',
+            body: progress == null
                 ? '$n image${n == 1 ? '' : 's'} · This can take a couple of '
                     'minutes'
                 : '${progress.done} of ${progress.total} images read',
-            style: _body,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _ThumbGrid(session: session, sweeping: true),
           const SizedBox(height: 16),
           ClipRRect(
@@ -147,10 +148,12 @@ class _AnalysisFailed extends StatelessWidget {
     };
     return _Card(
       children: [
-        Text('Analysis didn’t finish', style: _title),
-        const SizedBox(height: 4),
-        Text('Your images are still here.', style: _body),
-        const SizedBox(height: 14),
+        const _MascotHeading(
+          mood: MascotMood.worried,
+          title: 'Analysis didn’t finish',
+          body: 'Your images are still here.',
+        ),
+        const SizedBox(height: 10),
         _ThumbGrid(session: session),
         const SizedBox(height: 14),
         ScanFeedbackPanel(
@@ -415,6 +418,43 @@ class ScanDisclaimer extends StatelessWidget {
 }
 
 // ── Pieces ──────────────────────────────────────────────────────
+
+/// A card's title and line, with Rabi beside them showing how it's going.
+class _MascotHeading extends StatelessWidget {
+  const _MascotHeading({
+    required this.mood,
+    required this.title,
+    required this.body,
+    this.busy = false,
+  });
+
+  final MascotMood mood;
+
+  /// The work is still going.
+  final bool busy;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: _title),
+              const SizedBox(height: 4),
+              Text(body, style: _body),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        DentraMascot(mood: mood, size: 72, stage: true, busy: busy),
+      ],
+    );
+  }
+}
 
 class _Card extends StatelessWidget {
   const _Card({required this.children});

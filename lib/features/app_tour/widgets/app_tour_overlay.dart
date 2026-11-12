@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../data/app_tour_steps.dart';
 import '../data/app_tour_targets.dart';
@@ -305,9 +306,12 @@ class _TourLayerState extends State<_TourLayer>
                     : _lens(target);
 
                 // The card goes on whichever side of the target has room.
+                // Rabi stands on the card's top edge, so the card keeps
+                // that much clear of the target and the status bar.
+                const perch = _TourCard.guideSize;
                 final roomBelow =
-                    size.height - hole.bottom - 56 - safe.bottom - 16;
-                final roomAbove = hole.top - 52 - safe.top - 40;
+                    size.height - hole.bottom - (perch + 14) - safe.bottom - 16;
+                final roomAbove = hole.top - 52 - safe.top - (perch + 6);
                 final below = target != null && roomBelow > roomAbove;
                 final EdgeInsets cardPadding;
                 final Alignment cardAlignment;
@@ -319,28 +323,20 @@ class _TourLayerState extends State<_TourLayer>
                   // Clamped: mid-scroll, the target can sit off screen.
                   cardPadding = EdgeInsets.fromLTRB(
                       20,
-                      math.max(safe.top + 40, hole.bottom + 56),
+                      math.max(safe.top + perch + 6, hole.bottom + perch + 14),
                       20,
                       safe.bottom + 16);
                   cardAlignment = Alignment.topCenter;
                 } else {
-                  cardPadding = EdgeInsets.fromLTRB(20, safe.top + 40, 20,
+                  cardPadding = EdgeInsets.fromLTRB(20, safe.top + perch + 6, 20,
                       math.max(safe.bottom + 16, size.height - hole.top + 52));
                   cardAlignment = Alignment.bottomCenter;
                 }
 
-                // The mascot sits away from the target and looks at it.
+                // Rabi stands on the side away from the target and points
+                // across at it.
                 final mascotLeft =
                     target != null && target.center.dx > size.width / 2;
-                final gaze = target == null
-                    ? Offset.zero
-                    : Offset(
-                        ((target.center.dx -
-                                    (mascotLeft ? 60 : size.width - 60)) /
-                                160)
-                            .clamp(-1.0, 1.0),
-                        below ? -1 : 1,
-                      );
 
                 return Stack(
                   children: [
@@ -418,7 +414,7 @@ class _TourLayerState extends State<_TourLayer>
                                 motion: _motion,
                                 still: still,
                                 mascotLeft: mascotLeft,
-                                gaze: gaze,
+                                targetAbove: below,
                                 onNext: _next,
                                 onBack: _back,
                                 onSkip: _finish,
@@ -514,7 +510,7 @@ class _TourCard extends StatelessWidget {
     required this.motion,
     required this.still,
     required this.mascotLeft,
-    required this.gaze,
+    required this.targetAbove,
     required this.onNext,
     required this.onBack,
     required this.onSkip,
@@ -531,11 +527,16 @@ class _TourCard extends StatelessWidget {
   final Animation<double> motion;
   final bool still;
   final bool mascotLeft;
-  final Offset gaze;
+
+  /// The lit-up target is above the card (else below it).
+  final bool targetAbove;
   final VoidCallback onNext;
   final VoidCallback onBack;
   final VoidCallback onSkip;
   final ScrollController scrollController;
+
+  /// Rabi's size while he stands on the card.
+  static const double guideSize = 64;
 
   static const double _r = 26;
   static const _radius = BorderRadius.all(Radius.circular(_r));
@@ -623,27 +624,35 @@ class _TourCard extends StatelessWidget {
             ),
           ),
         ),
-        // The mascot hops along the top edge to keep an eye on things.
+        // Rabi walks along the top edge and points at each feature. On
+        // his own stop he just waves.
         if (hasSpot)
           Positioned(
-            top: -27,
-            left: 18,
-            right: 18,
-            height: 40,
+            top: -guideSize * 0.93,
+            left: 14,
+            right: 14,
+            height: guideSize,
             child: IgnorePointer(
-              child: ExcludeSemantics(
-                child: AnimatedAlign(
-                  duration: dentraMotion(context, 520),
-                  curve: Curves.easeInOutBack,
-                  alignment:
-                      mascotLeft ? Alignment.centerLeft : Alignment.centerRight,
-                  child: _Hop(
-                    key: ValueKey(stepIndex),
-                    child: SizedBox.square(
-                      dimension: 40,
-                      child: CustomPaint(
-                        painter: ToothBuddyPainter(motion: motion, gaze: gaze),
-                      ),
+              child: AnimatedAlign(
+                duration: dentraMotion(context, 520),
+                curve: Curves.easeInOutBack,
+                alignment:
+                    mascotLeft ? Alignment.centerLeft : Alignment.centerRight,
+                child: _Hop(
+                  key: ValueKey(stepIndex),
+                  child: Transform.rotate(
+                    // His arm lifts toward a target above, dips to one
+                    // below.
+                    angle: step.spot == TourSpot.rabi
+                        ? 0
+                        : (mascotLeft ? -1 : 1) * (targetAbove ? 0.2 : -0.14),
+                    alignment: const Alignment(0, 0.9),
+                    child: DentraMascot(
+                      mood: step.spot == TourSpot.rabi
+                          ? MascotMood.wave
+                          : MascotMood.point,
+                      size: guideSize,
+                      mirrored: mascotLeft,
                     ),
                   ),
                 ),
@@ -659,7 +668,7 @@ class _TourCard extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _Mascot(motion: motion, size: 76),
+        const _PopIn(child: DentraMascot(size: 108)),
         const SizedBox(height: 8),
         _Caption('Quick tour · $spotCount stops'),
         const SizedBox(height: 4),
@@ -679,7 +688,9 @@ class _TourCard extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _Mascot(motion: motion, size: 64, cheering: true),
+        const _PopIn(
+          child: DentraMascot(mood: MascotMood.cheer, size: 104),
+        ),
         const SizedBox(height: 10),
         _Title(step.title, textAlign: TextAlign.center),
         const SizedBox(height: 4),
@@ -943,33 +954,6 @@ class _Caption extends StatelessWidget {
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
         color: AppColors.navy.withValues(alpha: 0.6),
-      ),
-    );
-  }
-}
-
-/// The tooth mascot at a given size, springing in.
-class _Mascot extends StatelessWidget {
-  const _Mascot({
-    required this.motion,
-    required this.size,
-    this.cheering = false,
-  });
-
-  final Animation<double> motion;
-  final double size;
-  final bool cheering;
-
-  @override
-  Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: _PopIn(
-        child: SizedBox.square(
-          dimension: size,
-          child: CustomPaint(
-            painter: ToothBuddyPainter(motion: motion, cheering: cheering),
-          ),
-        ),
       ),
     );
   }

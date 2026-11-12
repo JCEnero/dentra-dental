@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
 import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../auth/widgets/auth_password_field.dart';
 import '../../auth/widgets/auth_text_field.dart';
@@ -201,11 +202,8 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
   ];
 
   Widget _welcome() => SetupPage(
-        art: const SetupArt(
-          step: 0,
-          icon: Icons.videocam_rounded,
-          badge: Icons.wifi_rounded,
-        ),
+        step: 0,
+        mood: MascotMood.wave,
         title: CamText.welcomeTitle,
         body: CamText.welcomeBody,
         rabi: CamText.welcomeRabi,
@@ -227,14 +225,19 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
     final busy =
         p == PermissionState.checking || p == PermissionState.requesting;
     return SetupPage(
-      art: SetupArt(
-        step: 1,
-        icon: Icons.bluetooth_rounded,
-        badge: p == PermissionState.granted
-            ? Icons.check_rounded
-            : Icons.lock_open_rounded,
-        active: busy,
-      ),
+      step: 1,
+      mood: switch (p) {
+        PermissionState.needed => MascotMood.point,
+        PermissionState.checking ||
+        PermissionState.requesting =>
+          MascotMood.think,
+        PermissionState.granted => MascotMood.cheer,
+        PermissionState.denied ||
+        PermissionState.bluetoothOff ||
+        PermissionState.unsupported =>
+          MascotMood.worried,
+      },
+      busy: busy,
       title: CamText.permissionTitle,
       body: CamText.permissionBody,
       rabi: CamText.permissionRabi,
@@ -277,11 +280,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
   }
 
   Widget _power() => const SetupPage(
-        art: SetupArt(
-          step: 2,
-          icon: Icons.power_settings_new_rounded,
-          badge: Icons.smartphone_rounded,
-        ),
+        step: 2,
         title: CamText.powerTitle,
         body: CamText.powerBody,
         rabi: CamText.powerRabi,
@@ -304,13 +303,16 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
     final cameras = _setup.cameras;
     final searching = _setup.searching;
     final connecting = _setup.connecting;
+    final working = searching || connecting != null;
     return SetupPage(
-      art: SetupArt(
-        step: 3,
-        icon: Icons.bluetooth_searching_rounded,
-        badge: Icons.videocam_rounded,
-        active: searching || connecting != null,
-      ),
+      step: 3,
+      // Looking, then showing what he found, or sorry there's nothing.
+      mood: working
+          ? MascotMood.think
+          : cameras.isEmpty || _setup.findError != null
+              ? MascotMood.worried
+              : MascotMood.point,
+      busy: working,
       title: CamText.findTitle,
       rabi: CamText.findRabi,
       children: [
@@ -391,12 +393,13 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
       status = const SizedBox.shrink();
     }
     return SetupPage(
-      art: SetupArt(
-        step: 4,
-        icon: Icons.wifi_rounded,
-        badge: Icons.router_outlined,
-        active: _setup.wifiLoading,
-      ),
+      step: 4,
+      mood: _setup.linkLost || _setup.wifiFailed
+          ? MascotMood.worried
+          : _setup.wifiLoading
+              ? MascotMood.think
+              : MascotMood.point,
+      busy: _setup.wifiLoading && !_setup.linkLost,
       title: CamText.wifiTitle,
       body: CamText.wifiBody,
       rabi: CamText.wifiRabi,
@@ -434,11 +437,10 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
   Widget _passwordStep() {
     final network = _setup.chosen!;
     return SetupPage(
-      art: SetupArt(
-        step: 4,
-        icon: Icons.wifi_password_rounded,
-        badge: network.secure ? Icons.lock_rounded : null,
-      ),
+      step: 4,
+      mood: _setup.passwordError != null
+          ? MascotMood.worried
+          : MascotMood.point,
       title: network.ssid,
       body: network.secure ? CamText.wifiPasswordFor(network.ssid) : null,
       rabi: CamText.wifiRabi,
@@ -481,12 +483,9 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
             JoinStage.finding,
           ];
     return SetupPage(
-      art: SetupArt(
-        step: 5,
-        icon: Icons.wifi_tethering_rounded,
-        badge: Icons.videocam_rounded,
-        active: problem == null,
-      ),
+      step: 5,
+      mood: problem == null ? MascotMood.think : MascotMood.worried,
+      busy: problem == null,
       title: CamText.connectTitle,
       rabi: CamText.connectRabi,
       children: [
@@ -517,6 +516,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
   Widget _success() {
     final preview = _preview;
     return SetupPage(
+      mood: MascotMood.cheer,
       title: CamText.successTitle,
       body: CamText.successBody(_setup.saved?.ssid),
       rabi: CamText.successRabi,

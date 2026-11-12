@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../data/notification_repository.dart';
@@ -124,9 +125,13 @@ class NotificationMessageState extends StatelessWidget {
     required this.message,
     this.accent = AppColors.g2,
     this.actions = const [],
+    this.mascot,
   });
 
   final IconData icon;
+
+  /// Rabi in this mood, in place of [icon].
+  final MascotMood? mascot;
   final String title;
   final String message;
   final Color accent;
@@ -142,19 +147,24 @@ class NotificationMessageState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ClipOval(
-                child: GlassBlur(
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: AppGlass.surface(
-                      borderRadius: BorderRadius.circular(36),
+              if (mascot != null) ...[
+                DentraMascot(mood: mascot!, size: 120),
+                const SizedBox(height: 14),
+              ] else ...[
+                ClipOval(
+                  child: GlassBlur(
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: AppGlass.surface(
+                        borderRadius: BorderRadius.circular(36),
+                      ),
+                      child: Icon(icon, size: 30, color: accent),
                     ),
-                    child: Icon(icon, size: 30, color: accent),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
+              ],
               Semantics(
                 header: true,
                 child: Text(
@@ -219,6 +229,8 @@ class NotificationEmptyState extends StatelessWidget {
       icon: filter == NotificationFilter.unread
           ? Icons.done_all_rounded
           : Icons.notifications_none_rounded,
+      // Only the plain "nothing here yet" page; filters keep their icon.
+      mascot: filter == NotificationFilter.all ? MascotMood.cheer : null,
       title: title,
       message: message,
     );
@@ -260,6 +272,8 @@ class NotificationErrorState extends StatelessWidget {
       child: NotificationMessageState(
         icon: icon,
         accent: AppColors.danger,
+        // Offline or a server hiccup; a signed-out session keeps its lock.
+        mascot: expired ? null : MascotMood.worried,
         title: title,
         message: notificationFailureMessage(failure),
         actions: [

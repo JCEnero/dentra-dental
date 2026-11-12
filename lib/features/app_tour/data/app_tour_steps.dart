@@ -47,7 +47,7 @@ class AppTourStep {
 const List<AppTourStep> appTourSteps = [
   AppTourStep(
     title: 'Hey, nice to meet you',
-    body: "I'm your DENTRA guide. Ten quick stops, about a minute, and "
+    body: "I'm Rabi, your DENTRA guide. Ten quick stops, about a minute, and "
         "you'll know where everything lives.",
     action: 'Start the tour',
   ),
@@ -76,8 +76,8 @@ const List<AppTourStep> appTourSteps = [
     spot: TourSpot.rabi,
     chapter: 'Home',
     title: 'Meet Rabi',
-    body: 'Your smart assistant. Ask about your results or your teeth in '
-        'plain words. Rabi guides, a dentist diagnoses.',
+    body: "That's me. Ask about your results or your teeth in plain "
+        'words. I guide, a dentist diagnoses.',
   ),
   AppTourStep(
     spot: TourSpot.notifications,
@@ -123,7 +123,7 @@ const List<AppTourStep> appTourSteps = [
   ),
   AppTourStep(
     title: "You're all set",
-    body: 'Need a hand later? Rabi is one tap away on Home.',
+    body: "Need a hand later? I'm one tap away on Home.",
     action: "Let's go",
   ),
 ];

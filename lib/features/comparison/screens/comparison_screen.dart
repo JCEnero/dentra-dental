@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/dentra_dates.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_image_viewer.dart';
@@ -104,6 +105,7 @@ class ComparisonScreen extends ConsumerWidget {
       return HistoryMessage(
         key: const ValueKey('error'),
         icon: Icons.cloud_off_rounded,
+        mascot: MascotMood.worried,
         danger: true,
         title: "We couldn't load your history",
         message: 'Check your connection and try again.',
@@ -130,6 +132,7 @@ class ComparisonScreen extends ConsumerWidget {
       return HistoryMessage(
         key: const ValueKey('empty'),
         icon: Icons.compare_outlined,
+        mascot: MascotMood.think,
         title: all.isEmpty ? 'Nothing to compare yet' : 'One more record needed',
         message: 'Comparison needs at least two saved screenings or photos. '
             '${all.isEmpty ? 'You have none yet.' : 'You have one so far.'}',

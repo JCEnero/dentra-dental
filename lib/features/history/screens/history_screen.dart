@@ -7,6 +7,7 @@ import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/dentra_dates.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_page_header.dart';
 import '../../dental_records/data/models/dental_record.dart';
@@ -218,6 +219,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       child = HistoryMessage(
         key: const ValueKey('error'),
         icon: Icons.cloud_off_rounded,
+        mascot: MascotMood.worried,
         danger: true,
         title: "We couldn't load your history",
         message: 'Check your connection and try again.',
@@ -282,6 +284,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       return HistoryMessage(
         key: const ValueKey('empty-all'),
         icon: Icons.document_scanner_outlined,
+        mascot: MascotMood.wave,
         title: 'Nothing in your history yet',
         message: 'Completed screenings appear here. You can also add clinic '
             'visits, photos and notes.',

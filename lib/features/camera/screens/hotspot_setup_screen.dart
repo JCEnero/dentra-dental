@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
 import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
+import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../camera_strings.dart';
 import '../data/saved_camera.dart';
@@ -157,11 +158,8 @@ class _HotspotSetupScreenState extends ConsumerState<HotspotSetupScreen> {
   ];
 
   Widget _welcome() => SetupPage(
-        art: const SetupArt(
-          step: 0,
-          icon: Icons.videocam_rounded,
-          badge: Icons.wifi_rounded,
-        ),
+        step: 0,
+        mood: MascotMood.wave,
         title: CamText.welcomeTitle,
         body: CamText.welcomeBody,
         rabi: CamText.hotspotWelcomeRabi,
@@ -178,11 +176,7 @@ class _HotspotSetupScreenState extends ConsumerState<HotspotSetupScreen> {
       );
 
   Widget _power() => const SetupPage(
-        art: SetupArt(
-          step: 2,
-          icon: Icons.power_settings_new_rounded,
-          badge: Icons.wifi_tethering_rounded,
-        ),
+        step: 2,
         title: CamText.powerTitle,
         body: CamText.hotspotPowerBody,
         rabi: CamText.hotspotPowerRabi,
@@ -206,12 +200,16 @@ class _HotspotSetupScreenState extends ConsumerState<HotspotSetupScreen> {
     final state = _setup.codeState;
     final pairing = _setup.pairing;
     return SetupPage(
-      art: SetupArt(
-        step: 4,
-        icon: Icons.wifi_tethering_rounded,
-        badge: Icons.videocam_rounded,
-        active: state == CodeState.ready,
-      ),
+      step: 4,
+      // Fetching the code, then pointing at it; worried if it's taking
+      // too long or the code can't be used.
+      mood: switch (state) {
+        CodeState.loading => MascotMood.think,
+        CodeState.failed || CodeState.expired => MascotMood.worried,
+        CodeState.ready =>
+          _setup.slow ? MascotMood.worried : MascotMood.point,
+      },
+      busy: state == CodeState.loading || state == CodeState.ready,
       title: CamText.hotspotJoinTitle,
       rabi: CamText.hotspotJoinRabi,
       children: [
@@ -253,6 +251,7 @@ class _HotspotSetupScreenState extends ConsumerState<HotspotSetupScreen> {
   Widget _ready() {
     final preview = _preview;
     return SetupPage(
+      mood: MascotMood.cheer,
       title: CamText.successTitle,
       body: CamText.hotspotSuccessBody,
       rabi: CamText.successRabi,
