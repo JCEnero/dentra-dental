@@ -44,22 +44,28 @@ class AuthResult {
 /// `.env`): email/password and Google sign-in, a rotating refresh token kept
 /// in secure storage, and an in-memory access token refreshed on demand.
 ///
-/// Without a backend it falls back to demo behaviour, so the UI and widget
-/// tests run offline: any password of 6+ characters signs in, and
-/// `taken@dentra.com` plays an already-registered email.
+/// Constructed directly without a backend ([allowDemoSignIn] true), it runs
+/// demo behaviour so widget tests work offline: any password of 6+
+/// characters signs in, and `taken@dentra.com` plays an already-registered
+/// email. [AuthService.fromEnvironment] never enables this.
 class AuthService extends ChangeNotifier {
   AuthService({
     AuthApi? api,
     TokenStore? tokenStore,
     String? googleServerClientId,
+    bool allowDemoSignIn = true,
   })  : _api = api,
         _tokenStore = tokenStore,
-        _googleServerClientId = googleServerClientId;
+        _googleServerClientId = googleServerClientId,
+        _allowDemoSignIn = allowDemoSignIn;
 
-  /// Uses the backend from `.env` when set, demo mode otherwise.
+  /// Uses the backend from `.env` when set. Without one it fails closed:
+  /// no demo sign-in, so a missing `API_BASE_URL` can't let any password in.
+  /// Demo auth is only available by constructing [AuthService] directly
+  /// (tests and explicit demo setups).
   factory AuthService.fromEnvironment() {
     final baseUrl = ApiConfig.baseUrl;
-    if (baseUrl == null) return AuthService();
+    if (baseUrl == null) return AuthService(allowDemoSignIn: false);
     return AuthService(
       api: AuthApi(baseUrl: baseUrl),
       tokenStore: SecureTokenStore(),
@@ -70,11 +76,20 @@ class AuthService extends ChangeNotifier {
   final AuthApi? _api;
   final TokenStore? _tokenStore;
   final String? _googleServerClientId;
+  final bool _allowDemoSignIn;
 
   bool _isAuthenticated = false;
   String? _currentUserId;
   String? _currentEmail;
   String? _currentDisplayName;
+  String? _postSignOutMessage;
+
+  /// One-time confirmation to show after an account deletion returns to login.
+  String? consumePostSignOutMessage() {
+    final message = _postSignOutMessage;
+    _postSignOutMessage = null;
+    return message;
+  }
 
   String? _accessToken;
   DateTime? _accessTokenExpiresAt;
@@ -100,6 +115,13 @@ class AuthService extends ChangeNotifier {
       "We couldn't reach DENTRA. Check your connection and try again.";
   static const _sessionEndedError =
       'Your session has ended. Please sign in again.';
+
+  /// Returned instead of demo sign-in when no backend is configured in a
+  /// real build, so a missing `API_BASE_URL` never grants access.
+  static const _backendMissing = AuthResult(
+    success: false,
+    error: 'Sign-in is unavailable right now. Please try again later.',
+  );
 
   // ── Session restore ───────────────────────────────────────────
 
@@ -135,7 +157,8 @@ class AuthService extends ChangeNotifier {
     // 30 s margin so a token never expires mid-request.
     if (token != null &&
         expiresAt != null &&
-        DateTime.now().isBefore(expiresAt.subtract(const Duration(seconds: 30)))) {
+        DateTime.now()
+            .isBefore(expiresAt.subtract(const Duration(seconds: 30)))) {
       return token;
     }
     return _refreshing ??= _refreshAccessToken().whenComplete(() {
@@ -165,9 +188,15 @@ class AuthService extends ChangeNotifier {
     required String password,
   }) async {
     final api = _api;
-    if (api == null) return _demoSignIn(email, password);
+    if (api == null) {
+      if (!_allowDemoSignIn) return _backendMissing;
+      return _demoSignIn(email, password);
+    }
 
-    return _runSignIn(() => api.login(email: email, password: password));
+    return _runSignIn(
+      () => api.login(email: email, password: password),
+      invalidCredentialsMessage: 'Incorrect email or password',
+    );
   }
 
   /// Register with full name, email and password.
@@ -181,7 +210,10 @@ class AuthService extends ChangeNotifier {
     required String password,
   }) async {
     final api = _api;
-    if (api == null) return _demoRegister(fullName, email);
+    if (api == null) {
+      if (!_allowDemoSignIn) return _backendMissing;
+      return _demoRegister(fullName, email);
+    }
 
     try {
       final resendIn = await api.register(
@@ -209,6 +241,7 @@ class AuthService extends ChangeNotifier {
   }) async {
     final api = _api;
     if (api == null) {
+      if (!_allowDemoSignIn) return _backendMissing;
       await Future.delayed(const Duration(milliseconds: 900));
       // Demo: '000000' plays the part of a wrong code.
       if (code == '000000') {
@@ -309,7 +342,8 @@ class AuthService extends ChangeNotifier {
     }
     try {
       final resendIn = await api.forgotPassword(email);
-      return AuthResult(success: true, email: email, resendAvailableIn: resendIn);
+      return AuthResult(
+          success: true, email: email, resendAvailableIn: resendIn);
     } on ApiException catch (e) {
       return AuthResult(success: false, error: e.message);
     }
@@ -390,7 +424,10 @@ class AuthService extends ChangeNotifier {
     required String code,
   }) async {
     final api = _api;
-    if (api == null) return _demoCode(code, signInAs: 'stub-uid-001');
+    if (api == null) {
+      if (!_allowDemoSignIn) return _backendMissing;
+      return _demoCode(code, signInAs: 'stub-uid-001');
+    }
     return _runSignIn(() => api.verifyTwoFactor(
           challengeToken: challengeToken,
           code: code,
@@ -485,6 +522,7 @@ class AuthService extends ChangeNotifier {
     final api = _api;
     if (api == null) {
       await Future.delayed(const Duration(milliseconds: 1400));
+      _postSignOutMessage = 'Your account has been deleted.';
       await _endSession();
       return const AuthResult(success: true);
     }
@@ -501,6 +539,7 @@ class AuthService extends ChangeNotifier {
       return const AuthResult(success: false, error: _connectionError);
     }
     await _signOutOfGoogle();
+    _postSignOutMessage = 'Your account has been deleted.';
     await _endSession();
     return const AuthResult(success: true);
   }
@@ -527,7 +566,10 @@ class AuthService extends ChangeNotifier {
 
   /// Runs a backend sign-in and turns API errors into an [AuthResult].
   /// Network errors are rethrown for the screen's connection message.
-  Future<AuthResult> _runSignIn(Future<AuthSession> Function() call) async {
+  Future<AuthResult> _runSignIn(
+    Future<AuthSession> Function() call, {
+    String? invalidCredentialsMessage,
+  }) async {
     try {
       final session = await call();
       await _startSession(session);
@@ -552,6 +594,9 @@ class AuthService extends ChangeNotifier {
           needsVerification: true,
           error: e.message,
         );
+      }
+      if (e.statusCode == 401 && invalidCredentialsMessage != null) {
+        return AuthResult(success: false, error: invalidCredentialsMessage);
       }
       return AuthResult(success: false, error: e.message);
     }

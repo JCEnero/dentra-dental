@@ -46,10 +46,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _emailError;
   String? _passwordError;
   String? _globalError;
+  String? _successMessage;
 
   @override
   void initState() {
     super.initState();
+    _successMessage = ref.read(authServiceProvider).consumePostSignOutMessage();
     _emailFocus.addListener(_onEmailFocusChanged);
   }
 
@@ -349,6 +351,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
           AuthErrorSlot(message: _globalError),
+          DentraInlineNotice(
+            message: _successMessage,
+            tone: DentraFeedbackTone.success,
+          ),
         ],
       ),
     );

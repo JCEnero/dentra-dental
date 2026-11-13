@@ -19,6 +19,8 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
+      // Demo auth only via this explicit override (the app fails closed).
+      overrides: [authServiceProvider.overrideWith((ref) => AuthService())],
       child: MaterialApp(
         home: home,
         routes: {'/home': (_) => const SignedInGate()},

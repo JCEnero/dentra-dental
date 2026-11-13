@@ -150,7 +150,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // ── Security ──────────────────────────────────────────────────
 
   Future<void> _changePassword(UserProfile profile) async {
-    final changed = await showChangePasswordSheet(context, email: profile.email);
+    final changed =
+        await showChangePasswordSheet(context, email: profile.email);
     if (changed) _notify(NotificationEvents.passwordChanged());
     if (changed && mounted) showDentraSnack(context, 'Password updated.');
   }
