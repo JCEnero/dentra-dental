@@ -151,7 +151,7 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
 
   // ── Scenes ──────────────────────────────────────────────────────
 
-  /// Which of a step's scenes is showing. Rabi hops when it changes.
+  /// Which of a step's scenes is showing. Rabi pops out and in when it changes.
   String _sceneName() => switch (_setup.step) {
         SetupStep.find => _setup.cameras.isNotEmpty
             ? 'list'

@@ -53,7 +53,9 @@ class AppTourStep {
 const List<AppTourStep> appTourSteps = [
   AppTourStep(
     title: "Hi, I'm Rabi",
-    body: 'Let me show you around. It takes a minute.',
+    body: "Let me show you around. In about a minute, I'll point out your "
+        '3D teeth, scans, history, nearby clinics and where to find me '
+        'when you need help.',
     action: 'Start the tour',
     mood: MascotMood.wave,
   ),

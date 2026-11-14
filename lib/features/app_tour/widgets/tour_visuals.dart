@@ -65,6 +65,99 @@ class SpotlightPainter extends CustomPainter {
       old.hole != hole || old.motion != motion;
 }
 
+/// The intro's glass orb behind Rabi, centred on [center]: a wide mint glow
+/// round it, then a disc of frosted glass, clear at the top left and
+/// misting toward mint at the bottom, with a bright rim. [enter] runs
+/// 0 → 1 once; the orb swells and brightens in over its first third.
+class IntroOrbPainter extends CustomPainter {
+  IntroOrbPainter({
+    required this.enter,
+    required this.center,
+    required this.radius,
+  }) : super(repaint: enter);
+
+  final Animation<double> enter;
+  final Offset center;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = Curves.easeOutCubic.transform((enter.value / 0.36).clamp(0.0, 1.0));
+    if (t == 0) return;
+    final r = radius * (0.86 + 0.14 * t);
+
+    // The glow, reaching well past the orb and fading to nothing.
+    final glow = radius * 1.8;
+    canvas.drawCircle(
+      center,
+      glow,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            AppColors.mintGreen.withValues(alpha: 0.6 * t),
+            AppColors.g1.withValues(alpha: 0.14 * t),
+            AppColors.g1.withValues(alpha: 0),
+          ],
+          stops: const [0, 0.55, 1],
+        ).createShader(Rect.fromCircle(center: center, radius: glow)),
+    );
+
+    final orb = Rect.fromCircle(center: center, radius: r);
+    // Frosted glass: white at the top left, a little clearer through the
+    // middle, mint where light gathers at the bottom.
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.white.withValues(alpha: 0.82 * t),
+            AppColors.white.withValues(alpha: 0.36 * t),
+            AppColors.lightLavender.withValues(alpha: 0.7 * t),
+          ],
+          stops: const [0, 0.55, 1],
+        ).createShader(orb),
+    );
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(0, 0.85),
+          radius: 0.7,
+          colors: [
+            AppColors.g1.withValues(alpha: 0.2 * t),
+            AppColors.g1.withValues(alpha: 0),
+          ],
+        ).createShader(orb),
+    );
+
+    // The rim: bright where the light comes from, softer opposite.
+    canvas.drawCircle(
+      center,
+      r - 0.7,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.white.withValues(alpha: 0.98 * t),
+            AppColors.white.withValues(alpha: 0.5 * t),
+            AppColors.g1.withValues(alpha: 0.4 * t),
+          ],
+        ).createShader(orb),
+    );
+  }
+
+  @override
+  bool shouldRepaint(IntroOrbPainter old) =>
+      old.center != center || old.radius != radius || old.enter != enter;
+}
+
 /// The send-off's burst behind Rabi, centred on [center]: a halo that
 /// swells in and breathes, two rings and a ring of short rays that pop out
 /// as he lands, and sparkles that twinkle round him.

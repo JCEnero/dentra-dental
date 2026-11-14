@@ -423,6 +423,7 @@ class GuidePrimaryButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon,
+    this.iconAfter = false,
     this.height = 52,
     this.minWidth = 136,
   });
@@ -432,6 +433,9 @@ class GuidePrimaryButton extends StatelessWidget {
   /// Null disables it.
   final VoidCallback? onPressed;
   final IconData? icon;
+
+  /// Puts [icon] after the label (an arrow onward) instead of before it.
+  final bool iconAfter;
   final double height;
   final double minWidth;
 
@@ -478,7 +482,7 @@ class GuidePrimaryButton extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (icon != null) ...[
+                          if (icon != null && !iconAfter) ...[
                             Icon(icon, size: 18, color: AppColors.white),
                             const SizedBox(width: 8),
                           ],
@@ -492,6 +496,10 @@ class GuidePrimaryButton extends StatelessWidget {
                               color: AppColors.white,
                             ),
                           ),
+                          if (icon != null && iconAfter) ...[
+                            const SizedBox(width: 8),
+                            Icon(icon, size: 18, color: AppColors.white),
+                          ],
                         ],
                       ),
                     ),

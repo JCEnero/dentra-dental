@@ -721,13 +721,14 @@ class _Idle {
           sy: breath,
         );
       case MascotMood.cheer:
-        // Two hops, then a breath before the next pair.
+        // Two hops, then a breath before the next pair. He breathes
+        // through the hops too, so the loop has no seam where they start.
         final at = (t % 2.6) / 2.6;
         final hop = at < 0.5 ? math.sin(at * 2 * _tau).abs() : 0.0;
         return _Idle(
           dy: -0.07 * hop,
           sx: 0.02 - 0.04 * hop,
-          sy: -0.02 + 0.05 * hop + (at < 0.5 ? 0 : breath),
+          sy: -0.02 + 0.05 * hop + breath,
           arm: -8 * hop,
           armB: -8 * hop,
           earL: 5 * hop,

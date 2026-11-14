@@ -22,7 +22,8 @@ import 'live_view.dart';
 
 /// A setup guide's page: the step rail and close button on top, the current
 /// [scene] in the middle and its [actions] at the bottom. Rabi belongs to
-/// the whole page, so he hops from scene to scene instead of being redrawn.
+/// the whole page: as the scene changes he vanishes in a puff where he
+/// stood and pops up on the next scene in the same moment.
 class SetupFrame extends StatelessWidget {
   const SetupFrame({
     super.key,
@@ -209,12 +210,19 @@ class _SceneArea extends StatelessWidget {
               // In from the side we're heading to; out toward the other.
               final incoming = child.key == sceneKey;
               final dx = 0.1 * direction * (incoming ? 1 : -1);
+              final shift = Tween(begin: Offset(dx, 0), end: Offset.zero)
+                  .animate(animation);
               return FadeTransition(
                 opacity: animation,
                 child: SlideTransition(
-                  position: Tween(begin: Offset(dx, 0), end: Offset.zero)
-                      .animate(animation),
-                  child: child,
+                  position: shift,
+                  // Rabi pops up only on the scene coming in, where it
+                  // will come to rest.
+                  child: MascotScene(
+                    current: incoming,
+                    shift: shift,
+                    child: child,
+                  ),
                 ),
               );
             },
