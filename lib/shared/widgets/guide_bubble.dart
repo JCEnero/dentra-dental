@@ -11,14 +11,15 @@ import 'glass_card.dart' show GlassBlur;
 enum BubbleTail { none, top, bottom, left, right }
 
 /// Rabi's speech bubble: frosted glass with a soft rim, rounded all the way
-/// round, and a small curved tail that points at him. The tail slides along
-/// its edge when [tailAt] changes.
+/// round, and a small curved tail. The tail slides along its edge when
+/// [tailAt] or [tailTo] changes.
 class GuideBubble extends StatelessWidget {
   const GuideBubble({
     super.key,
     required this.child,
     this.tail = BubbleTail.none,
     this.tailAt = 0.5,
+    this.tailTo,
     this.padding = const EdgeInsets.fromLTRB(18, 14, 18, 15),
   });
 
@@ -28,6 +29,11 @@ class GuideBubble extends StatelessWidget {
   /// Where the tail sits along its edge: 0 at the left or top end, 1 at the
   /// right or bottom end.
   final double tailAt;
+
+  /// A point for the tail to aim at, in logical pixels along its edge from
+  /// the bubble's left (or top). Overrides [tailAt]: the tail sits as close
+  /// to it as the rounded corners allow and leans the rest of the way.
+  final double? tailTo;
   final EdgeInsets padding;
 
   /// How far the tail reaches out of the bubble.
@@ -35,8 +41,12 @@ class GuideBubble extends StatelessWidget {
   static const double _radius = 22;
   static const double _tailHalf = 11;
 
-  /// The bubble's outline in a box of [size].
-  static Path outline(Size size, BubbleTail tail, double at) {
+  /// How far the tail's tip may lean along the edge, toward [tailTo].
+  static const double _maxLean = 16;
+
+  /// The bubble's outline in a box of [size], its tail at [at] (a fraction
+  /// of the edge) or, when [to] is set, aimed at [to] (pixels along it).
+  static Path outline(Size size, BubbleTail tail, double at, [double? to]) {
     final body = Rect.fromLTRB(
       tail == BubbleTail.left ? tailLength : 0,
       tail == BubbleTail.top ? tailLength : 0,
@@ -50,8 +60,19 @@ class GuideBubble extends StatelessWidget {
 
     // The tail's root, the way it points, and the way its base runs.
     final across = tail == BubbleTail.top || tail == BubbleTail.bottom;
-    final room = (across ? body.width : body.height) - 2 * (r + _tailHalf);
-    final along = r + _tailHalf + math.max(0.0, room) * at.clamp(0.0, 1.0);
+    final first = r + _tailHalf;
+    final last =
+        math.max(first, (across ? body.width : body.height) - r - _tailHalf);
+    final double along;
+    var lean = 0.0;
+    if (to == null) {
+      along = first + (last - first) * at.clamp(0.0, 1.0);
+    } else {
+      // Past the corners the root stops and the tip leans the rest.
+      final want = to - (across ? body.left : body.top);
+      along = want.clamp(first, last);
+      lean = (want - along).clamp(-_maxLean, _maxLean);
+    }
     final (Offset root, Offset out, Offset run) = switch (tail) {
       BubbleTail.top => (
           Offset(body.left + along, body.top),
@@ -78,9 +99,9 @@ class GuideBubble extends StatelessWidget {
     // Starts just inside the bubble so the two shapes join without a seam.
     final start = at2(-_tailHalf, -1);
     final c1 = at2(-_tailHalf * 0.36, 0);
-    final tipA = at2(-1.7, tailLength - 2.6);
-    final tip = at2(0, tailLength + 0.4);
-    final tipB = at2(1.7, tailLength - 2.6);
+    final tipA = at2(-1.7 + lean * 0.8, tailLength - 2.6);
+    final tip = at2(lean, tailLength + 0.4);
+    final tipB = at2(1.7 + lean * 0.8, tailLength - 2.6);
     final c2 = at2(_tailHalf * 0.36, 0);
     final end = at2(_tailHalf, -1);
     final spike = Path()
@@ -120,54 +141,65 @@ class GuideBubble extends StatelessWidget {
         child: Opacity(opacity: pop.clamp(0.0, 1.0), child: bubble),
       ),
       child: TweenAnimationBuilder<double>(
-        tween: Tween(end: tailAt),
+        tween: Tween(end: tailTo ?? tailAt),
         duration: dentraMotion(context, 460),
         curve: Curves.easeInOutCubic,
-        builder: (context, at, content) => CustomPaint(
-          painter: _BubbleShadow(tail, at),
-          child: ClipPath(
-            clipper: _BubbleClip(tail, at),
-            child: GlassBlur(
-              strong: true,
-              child: CustomPaint(
-                painter: _BubbleGlass(tail, at),
-                foregroundPainter: _BubbleRim(tail, at),
-                child: content,
+        builder: (context, v, content) {
+          final spec = (
+            side: tail,
+            at: tailTo == null ? v : tailAt,
+            to: tailTo == null ? null : v,
+          );
+          return CustomPaint(
+            painter: _BubbleShadow(spec),
+            child: ClipPath(
+              clipper: _BubbleClip(spec),
+              child: GlassBlur(
+                strong: true,
+                child: CustomPaint(
+                  painter: _BubbleGlass(spec),
+                  foregroundPainter: _BubbleRim(spec),
+                  child: content,
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
         child: Padding(padding: padding + inset, child: child),
       ),
     );
   }
 }
 
+/// Which side the tail is on and where along it (see [GuideBubble.outline]).
+typedef _Tail = ({BubbleTail side, double at, double? to});
+
+Path _outline(Size size, _Tail t) =>
+    GuideBubble.outline(size, t.side, t.at, t.to);
+
 class _BubbleClip extends CustomClipper<Path> {
-  const _BubbleClip(this.tail, this.at);
+  const _BubbleClip(this.tail);
 
-  final BubbleTail tail;
-  final double at;
-
-  @override
-  Path getClip(Size size) => GuideBubble.outline(size, tail, at);
+  final _Tail tail;
 
   @override
-  bool shouldReclip(_BubbleClip old) => old.tail != tail || old.at != at;
+  Path getClip(Size size) => _outline(size, tail);
+
+  @override
+  bool shouldReclip(_BubbleClip old) => old.tail != tail;
 }
 
 /// Depth under the bubble: a wide teal haze and a tight contact shadow,
 /// both only outside it (under see-through glass a shadow would show as a
 /// grey band).
 class _BubbleShadow extends CustomPainter {
-  const _BubbleShadow(this.tail, this.at);
+  const _BubbleShadow(this.tail);
 
-  final BubbleTail tail;
-  final double at;
+  final _Tail tail;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final shape = GuideBubble.outline(size, tail, at);
+    final shape = _outline(size, tail);
     canvas
       ..save()
       ..clipPath(Path.combine(
@@ -191,21 +223,20 @@ class _BubbleShadow extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BubbleShadow old) => old.tail != tail || old.at != at;
+  bool shouldRepaint(_BubbleShadow old) => old.tail != tail;
 }
 
 /// The glass: a bright fill that cools to mint, a mint glow in the far
 /// corner, and a glossy reflection across the top.
 class _BubbleGlass extends CustomPainter {
-  const _BubbleGlass(this.tail, this.at);
+  const _BubbleGlass(this.tail);
 
-  final BubbleTail tail;
-  final double at;
+  final _Tail tail;
 
   @override
   void paint(Canvas canvas, Size size) {
     final bounds = Offset.zero & size;
-    final shape = GuideBubble.outline(size, tail, at);
+    final shape = _outline(size, tail);
     canvas.drawPath(
       shape,
       Paint()
@@ -253,21 +284,20 @@ class _BubbleGlass extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BubbleGlass old) => old.tail != tail || old.at != at;
+  bool shouldRepaint(_BubbleGlass old) => old.tail != tail;
 }
 
 /// The rim, over everything: bright white where the light hits, glowing
 /// teal on the far side.
 class _BubbleRim extends CustomPainter {
-  const _BubbleRim(this.tail, this.at);
+  const _BubbleRim(this.tail);
 
-  final BubbleTail tail;
-  final double at;
+  final _Tail tail;
 
   @override
   void paint(Canvas canvas, Size size) {
     final bounds = Offset.zero & size;
-    final shape = GuideBubble.outline(size, tail, at);
+    final shape = _outline(size, tail);
     final light = LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -307,5 +337,5 @@ class _BubbleRim extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BubbleRim old) => old.tail != tail || old.at != at;
+  bool shouldRepaint(_BubbleRim old) => old.tail != tail;
 }

@@ -13,7 +13,6 @@ import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/guide_bubble.dart';
 import '../../../shared/widgets/guide_kit.dart';
-import '../../../shared/widgets/mascot_stage.dart';
 import '../data/app_tour_steps.dart';
 import '../data/app_tour_targets.dart';
 import '../providers/app_tour_provider.dart';
@@ -24,9 +23,11 @@ import 'tour_visuals.dart';
 ///
 /// The app stays visible under frosted glass while a clear lens glides
 /// from feature to feature (scrolling Home and switching tabs as it
-/// goes). Rabi hops along beside it and says what each one is for in his
-/// speech bubble. Next, Back, a swipe on the bubble or a tap on the lit-up
-/// target move along; Skip or system back end it at any point.
+/// goes). Rabi rides inside his speech bubble, whose tail points at the
+/// lit-up feature, and says what each one is for. Next, Back, a swipe on
+/// the bubble or a tap on the lit-up target move along; Skip or system
+/// back end it at any point. It ends with Rabi celebrating on his own,
+/// without a bubble.
 class AppTour extends ConsumerStatefulWidget {
   const AppTour({
     super.key,
@@ -80,6 +81,7 @@ class _AppTourState extends ConsumerState<AppTour> {
   }
 }
 
+
 class _TourLayer extends StatefulWidget {
   const _TourLayer({
     super.key,
@@ -97,7 +99,7 @@ class _TourLayer extends StatefulWidget {
 }
 
 class _TourLayerState extends State<_TourLayer>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _step = 0;
 
   /// Counts every move, forward or back. Keys what slides in, so going
@@ -114,15 +116,10 @@ class _TourLayerState extends State<_TourLayer>
   /// Set when leaving, so taps during the fade-out do nothing.
   bool _closing = false;
 
-  /// Loops forever: the lens's ripple and the feature glyphs.
+  /// Loops forever: the lens's ripple.
   late final AnimationController _motion = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 2400),
-  );
-
-  late final AnimationController _confetti = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1700),
   );
 
   /// The bubble's scroll (only moves on short screens or with large text).
@@ -161,7 +158,6 @@ class _TourLayerState extends State<_TourLayer>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _motion.dispose();
-    _confetti.dispose();
     _cardScroll.dispose();
     super.dispose();
   }
@@ -191,8 +187,8 @@ class _TourLayerState extends State<_TourLayer>
     });
   }
 
-  /// Scrolls Home so [spot] sits near the top, leaving Rabi and his bubble
-  /// room below it. The lens follows along while the page moves.
+  /// Scrolls Home so [spot] sits near the top, leaving the bubble room
+  /// below it. The lens and the bubble's tail follow while the page moves.
   Future<void> _bringIntoView(TourSpot spot, int step) async {
     final ctx = widget.targets.keyFor(spot).currentContext;
     final position = ctx == null ? null : Scrollable.maybeOf(ctx)?.position;
@@ -234,10 +230,7 @@ class _TourLayerState extends State<_TourLayer>
       _visit++;
       _target = _measure();
     });
-    if (_isLast && !_reduceMotion) {
-      HapticFeedback.lightImpact();
-      _confetti.forward(from: 0);
-    }
+    if (_isLast && !_reduceMotion) HapticFeedback.lightImpact();
     if (spot != null && spot.dockIndex == null) _bringIntoView(spot, step);
   }
 
@@ -283,7 +276,6 @@ class _TourLayerState extends State<_TourLayer>
     final step = _current;
     final target = _target;
     final safe = MediaQuery.paddingOf(context);
-    final still = _reduceMotion;
 
     return PopScope(
       canPop: false,
@@ -312,14 +304,25 @@ class _TourLayerState extends State<_TourLayer>
                       )
                     : _lens(target);
 
-                // Rabi and his bubble go on whichever side of the target
-                // has room, with Rabi between the two.
-                const rabi = _TourGuide.rabiSize;
+                // The bubble goes on whichever side of the target has
+                // room, its tail reaching across the gap.
                 const gap = 8.0;
                 final roomBelow =
-                    size.height - hole.bottom - safe.bottom - 16 - rabi - gap;
-                final roomAbove = hole.top - safe.top - 6 - rabi - gap;
+                    size.height - hole.bottom - safe.bottom - 16 - gap;
+                final roomAbove = hole.top - safe.top - 6 - gap;
                 final below = target != null && roomBelow > roomAbove;
+
+                // On a phone the bubble spans the screen; on a wider one it
+                // slides along toward the target.
+                final width = math.min(_TourGuide.maxWidth, size.width - 40);
+                final slack = math.max(0.0, size.width - 40 - width);
+                final bubbleLeft = target == null
+                    ? 20 + slack / 2
+                    : (target.center.dx - width / 2)
+                        .clamp(20.0, 20.0 + slack);
+                final alongX =
+                    slack == 0 ? 0.0 : (bubbleLeft - 20) / slack * 2 - 1;
+
                 final EdgeInsets padding;
                 final Alignment alignment;
                 if (target == null) {
@@ -333,128 +336,115 @@ class _TourLayerState extends State<_TourLayer>
                       math.max(safe.top + 6, hole.bottom + gap),
                       20,
                       safe.bottom + 16);
-                  alignment = Alignment.topCenter;
+                  alignment = Alignment(alongX, -1);
                 } else {
                   padding = EdgeInsets.fromLTRB(20, safe.top + 6, 20,
                       math.max(safe.bottom + 16, size.height - hole.top + gap));
-                  alignment = Alignment.bottomCenter;
+                  alignment = Alignment(alongX, 1);
                 }
 
-                // Where Rabi stands along that edge, as 0 (left) → 1
-                // (right) of the room he has, and which way he faces.
-                final width = math.min(_TourGuide.maxWidth, size.width - 40);
-                final left = (size.width - width) / 2;
-                var along = 0.5;
-                var faceRight = false;
-                if (target != null) {
-                  final double x;
-                  if (target.width > size.width * 0.55) {
-                    // A wide card: under one end of it, a different end
-                    // each time, pointing back at its middle.
-                    faceRight = _step.isOdd;
-                    x = faceRight ? left : left + width - rabi;
-                  } else {
-                    // A button: just beside it, on the roomier side.
-                    faceRight = target.center.dx > size.width / 2;
-                    x = faceRight ? hole.left - 6 - rabi : hole.right + 6;
-                  }
-                  along = width <= rabi
-                      ? 0.5
-                      : ((x - left) / (width - rabi)).clamp(0.0, 1.0);
-                }
-
-                return MascotStage(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
+                final guide = KeyedSubtree(
+                  key: const ValueKey('guide'),
+                  child: AnimatedPadding(
+                    duration: dentraMotion(context, 460),
+                    curve: Curves.easeOutCubic,
+                    padding: padding,
+                    child: AnimatedAlign(
+                      duration: dentraMotion(context, 460),
+                      curve: Curves.easeOutCubic,
+                      alignment: alignment,
+                      child: SizedBox(
+                        width: width,
                         child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          // Tapping the lit-up target moves on, as if it
-                          // were the real thing.
-                          onTapUp: (details) {
-                            if (target != null &&
-                                hole.outerRect
-                                    .contains(details.localPosition)) {
-                              _next();
-                            }
+                          // Swipe the bubble like a story.
+                          onHorizontalDragEnd: (d) {
+                            final v = d.primaryVelocity ?? 0;
+                            if (v < -250) _next();
+                            if (v > 250) _back();
                           },
-                          child: TweenAnimationBuilder<RRect>(
-                            tween: _RRectTween(end: hole),
-                            duration: dentraMotion(context, 520),
-                            curve: Curves.easeInOutCubic,
-                            builder: (context, lens, _) => Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                _FrostedScrim(lens: lens),
-                                CustomPaint(
-                                  painter: SpotlightPainter(
-                                    hole: lens,
-                                    motion: _motion,
-                                  ),
-                                ),
-                              ],
-                            ),
+                          child: _TourGuide(
+                            step: step,
+                            visit: _visit,
+                            chapterLabel: step.chapter == null
+                                ? null
+                                : _chapterLabel(),
+                            spotCount: _spotCount,
+                            canGoBack: _step > 1 && step.spot != null,
+                            tail: target == null
+                                ? BubbleTail.none
+                                : below
+                                    ? BubbleTail.top
+                                    : BubbleTail.bottom,
+                            // The tail aims at the middle of the target.
+                            tailTo: target == null
+                                ? width / 2
+                                : target.center.dx - bubbleLeft,
+                            // Rabi turns to face the target.
+                            rabiFacesRight: target != null &&
+                                target.center.dx >
+                                    bubbleLeft + _TourGuide.rabiCentre,
+                            onNext: _next,
+                            onBack: _back,
+                            onSkip: _finish,
+                            scrollController: _cardScroll,
                           ),
                         ),
                       ),
-                      if (_isLast && !still)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: CustomPaint(
-                              painter: ConfettiPainter(
-                                progress: _confetti,
-                                origin: Offset(
-                                    size.width / 2, size.height / 2 - 90),
-                              ),
-                            ),
-                          ),
-                        ),
-                      Positioned.fill(
-                        child: AnimatedPadding(
-                          duration: dentraMotion(context, 460),
-                          curve: Curves.easeOutCubic,
-                          padding: padding,
-                          child: AnimatedAlign(
-                            duration: dentraMotion(context, 460),
-                            curve: Curves.easeOutCubic,
-                            alignment: alignment,
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                maxWidth: _TourGuide.maxWidth,
-                              ),
-                              child: GestureDetector(
-                                // Swipe the bubble like a story.
-                                onHorizontalDragEnd: (d) {
-                                  final v = d.primaryVelocity ?? 0;
-                                  if (v < -250) _next();
-                                  if (v > 250) _back();
-                                },
-                                child: _TourGuide(
-                                  step: step,
-                                  visit: _visit,
-                                  chapterLabel: step.chapter == null
-                                      ? null
-                                      : _chapterLabel(),
-                                  spotCount: _spotCount,
-                                  isLast: _isLast,
-                                  canGoBack: _step > 1 && step.spot != null,
-                                  motion: _motion,
-                                  still: still,
-                                  rabiFirst: target == null || below,
-                                  rabiAlong: along,
-                                  rabiFacesRight: faceRight,
-                                  onNext: _next,
-                                  onBack: _back,
-                                  onSkip: _finish,
-                                  scrollController: _cardScroll,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
+                );
+
+                return Stack(
+                  children: [
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        // Tapping the lit-up target moves on, as if it
+                        // were the real thing.
+                        onTapUp: (details) {
+                          if (target != null &&
+                              hole.outerRect.contains(details.localPosition)) {
+                            _next();
+                          }
+                        },
+                        child: TweenAnimationBuilder<RRect>(
+                          tween: _RRectTween(end: hole),
+                          duration: dentraMotion(context, 520),
+                          curve: Curves.easeInOutCubic,
+                          builder: (context, lens, _) => Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              _FrostedScrim(lens: lens, light: _isLast),
+                              CustomPaint(
+                                painter: SpotlightPainter(
+                                  hole: lens,
+                                  motion: _motion,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: AnimatedSwitcher(
+                        duration: dentraMotion(context, 380),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        layoutBuilder: (current, previous) => Stack(
+                          fit: StackFit.expand,
+                          children: [...previous, if (current != null) current],
+                        ),
+                        child: _isLast
+                            ? _Finale(
+                                key: const ValueKey('finale'),
+                                step: step,
+                                onDone: _next,
+                              )
+                            : guide,
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -473,36 +463,51 @@ class _RRectTween extends Tween<RRect> {
 }
 
 /// Frosted glass over the whole app except the [lens]: a light blur with
-/// a navy-to-teal tint. The web build skips the blur (see `GlassBlur`)
-/// and tints a little more instead.
+/// a navy-to-teal tint, which brightens to a white-to-mint veil when
+/// [light] (the send-off, where words sit on it without a bubble). The web
+/// build skips the blur (see `GlassBlur`) and tints a little more instead.
 class _FrostedScrim extends StatelessWidget {
-  const _FrostedScrim({required this.lens});
+  const _FrostedScrim({required this.lens, required this.light});
 
   final RRect lens;
+  final bool light;
 
   static final ImageFilter _blur = ImageFilter.blur(sigmaX: 7, sigmaY: 7);
 
-  static BoxDecoration _tint(double alpha) => BoxDecoration(
+  static BoxDecoration _tint(double alpha, double light) => BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.navy.withValues(alpha: alpha),
-            AppColors.g2.withValues(alpha: alpha * 0.9),
+            Color.lerp(
+              AppColors.navy.withValues(alpha: alpha),
+              AppColors.white.withValues(alpha: kIsWeb ? 0.9 : 0.8),
+              light,
+            )!,
+            Color.lerp(
+              AppColors.g2.withValues(alpha: alpha * 0.9),
+              AppColors.lightLavender.withValues(alpha: kIsWeb ? 0.94 : 0.86),
+              light,
+            )!,
           ],
         ),
       );
 
   @override
   Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: _OutsideLens(lens),
-      child: kIsWeb
-          ? DecoratedBox(decoration: _tint(0.42))
-          : BackdropFilter(
-              filter: _blur,
-              child: DecoratedBox(decoration: _tint(0.24)),
-            ),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: light ? 1 : 0),
+      duration: dentraMotion(context, 520),
+      curve: Curves.easeInOutCubic,
+      builder: (context, v, _) => ClipPath(
+        clipper: _OutsideLens(lens),
+        child: kIsWeb
+            ? DecoratedBox(decoration: _tint(0.42, v))
+            : BackdropFilter(
+                filter: _blur,
+                child: DecoratedBox(decoration: _tint(0.24, v)),
+              ),
+      ),
     );
   }
 }
@@ -522,23 +527,21 @@ class _OutsideLens extends CustomClipper<Path> {
   bool shouldReclip(_OutsideLens old) => old.lens != lens;
 }
 
-// ── Rabi and his bubble ─────────────────────────────────────────────
+// ── Rabi's bubble ───────────────────────────────────────────────────
 
-/// Rabi beside his speech bubble. He stands on the side nearest the
-/// lit-up feature and the bubble's tail follows him; the words slide in
-/// each step while the bubble resizes around them.
+/// Rabi's speech bubble with Rabi inside it. On the welcome he stands
+/// large at the top; at each feature he sits beside the words, turned
+/// toward it, while the tail points at it. He stays put as the words
+/// slide in, changing pose from step to step.
 class _TourGuide extends StatelessWidget {
   const _TourGuide({
     required this.step,
     required this.visit,
     required this.chapterLabel,
     required this.spotCount,
-    required this.isLast,
     required this.canGoBack,
-    required this.motion,
-    required this.still,
-    required this.rabiFirst,
-    required this.rabiAlong,
+    required this.tail,
+    required this.tailTo,
     required this.rabiFacesRight,
     required this.onNext,
     required this.onBack,
@@ -548,21 +551,17 @@ class _TourGuide extends StatelessWidget {
 
   final AppTourStep step;
 
-  /// Changes on every move, so each step's Rabi and words are new.
+  /// Changes on every move, so each step's words are new.
   final int visit;
   final String? chapterLabel;
   final int spotCount;
-  final bool isLast;
   final bool canGoBack;
-  final Animation<double> motion;
-  final bool still;
 
-  /// Rabi is above the bubble (the feature is above them both), else
-  /// under it.
-  final bool rabiFirst;
+  /// Which edge the tail leaves from: top when the feature is above.
+  final BubbleTail tail;
 
-  /// 0 → 1: how far along from the left Rabi stands.
-  final double rabiAlong;
+  /// Where along that edge the feature is, from the bubble's left.
+  final double tailTo;
   final bool rabiFacesRight;
   final VoidCallback onNext;
   final VoidCallback onBack;
@@ -570,213 +569,172 @@ class _TourGuide extends StatelessWidget {
   final ScrollController scrollController;
 
   static const double maxWidth = 400;
+  static const double _pad = 16;
 
-  /// Rabi's size beside a feature, and when he has the page to himself.
-  static const double rabiSize = 84;
-  static const double _heroSize = 124;
+  /// Rabi beside a feature's words, and on the welcome.
+  static const double _avatar = 76;
+  static const double _hero = 136;
+
+  /// The middle of Rabi beside a feature's words, from the bubble's left.
+  static const double rabiCentre = _pad + _avatar / 2;
 
   @override
   Widget build(BuildContext context) {
-    final duration = dentraMotion(context, 340);
     final hasSpot = step.spot != null;
-    final size = hasSpot ? rabiSize : _heroSize;
-
-    // Each step has its own spot, so Rabi hops from the last one. The old
-    // spot stays until he has left it.
-    final rabi = AnimatedContainer(
-      key: const ValueKey('rabi'),
-      duration: duration,
-      curve: Curves.easeOutCubic,
-      height: size,
-      child: AnimatedSwitcher(
-        duration: dentraMotion(context, 420),
-        layoutBuilder: (current, previous) => Stack(
-          fit: StackFit.expand,
-          children: [...previous, if (current != null) current],
-        ),
-        transitionBuilder: (child, _) => child,
-        child: AnimatedAlign(
-          key: ValueKey(visit),
-          duration: duration,
-          curve: Curves.easeOutCubic,
-          alignment: Alignment(rabiAlong * 2 - 1, 0),
-          child: MascotSpot(
-            size: size,
-            mood: step.mood,
-            // His arm lifts toward a feature above, dips to one below.
-            aim: rabiFirst ? MascotAim.up : MascotAim.down,
-            mirrored: rabiFacesRight,
+    return GuideBubble(
+      tail: tail,
+      tailTo: tailTo,
+      padding: EdgeInsets.zero,
+      child: AnimatedSize(
+        duration: dentraMotion(context, 340),
+        curve: Curves.easeOutCubic,
+        alignment: tail == BubbleTail.bottom
+            ? Alignment.bottomCenter
+            : Alignment.topCenter,
+        // Scrolls on short screens or with very large text, so the buttons
+        // always stay reachable.
+        child: SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(_pad, _pad, _pad, 12),
+          child: AnimatedSwitcher(
+            duration: dentraMotion(context, 380),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            layoutBuilder: (current, previous) => Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                for (final old in previous)
+                  Positioned(top: 0, left: 0, right: 0, child: old),
+                if (current != null) current,
+              ],
+            ),
+            child: hasSpot
+                ? KeyedSubtree(
+                    key: const ValueKey('spot'),
+                    child: _spotStep(context),
+                  )
+                : KeyedSubtree(
+                    key: const ValueKey('welcome'),
+                    child: _welcome(),
+                  ),
           ),
         ),
       ),
     );
+  }
 
-    final bubble = Flexible(
-      key: const ValueKey('bubble'),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // The tail sits under (or over) the middle of Rabi.
-          final room = constraints.maxWidth - size;
-          final rabiCentre = room * rabiAlong + size / 2;
-          const corner = 33.0;
-          final tailAt = constraints.maxWidth <= 2 * corner
-              ? 0.5
-              : ((rabiCentre - corner) / (constraints.maxWidth - 2 * corner))
-                  .clamp(0.0, 1.0);
-          return GuideBubble(
-            tail: rabiFirst ? BubbleTail.top : BubbleTail.bottom,
-            tailAt: tailAt,
-            padding: EdgeInsets.zero,
-            child: AnimatedSize(
-              duration: duration,
-              curve: Curves.easeOutCubic,
-              alignment:
-                  rabiFirst ? Alignment.topCenter : Alignment.bottomCenter,
-              // Scrolls on short screens or with very large text, so the
-              // buttons always stay reachable.
-              child: SingleChildScrollView(
-                controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(18, 16, 14, 12),
-                child: AnimatedSwitcher(
-                  duration: duration,
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  layoutBuilder: (current, previous) => Stack(
-                    alignment: Alignment.topCenter,
-                    children: [
-                      for (final old in previous)
-                        Positioned(top: 0, left: 0, right: 0, child: old),
-                      if (current != null) current,
-                    ],
-                  ),
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.08, 0),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    ),
-                  ),
-                  child: Semantics(
-                    key: ValueKey(visit),
-                    // Announces each new step to screen readers.
-                    liveRegion: true,
-                    container: true,
-                    child: hasSpot
-                        ? _spotStep()
-                        : isLast
-                            ? _finale()
-                            : _welcome(),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+  /// Welcome: Rabi, large, says hi and offers the tour.
+  Widget _welcome() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _PopIn(
+          child: DentraMascot(
+            mood: step.mood,
+            size: _hero,
+            stage: true,
+            awake: true,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Semantics(
+          liveRegion: true,
+          container: true,
+          child: Column(
+            children: [
+              _Caption('Quick tour · $spotCount stops'),
+              const SizedBox(height: 4),
+              _Title(step.title, textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              _Body(step.body, textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        GuidePrimaryButton(
+          label: step.action,
+          onPressed: onNext,
+          height: 46,
+          minWidth: 180,
+        ),
+        GuideQuietButton(
+          label: 'Maybe later',
+          semanticLabel: 'Maybe later, end the tour',
+          onPressed: onSkip,
+          height: 44,
+        ),
+      ],
     );
+  }
 
+  /// A feature: Rabi, the chapter, what it's for, and controls.
+  Widget _spotStep(BuildContext context) {
+    final duration = dentraMotion(context, 340);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: rabiFirst ? [rabi, bubble] : [bubble, rabi],
-    );
-  }
-
-  /// Welcome: Rabi says hi and offers the tour.
-  Widget _welcome() {
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _Caption('Quick tour · $spotCount stops'),
-          const SizedBox(height: 4),
-          _Title(step.title, textAlign: TextAlign.center),
-          const SizedBox(height: 4),
-          _Body(step.body, textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          GuidePrimaryButton(
-            label: step.action,
-            onPressed: onNext,
-            height: 46,
-            minWidth: 180,
-          ),
-          GuideQuietButton(
-            label: 'Maybe later',
-            semanticLabel: 'Maybe later, end the tour',
-            onPressed: onSkip,
-            height: 44,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Send-off: one line and one button.
-  Widget _finale() {
-    return Padding(
-      padding: const EdgeInsets.only(right: 4, bottom: 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _Title(step.title, textAlign: TextAlign.center),
-          const SizedBox(height: 4),
-          _Body(step.body, textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          GuidePrimaryButton(
-            label: step.action,
-            onPressed: onNext,
-            height: 46,
-            minWidth: 180,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// A feature: its live glyph, chapter, what it's for, and controls.
-  Widget _spotStep() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ExcludeSemantics(
-              child: _PopIn(
-                child: _GlyphTile(
-                  spot: step.spot!,
-                  motion: motion,
-                  still: still,
-                  size: 44,
-                ),
-              ),
+            _BubbleRabi(
+              size: _avatar,
+              mood: step.mood,
+              // His arm lifts toward a feature above, dips to one below.
+              aim: tail == BubbleTail.top ? MascotAim.up : MascotAim.down,
+              facesRight: rabiFacesRight,
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Caption(chapterLabel!),
-                  const SizedBox(height: 1),
-                  _Title(step.title),
-                ],
+              child: AnimatedSwitcher(
+                duration: duration,
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.topLeft,
+                  children: [
+                    for (final old in previous)
+                      Positioned(top: 0, left: 0, right: 0, child: old),
+                    if (current != null) current,
+                  ],
+                ),
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.08, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: Semantics(
+                  key: ValueKey(visit),
+                  // Announces each new step to screen readers.
+                  liveRegion: true,
+                  container: true,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _Caption(chapterLabel!),
+                        const SizedBox(height: 1),
+                        _Title(step.title),
+                        const SizedBox(height: 4),
+                        _Body(step.body),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 10),
-        Padding(
-          padding: const EdgeInsets.only(right: 4),
-          child: _Body(step.body),
-        ),
-        const SizedBox(height: 10),
         Row(
           children: [
-            // Lined up with the words above, not with its own padding.
+            // Lined up with the edge of the bubble's content.
             Transform.translate(
               offset: const Offset(-12, 0),
               child: GuideQuietButton(
@@ -818,61 +776,50 @@ class _TourGuide extends StatelessWidget {
   }
 }
 
-/// White tile with a breath of light teal, holding a feature's
-/// animated glyph.
-class _GlyphTile extends StatelessWidget {
-  const _GlyphTile({
-    required this.spot,
-    required this.motion,
-    required this.still,
+/// Rabi as he sits in the bubble beside a feature's words. Turning to
+/// face the other way, he narrows to nothing and opens out again, rather
+/// than flipping in one frame.
+class _BubbleRabi extends StatelessWidget {
+  const _BubbleRabi({
     required this.size,
+    required this.mood,
+    required this.aim,
+    required this.facesRight,
   });
 
-  final TourSpot spot;
-  final Animation<double> motion;
-  final bool still;
   final double size;
+  final MascotMood mood;
+  final MascotAim aim;
+  final bool facesRight;
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(size * 0.32);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        // White, warming to pale mint in the far corner.
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.white,
-            AppColors.lightLavender,
-            AppColors.mintGreen.withValues(alpha: 0.55),
-          ],
-          stops: const [0, 0.6, 1],
+    return TweenAnimationBuilder<double>(
+      // He faces (and points) left as drawn; -1 mirrors him.
+      tween: Tween(end: facesRight ? -1 : 1),
+      duration: dentraMotion(context, 420),
+      curve: Curves.easeInOutCubic,
+      builder: (context, turn, rabi) => Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.diagonal3Values(
+          turn.abs() < 0.06 ? 0.06 * turn.sign : turn,
+          1,
+          1,
         ),
-        border: Border.all(color: AppColors.g1.withValues(alpha: 0.28)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.g2.withValues(alpha: 0.16),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        child: rabi,
       ),
-      child: ClipRRect(
-        borderRadius: radius,
-        child: CustomPaint(
-          painter:
-              FeatureGlyphPainter(spot: spot, motion: motion, still: still),
-        ),
+      child: DentraMascot(
+        mood: mood,
+        aim: aim,
+        size: size,
+        stage: true,
+        awake: true,
       ),
     );
   }
 }
 
-/// Springs its child in from small, once per step.
+/// Springs its child in from small, once.
 class _PopIn extends StatelessWidget {
   const _PopIn({required this.child});
 
@@ -886,8 +833,240 @@ class _PopIn extends StatelessWidget {
       curve: Curves.elasticOut,
       builder: (context, v, child) => Opacity(
         opacity: v.clamp(0.0, 1.0),
-        child: Transform.scale(scale: 0.4 + 0.6 * v, child: child),
+        child: Transform.scale(
+          scale: 0.5 + 0.5 * v,
+          alignment: Alignment.bottomCenter,
+          child: child,
+        ),
       ),
+      child: child,
+    );
+  }
+}
+
+// ── Send-off ────────────────────────────────────────────────────────
+
+/// The end of the tour: Rabi on his own, no bubble, cheering. He springs
+/// up into a halo while rings and rays pop out behind him and confetti
+/// fires in from both corners; then the words and the button rise in
+/// beneath him.
+class _Finale extends StatefulWidget {
+  const _Finale({super.key, required this.step, required this.onDone});
+
+  final AppTourStep step;
+  final VoidCallback onDone;
+
+  @override
+  State<_Finale> createState() => _FinaleState();
+}
+
+class _FinaleState extends State<_Finale> with TickerProviderStateMixin {
+  /// Runs once: Rabi's jump, the burst, then the words.
+  late final AnimationController _enter = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1700),
+  );
+
+  /// Repeats: the halo's breathing and the sparkles' twinkle.
+  late final AnimationController _loop = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3200),
+  );
+
+  late final AnimationController _confetti = AnimationController(
+    vsync: this,
+    duration: ConfettiPainter.duration,
+  );
+
+  Timer? _fire;
+  bool _started = false;
+
+  static const double _rabi = 176;
+  static const Size _stage = Size(280, 236);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _fire?.cancel();
+      _enter.value = 1;
+      _loop.stop();
+      _confetti.value = 0;
+      _started = true;
+    } else if (!_started) {
+      _started = true;
+      _enter.forward();
+      _loop.repeat();
+      // Fired as he lands.
+      _fire = Timer(const Duration(milliseconds: 260), () {
+        if (!mounted) return;
+        HapticFeedback.mediumImpact();
+        _confetti.forward();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _fire?.cancel();
+    _enter.dispose();
+    _loop.dispose();
+    _confetti.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.disableAnimationsOf(context);
+    final safe = MediaQuery.paddingOf(context);
+    final step = widget.step;
+    // Rabi's middle, inside the stage: he stands at its foot.
+    final rabiTop = _stage.height - _rabi - 4;
+    final heart = Offset(_stage.width / 2, rabiTop + _rabi * 0.56);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (!still)
+          IgnorePointer(
+            child: CustomPaint(painter: ConfettiPainter(progress: _confetti)),
+          ),
+        Padding(
+          padding:
+              EdgeInsets.fromLTRB(28, safe.top + 24, 28, safe.bottom + 24),
+          child: Center(
+            child: SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox.fromSize(
+                      size: _stage,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: CelebrationPainter(
+                                enter: _enter,
+                                loop: _loop,
+                                center: heart,
+                                radius: _stage.width * 0.42,
+                                still: still,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: (_stage.width - _rabi) / 2,
+                            top: rabiTop,
+                            child: AnimatedBuilder(
+                              animation: _enter,
+                              builder: (context, rabi) {
+                                // Springs up from below and lands.
+                                final t = (_enter.value / 0.36).clamp(0.0, 1.0);
+                                final jump = Curves.easeOutBack.transform(t);
+                                return Opacity(
+                                  opacity: Curves.easeOut
+                                      .transform((t * 2.2).clamp(0.0, 1.0)),
+                                  child: Transform.translate(
+                                    offset: Offset(0, 80 * (1 - jump)),
+                                    child: Transform.scale(
+                                      scale: 0.5 + 0.5 * jump,
+                                      alignment: Alignment.bottomCenter,
+                                      child: rabi,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const DentraMascot(
+                                mood: MascotMood.cheer,
+                                size: _rabi,
+                                awake: true,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Semantics(
+                      liveRegion: true,
+                      container: true,
+                      child: Column(
+                        children: [
+                          _Rise(
+                            enter: _enter,
+                            from: 0.34,
+                            child: Semantics(
+                              header: true,
+                              child: Text(
+                                step.title,
+                                textAlign: TextAlign.center,
+                                style: guideTitleStyle(large: true)
+                                    .copyWith(fontSize: 28),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          _Rise(
+                            enter: _enter,
+                            from: 0.44,
+                            child: Text(
+                              step.body,
+                              textAlign: TextAlign.center,
+                              style:
+                                  guideBodyStyle().copyWith(fontSize: 15.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _Rise(
+                      enter: _enter,
+                      from: 0.54,
+                      child: GuidePrimaryButton(
+                        label: step.action,
+                        onPressed: widget.onDone,
+                        height: 50,
+                        minWidth: 200,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Fades its child in while it rises a little, from [from] of [enter].
+class _Rise extends StatelessWidget {
+  const _Rise({required this.enter, required this.from, required this.child});
+
+  final Animation<double> enter;
+  final double from;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: enter,
+      builder: (context, child) {
+        final p = Curves.easeOutCubic
+            .transform(((enter.value - from) / 0.3).clamp(0.0, 1.0));
+        return Opacity(
+          opacity: p,
+          child: Transform.translate(
+            offset: Offset(0, 18 * (1 - p)),
+            child: child,
+          ),
+        );
+      },
       child: child,
     );
   }
