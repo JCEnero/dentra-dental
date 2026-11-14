@@ -73,21 +73,17 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
     if (!confirmed || !mounted) return;
     setState(() => _busy = true);
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     try {
       await _notifier.delete(r.id);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar('Removed from your history.'));
+      toast.show('Removed from your history.');
       navigator.pop();
     } catch (e) {
       if (mounted) setState(() => _busy = false);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar(
-          dentalRecordErrorMessage(e, "Couldn't delete this record."),
-          tone: DentraFeedbackTone.error,
-        ));
+      toast.show(
+        dentalRecordErrorMessage(e, "Couldn't delete this record."),
+        tone: DentraFeedbackTone.error,
+      );
     }
   }
 

@@ -121,23 +121,19 @@ class _BodyState extends ConsumerState<_Body> {
     // Captured up front: the optimistic delete removes this record from
     // the list, which unmounts this widget before the request returns.
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     final id = widget.session.id;
     try {
       await ref.read(screeningSessionsProvider.notifier).delete(id);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar('Screening deleted.'));
+      toast.show('Screening deleted.');
       navigator.pop();
     } catch (_) {
       // The notifier restored the record, so this page is back.
       if (mounted) setState(() => _deleting = false);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar(
-          "Couldn't delete this screening.",
-          tone: DentraFeedbackTone.error,
-        ));
+      toast.show(
+        "Couldn't delete this screening.",
+        tone: DentraFeedbackTone.error,
+      );
     }
   }
 

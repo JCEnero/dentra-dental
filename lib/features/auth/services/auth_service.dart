@@ -38,6 +38,19 @@ class AuthResult {
   bool get needsTwoFactor => twoFactorToken != null;
 }
 
+/// How [AuthService.restoreSession] ended.
+enum SessionRestore {
+  /// The server accepted the stored session: the user is signed in.
+  restored,
+
+  /// Nothing to restore, or the server rejected it: sign in again.
+  signedOut,
+
+  /// A stored session exists but the server couldn't be reached. It is
+  /// kept, so trying again can still restore it.
+  unreachable,
+}
+
 /// DENTRA Auth Service.
 ///
 /// Talks to the DENTRA backend when one is configured (`API_BASE_URL` in
@@ -103,26 +116,49 @@ class AuthService extends ChangeNotifier {
 
   // ── Session restore ───────────────────────────────────────────
 
-  /// Signs back in from the stored refresh token. Returns false when there
-  /// is none, it was rejected, or the server could not be reached (the
-  /// token is kept in that last case, so the next launch can retry).
-  Future<bool> restoreSession() async {
+  /// The restore in flight, shared so a second caller (a hot reload
+  /// replaying the launch) never presents the same refresh token twice.
+  Future<SessionRestore>? _restoring;
+
+  /// Signs back in from the stored refresh token, once the server has
+  /// confirmed it. See [SessionRestore] for the outcomes.
+  Future<SessionRestore> restoreSession() {
+    if (_isAuthenticated) return Future.value(SessionRestore.restored);
+    return _restoring ??= _restore().whenComplete(() => _restoring = null);
+  }
+
+  Future<SessionRestore> _restore() async {
     final api = _api;
     final store = _tokenStore;
-    if (api == null || store == null) return false;
+    if (api == null || store == null) return SessionRestore.signedOut;
 
-    final stored = await store.readRefreshToken();
+    final String? stored;
+    try {
+      stored = await store.readRefreshToken();
+    } catch (_) {
+      // Unreadable secure storage: nothing to restore from.
+      return SessionRestore.signedOut;
+    }
     // Empty means a sign-out could only blank the token (see _endSession).
-    if (stored == null || stored.isEmpty) return false;
+    if (stored == null || stored.isEmpty) return SessionRestore.signedOut;
 
     try {
       await _startSession(await api.refresh(stored));
-      return true;
+      return SessionRestore.restored;
     } on ApiException catch (e) {
-      if (e.isUnauthenticated) await store.clear();
-      return false;
+      final serverTrouble = e.statusCode >= 500 ||
+          e.statusCode == 408 ||
+          e.statusCode == 429;
+      // Server trouble: keep the token so a retry can use it.
+      if (serverTrouble) return SessionRestore.unreachable;
+      // Rejected (expired, revoked, malformed): it can never work again.
+      try {
+        await store.clear();
+      } catch (_) {}
+      return SessionRestore.signedOut;
     } catch (_) {
-      return false;
+      // Offline or timed out: the token is kept for the retry.
+      return SessionRestore.unreachable;
     }
   }
 

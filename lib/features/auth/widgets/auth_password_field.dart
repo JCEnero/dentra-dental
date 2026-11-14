@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_radius.dart';
 
-/// A styled password field with visibility toggle.
-/// Matches the DENTRA design system.
+import '../../../core/constants/app_colors.dart';
+import '../../../shared/widgets/dentra_glass_ui.dart' show dentraMotion;
+import 'auth_field_shell.dart';
+
+/// A glass password field with a lock icon and a show / hide toggle.
 class AuthPasswordField extends StatefulWidget {
   final String label;
   final String placeholder;
@@ -40,150 +40,76 @@ class AuthPasswordField extends StatefulWidget {
 class _AuthPasswordFieldState extends State<AuthPasswordField> {
   bool _obscure = true;
 
+  /// Used when the caller doesn't pass a focus node of its own.
+  FocusNode? _ownFocus;
+
+  FocusNode get _focus => widget.focusNode ?? (_ownFocus ??= FocusNode());
+
+  @override
+  void dispose() {
+    _ownFocus?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasError = widget.errorText != null && widget.errorText!.isNotEmpty;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Label
-        Text(
-          widget.label,
-          style: GoogleFonts.outfit(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.navy,
-            letterSpacing: 0.1,
-          ),
-        ),
-        const SizedBox(height: 7),
-        // Input
-        TextField(
-          controller: widget.controller,
-          focusNode: widget.focusNode,
-          obscureText: _obscure,
-          autocorrect: false,
-          enableSuggestions: false,
-          autofillHints: widget.autofillHints,
-          textInputAction: widget.textInputAction,
-          onChanged: widget.onChanged,
-          onEditingComplete: widget.onEditingComplete,
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.navy,
-          ),
-          decoration: InputDecoration(
-            hintText: widget.placeholder,
-            hintStyle: GoogleFonts.outfit(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              color: AppColors.secondaryText.withValues(alpha: 0.6),
-            ),
-            prefixIcon: widget.showLockIcon
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Icon(
-                      Icons.lock_outline_rounded,
-                      size: 18,
-                      color: AppColors.secondaryText,
-                    ),
-                  )
-                : null,
-            prefixIconConstraints: widget.showLockIcon
-                ? const BoxConstraints(minWidth: 44, minHeight: 44)
-                : null,
-            // IconButton gives the toggle a real tap target and a
-            // screen-reader label.
-            suffixIcon: IconButton(
+    return AuthFieldShell(
+      label: widget.label,
+      focusNode: _focus,
+      errorText: widget.errorText,
+      field: TextField(
+        controller: widget.controller,
+        focusNode: _focus,
+        obscureText: _obscure,
+        obscuringCharacter: '•',
+        autocorrect: false,
+        enableSuggestions: false,
+        autofillHints: widget.autofillHints,
+        textInputAction: widget.textInputAction,
+        onChanged: widget.onChanged,
+        onEditingComplete: widget.onEditingComplete,
+        style: AuthFieldStyle.input,
+        cursorColor: const Color(0xFF1D7F8E),
+        decoration: AuthFieldStyle.decoration(
+          hint: widget.placeholder,
+          hasError: hasError,
+          prefixIcon: widget.showLockIcon
+              ? const Icon(Icons.lock_outline_rounded, size: 20)
+              : null,
+          // A real tap target with a screen-reader label. The eye turns
+          // teal while the password shows, so its state reads at a glance.
+          suffixIcon: Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: IconButton(
               onPressed: () => setState(() => _obscure = !_obscure),
               tooltip: _obscure ? 'Show password' : 'Hide password',
-              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(44, 44),
+                highlightColor: AppColors.g1.withValues(alpha: 0.12),
+              ),
               icon: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
+                duration: dentraMotion(context, 180),
+                transitionBuilder: (child, animation) => ScaleTransition(
+                  scale: Tween<double>(begin: 0.7, end: 1).animate(animation),
+                  child: FadeTransition(opacity: animation, child: child),
+                ),
                 child: Icon(
                   _obscure
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
                   key: ValueKey(_obscure),
-                  size: 18,
-                  color: AppColors.secondaryText,
+                  size: 20,
+                  color: _obscure
+                      ? AppColors.secondaryText.withValues(alpha: 0.8)
+                      : AppColors.primary,
                 ),
-              ),
-            ),
-            suffixIconConstraints:
-                const BoxConstraints(minWidth: 44, minHeight: 44),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            filled: true,
-            fillColor:
-                hasError ? const Color(0xFFFFF5F3) : AppColors.lightLavender,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: AppRadius.mdAll,
-              borderSide: BorderSide(
-                color: hasError
-                    ? AppColors.coral.withValues(alpha: 0.6)
-                    : AppColors.border,
-                width: 1.0,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: AppRadius.mdAll,
-              borderSide: BorderSide(
-                color: hasError ? AppColors.coral : AppColors.primary,
-                width: 1.5,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: AppRadius.mdAll,
-              borderSide: BorderSide(
-                color: AppColors.coral.withValues(alpha: 0.6),
-                width: 1.0,
-              ),
-            ),
-            focusedErrorBorder: const OutlineInputBorder(
-              borderRadius: AppRadius.mdAll,
-              borderSide: BorderSide(
-                color: AppColors.coral,
-                width: 1.5,
               ),
             ),
           ),
         ),
-        // Error message
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          child: hasError
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 5, left: 2),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        size: 13,
-                        color: AppColors.coral,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          widget.errorText!,
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.coral,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-      ],
+      ),
     );
   }
 }

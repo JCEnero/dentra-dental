@@ -166,7 +166,7 @@ class _DentalQuestionnaireScreenState
 
   Future<void> _submit() async {
     final controller = _controller!;
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     final navigator = Navigator.of(context);
     final ok = await controller.submit((answers) => ref
         .read(dentalProfileProvider.notifier)
@@ -175,7 +175,7 @@ class _DentalQuestionnaireScreenState
 
     if (_onboarding) {
       // The gate already shows the app; this screen may be gone.
-      messenger.showSnackBar(dentraSnackBar('Your dental profile is saved.'));
+      toast.show('Your dental profile is saved.');
     } else if (mounted) {
       navigator.pop(true);
     }

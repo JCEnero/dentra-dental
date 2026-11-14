@@ -233,12 +233,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// the root's [SignedInGate] already shows sign-in there: one login
   /// screen, with nothing from the old session reachable behind it.
   void _goToSignIn(String message) {
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     Navigator.of(context, rootNavigator: true)
         .popUntil((route) => route.isFirst);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(dentraSnackBar(message, tone: DentraFeedbackTone.info));
+    toast.show(message, tone: DentraFeedbackTone.info);
   }
 
   // ── Dentra Cam ────────────────────────────────────────────────

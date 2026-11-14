@@ -127,18 +127,16 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
   /// Saves what the user said about one marked tooth. The page shows it at
   /// once, and puts it back with a note if it couldn't be saved.
   Future<void> _answer(String sessionId, String findingId, ToothPain? pain) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     try {
       await ref
           .read(screeningSessionsProvider.notifier)
           .answerFinding(sessionId, findingId, pain);
     } catch (_) {
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar(
-          'Couldn\'t save your answer. Please try again.',
-          tone: DentraFeedbackTone.error,
-        ));
+      toast.show(
+        'Couldn\'t save your answer. Please try again.',
+        tone: DentraFeedbackTone.error,
+      );
     }
   }
 
@@ -189,7 +187,7 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
   /// a quick tap doesn't leave out their name or records.
   Future<void> _download() async {
     setState(() => _downloading = true);
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     Future<T?> loaded<T>(Future<T> future) async {
       try {
         return await future.timeout(const Duration(seconds: 10));
@@ -218,12 +216,10 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
         imageOf: widget.imageOf,
       );
     } catch (_) {
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar(
-          'Couldn\'t make your PDF. Please try again.',
-          tone: DentraFeedbackTone.error,
-        ));
+      toast.show(
+        'Couldn\'t make your PDF. Please try again.',
+        tone: DentraFeedbackTone.error,
+      );
     } finally {
       if (mounted) setState(() => _downloading = false);
     }

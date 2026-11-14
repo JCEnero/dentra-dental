@@ -4,16 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_radius.dart';
+import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/auth_validators.dart';
 import '../widgets/auth_widgets.dart';
+import '../widgets/auth_abstract_backdrop.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import 'registration_screen.dart';
 import 'reset_password_screen.dart';
-import 'sign_in_loading_screen.dart';
 import 'two_factor_screen.dart';
 import 'verify_email_screen.dart';
 
@@ -211,7 +211,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _forgotPassword() async {
     final resetEmail = await showDialog<String>(
       context: context,
-      barrierColor: AppColors.navy.withValues(alpha: 0.35),
+      barrierColor: AppGlass.barrier,
       builder: (_) => _ForgotPasswordDialog(
         initialEmail: _emailCtrl.text.trim(),
       ),
@@ -219,11 +219,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (resetEmail == null || !mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
-      dentraSnackBar('Sending a reset code to $resetEmail…',
-          tone: DentraFeedbackTone.info),
-    );
+    final toast = DentraToast.of(context)
+      ..show('Sending a reset code to $resetEmail…',
+          tone: DentraFeedbackTone.info);
 
     AuthResult result;
     try {
@@ -233,12 +231,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
     if (!mounted) return;
 
-    messenger.clearSnackBars();
+    toast.hide();
     if (!result.success) {
-      messenger.showSnackBar(
-        dentraSnackBar(result.error ?? _genericError,
-            tone: DentraFeedbackTone.error),
-      );
+      toast.show(result.error ?? _genericError, tone: DentraFeedbackTone.error);
       return;
     }
     Navigator.of(context).push(MaterialPageRoute(
@@ -250,12 +245,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _navigateToApp() {
-    // Replace the whole stack with the loading screen, which hands off
-    // to '/home' once its animation ends.
-    Navigator.of(context).pushAndRemoveUntil(
-      SignInLoadingScreen.route(name: _authService.currentDisplayName),
-      (_) => false,
-    );
+    // Replace the whole stack with '/home': the loader lets the user in
+    // once their profile and data have loaded.
+    Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
   }
 
   void _goToRegister() {
@@ -278,6 +270,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return AuthScaffold(
       title: 'Welcome Back',
       subtitle: 'Your smile journey continues.',
+      // Abstract glass shapes behind the page; the card frosts them, so the
+      // title goes on the card.
+      background: const AuthAbstractBackdrop(),
+      titleOnCard: true,
       primaryAction: AuthPillButton(
         label: 'Log In',
         semanticLabel: 'Log in',
@@ -312,6 +308,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             autofillHints: const [AutofillHints.email],
+            prefixIcon: const Icon(Icons.mail_outline_rounded, size: 20),
             focusNode: _emailFocus,
             onChanged: _onEmailChanged,
             onEditingComplete: _passwordFocus.requestFocus,
@@ -324,26 +321,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             errorText: _passwordError,
             textInputAction: TextInputAction.done,
             autofillHints: const [AutofillHints.password],
-            showLockIcon: false,
             focusNode: _passwordFocus,
             onChanged: _onPasswordChanged,
             onEditingComplete: _signIn,
           ),
+          // Present but quiet: small teal words at the right.
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: _busy ? null : _forgotPassword,
               style: TextButton.styleFrom(
                 minimumSize: const Size(48, 44),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                foregroundColor: kAuthInk,
+                overlayColor: AppColors.g1,
                 shape: const StadiumBorder(),
               ),
               child: Text(
                 'Forgot password?',
                 style: GoogleFonts.outfit(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -390,77 +388,111 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    const radius = BorderRadius.all(Radius.circular(28));
     return Dialog(
-      backgroundColor: AppColors.white,
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
+      elevation: 0,
       insetPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.lg,
       ),
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.xxlAll),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Semantics(
-                header: true,
-                child: Text(
-                  'Reset password',
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                    letterSpacing: -0.3,
+        child: GlassSurface(
+          borderRadius: radius,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.md,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // The lock in teal on a white disc, like the app's other
+                // glass dialogs.
+                Center(
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.white,
+                      border: Border.all(
+                        color: AppColors.g2.withValues(alpha: 0.14),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.lock_reset_rounded,
+                      size: 24,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xs + 2),
-              Text(
-                "Enter your email and we'll send you a 6-digit code.",
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  color: AppColors.secondaryText,
-                  height: 1.5,
+                const SizedBox(height: AppSpacing.md),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Reset password',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.outfit(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.md + 4),
-              AuthTextField(
-                label: 'Email',
-                placeholder: 'name@example.com',
-                controller: _controller,
-                errorText: _error,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.send,
-                autofillHints: const [AutofillHints.email],
-                autofocus: true,
-                onChanged: (_) {
-                  if (_error != null) setState(() => _error = null);
-                },
-                onEditingComplete: _submit,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              AuthPillButton(label: 'Send code', onPressed: _submit),
-              const SizedBox(height: AppSpacing.xs),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(48, 44),
-                  foregroundColor: AppColors.secondaryText,
-                  shape: const StadiumBorder(),
-                ),
-                child: Text(
-                  'Cancel',
+                const SizedBox(height: AppSpacing.xs + 2),
+                Text(
+                  "Enter your email and we'll send you a 6-digit code.",
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    color: AppColors.secondaryText,
+                    height: 1.5,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: AppSpacing.md + 4),
+                AuthTextField(
+                  label: 'Email',
+                  placeholder: 'name@example.com',
+                  controller: _controller,
+                  errorText: _error,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.send,
+                  autofillHints: const [AutofillHints.email],
+                  prefixIcon: const Icon(Icons.mail_outline_rounded, size: 20),
+                  autofocus: true,
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
+                  onEditingComplete: _submit,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AuthPillButton(label: 'Send code', onPressed: _submit),
+                const SizedBox(height: AppSpacing.xs),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(48, 44),
+                    foregroundColor: AppColors.secondaryText,
+                    overlayColor: AppColors.g1,
+                    shape: const StadiumBorder(),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

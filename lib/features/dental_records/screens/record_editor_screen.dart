@@ -157,7 +157,7 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
     setState(() => _saving = true);
     final notifier = ref.read(dentalRecordsProvider.notifier);
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     try {
       final DentalRecord saved;
       if (_isNew) {
@@ -175,15 +175,13 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
         }
       }
 
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar(
-          failed == 0
-              ? (_isNew ? 'Added to your history.' : 'Changes saved.')
-              : 'Saved, but $failed ${failed == 1 ? 'file' : 'files'} '
-                  "couldn't upload. You can add them from the record.",
-          tone: failed == 0 ? DentraFeedbackTone.success : DentraFeedbackTone.error,
-        ));
+      toast.show(
+        failed == 0
+            ? (_isNew ? 'Added to your history.' : 'Changes saved.')
+            : 'Saved, but $failed ${failed == 1 ? 'file' : 'files'} '
+                "couldn't upload. You can add them from the record.",
+        tone: failed == 0 ? DentraFeedbackTone.success : DentraFeedbackTone.error,
+      );
       if (_isNew) {
         navigator.pushReplacement(RecordDetailScreen.route(saved.id));
       } else {

@@ -43,9 +43,89 @@
       width: 100% !important;
       height: 100% !important;
     }
+
+    /* Shown while the app downloads, then handed to the app's own loader
+       (SessionLoader), which draws the same tile in the same place. */
+    #dentra-boot {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      transition: opacity 600ms ease-out;
+      /* The app backdrop (AppBackdrop), in CSS. */
+      background:
+        radial-gradient(ellipse 90vw 90vw at 102% -2%, rgba(44,166,164,.38), rgba(44,166,164,.21) 35%, rgba(44,166,164,.07) 68%, rgba(44,166,164,0) 100%),
+        radial-gradient(ellipse 75vw 75vw at -8% 34%, rgba(77,216,200,.30), rgba(77,216,200,.16) 35%, rgba(77,216,200,0) 100%),
+        radial-gradient(ellipse 90vw 32vw at 62% 50%, rgba(77,216,200,.28), rgba(77,216,200,0) 100%),
+        radial-gradient(ellipse 60vw 60vw at 108% 62%, rgba(44,166,164,.24), rgba(44,166,164,0) 100%),
+        radial-gradient(ellipse 65vw 27vw at 32% 13%, rgba(255,255,255,.75), rgba(255,255,255,0) 100%),
+        radial-gradient(ellipse 65vw 65vw at 98% 92%, rgba(168,230,223,.40), rgba(168,230,223,0) 100%),
+        radial-gradient(ellipse 60vw 60vw at -5% 102%, rgba(178,237,231,.38), rgba(178,237,231,0) 100%),
+        linear-gradient(#E2F5F3, #F3FBFA 55%, #EBF8F6);
+    }
+    #dentra-boot.done { opacity: 0; }
+    /* Same spot as the app's mark: 123px above the centre. */
+    #dentra-boot .mark {
+      position: absolute;
+      left: 50%;
+      top: calc(50% - 123px);
+      width: 142px;
+      height: 142px;
+      transform: translate(-50%, -50%);
+    }
+    #dentra-boot .tile {
+      position: absolute;
+      inset: 11px;
+      border-radius: 36px;
+      border: 1.4px solid rgba(255,255,255,.75);
+      background: linear-gradient(135deg, rgba(255,255,255,.66), rgba(255,255,255,.44));
+      -webkit-backdrop-filter: blur(22px);
+      backdrop-filter: blur(22px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: dentra-breathe 2.8s ease-in-out infinite;
+    }
+    #dentra-boot .tile img { width: 62px; height: 62px; object-fit: contain; }
+    #dentra-boot svg { position: absolute; inset: 0; overflow: visible; }
+    #dentra-boot .orbit {
+      stroke-dasharray: 110 378;
+      animation: dentra-orbit 1.6s linear infinite;
+    }
+    @keyframes dentra-orbit { to { stroke-dashoffset: -488; } }
+    @keyframes dentra-breathe { 50% { transform: scale(1.02); } }
+    @media (prefers-reduced-motion: reduce) {
+      #dentra-boot .tile, #dentra-boot .orbit { animation: none; }
+    }
   </style>
 </head>
 <body>
+  <div id="dentra-boot" role="progressbar" aria-label="Loading DENTRA">
+    <div class="mark">
+      <svg viewBox="0 0 142 142" aria-hidden="true">
+        <defs>
+          <linearGradient id="dentra-trace" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#4DD8C8"/>
+            <stop offset="1" stop-color="#2CA6A4"/>
+          </linearGradient>
+        </defs>
+        <rect x="0.75" y="0.75" width="140.5" height="140.5" rx="46.25"
+              fill="none" stroke="rgba(44,166,164,.12)" stroke-width="1.5"/>
+        <rect class="orbit" x="0.75" y="0.75" width="140.5" height="140.5" rx="46.25"
+              fill="none" stroke="url(#dentra-trace)" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <div class="tile"><img src="assets/assets/images/dentra_mark.png" alt=""></div>
+    </div>
+  </div>
+  <script>
+    // The app's loader takes over on its first frame: fade this one out.
+    window.addEventListener('flutter-first-frame', function () {
+      var boot = document.getElementById('dentra-boot');
+      if (!boot) return;
+      boot.classList.add('done');
+      setTimeout(function () { boot.remove(); }, 700);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

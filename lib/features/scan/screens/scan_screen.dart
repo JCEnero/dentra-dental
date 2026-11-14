@@ -205,10 +205,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     ref.listen(scanSessionProvider.select((s) => s.historySaveFailed),
         (_, failed) {
       if (!failed) return;
-      ScaffoldMessenger.of(context).showSnackBar(dentraSnackBar(
+      DentraToast.of(context).show(
         "Couldn't save this screening to your history.",
         tone: DentraFeedbackTone.error,
-      ));
+      );
       scan.acknowledgeHistoryError();
     });
     ref.listen(

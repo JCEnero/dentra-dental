@@ -9,7 +9,6 @@ import '../../../core/constants/app_spacing.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_widgets.dart';
-import 'sign_in_loading_screen.dart';
 
 /// The second sign-in step for accounts with two-factor on: asks for the
 /// 6-digit code emailed after the password was accepted.
@@ -114,10 +113,9 @@ class _TwoFactorScreenState extends ConsumerState<TwoFactorScreen> {
 
     if (result.success) {
       // Keep the loading state so the button cannot fire again mid-transition.
-      Navigator.of(context).pushAndRemoveUntil(
-        SignInLoadingScreen.route(name: _authService.currentDisplayName),
-        (_) => false,
-      );
+      // '/home' is the loader, which lets the user in once their data is
+      // loaded.
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
       return;
     }
 

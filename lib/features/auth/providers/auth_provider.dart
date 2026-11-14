@@ -5,8 +5,8 @@ import '../services/auth_service.dart';
 
 /// App-wide auth session shared by the sign-in and sign-up screens.
 /// Uses the backend from `.env` when configured, demo auth otherwise.
-/// `main()` overrides it with an instance whose session is already
-/// restored. Riverpod disposes the service with the ProviderScope.
+/// The launch loader (`SessionLoader`) restores a stored session into it.
+/// Riverpod disposes the service with the ProviderScope.
 final authServiceProvider =
     ChangeNotifierProvider<AuthService>((ref) => AuthService.fromEnvironment());
 

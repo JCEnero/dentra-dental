@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
@@ -163,7 +164,7 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   _ServiceButton(
                     key: tourTargets?.teeth,
-                    glyph: _ServiceGlyph.tooth,
+                    icon: ServiceIcons.teeth,
                     label: 'Teeth',
                     semanticLabel: 'Dental Explorer',
                     onTap: () {
@@ -177,7 +178,7 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   _ServiceButton(
                     key: tourTargets?.treatment,
-                    glyph: _ServiceGlyph.clipboard,
+                    icon: ServiceIcons.treatment,
                     label: 'Treatment',
                     onTap: () {
                       Navigator.of(context).push(
@@ -192,7 +193,7 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   _ServiceButton(
                     key: tourTargets?.comparison,
-                    glyph: _ServiceGlyph.compare,
+                    icon: ServiceIcons.comparison,
                     label: 'Comparison',
                     onTap: () {
                       Navigator.of(context).push(
@@ -210,7 +211,7 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   _ServiceButton(
                     key: tourTargets?.rabi,
-                    glyph: _ServiceGlyph.chat,
+                    icon: ServiceIcons.rabi,
                     label: 'Rabi AI',
                     onTap: () => AiChatScope.read(context).open(),
                   ),
@@ -630,10 +631,29 @@ class _StatusPill extends StatelessWidget {
 
 // ── Service button ────────────────────────────────────────────────
 
-enum _ServiceGlyph { tooth, clipboard, chat, compare }
+/// The four Services icons, drawn on the glass with no backing disc.
+/// Public so the loading phase can decode them before Home appears.
+abstract class ServiceIcons {
+  static const teeth = 'assets/images/teeth.svg';
+  static const treatment = 'assets/images/treatment.svg';
+  static const comparison = 'assets/images/comparison.svg';
+  static const rabi = 'assets/images/rabi-ai.svg';
+
+  static const all = [teeth, treatment, comparison, rabi];
+
+  /// Parses every icon into flutter_svg's cache, so the row is complete
+  /// on Home's first frame instead of popping in a moment later.
+  static Future<void> precache() => Future.wait([
+        for (final asset in all) _precache(SvgAssetLoader(asset)),
+      ]);
+
+  static Future<void> _precache(SvgAssetLoader loader) => svg.cache
+      .putIfAbsent(loader.cacheKey(null), () => loader.loadBytes(null));
+}
 
 class _ServiceButton extends StatelessWidget {
-  final _ServiceGlyph glyph;
+  /// SVG asset from [ServiceIcons].
+  final String icon;
   final String label;
 
   /// Fuller name for screen readers when the visible label is short.
@@ -642,7 +662,7 @@ class _ServiceButton extends StatelessWidget {
 
   const _ServiceButton({
     super.key,
-    required this.glyph,
+    required this.icon,
     required this.label,
     this.semanticLabel,
     required this.onTap,
@@ -657,29 +677,34 @@ class _ServiceButton extends StatelessWidget {
         excludeSemantics: true,
         child: GlassCard(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 16, 6, 14),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CustomPaint(
-                  size: const Size.square(26),
-                  painter: _ServiceGlyphPainter(glyph),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
-                    height: 1.2,
+          child: CustomPaint(
+            painter: const _ServiceTilePainter(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 15, 6, 17),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SvgPicture.asset(
+                    icon,
+                    width: 30,
+                    height: 30,
+                    excludeFromSemantics: true,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 9),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -688,99 +713,53 @@ class _ServiceButton extends StatelessWidget {
   }
 }
 
-/// Thin-line dental glyphs drawn on a 24×24 grid so all four share
-/// the same stroke weight and visual size.
-class _ServiceGlyphPainter extends CustomPainter {
-  final _ServiceGlyph glyph;
-  const _ServiceGlyphPainter(this.glyph);
+/// The quiet teal inside each Services tile: a soft wash that deepens
+/// toward the lower right corner, and the glass rim catching teal light
+/// along the same edge. No shapes, so the tile still reads as plain white
+/// glass and the icon keeps no backing of its own.
+class _ServiceTilePainter extends CustomPainter {
+  const _ServiceTilePainter();
+
+  /// Matches the GlassCard's corner radius.
+  static const _radius = Radius.circular(16);
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 24, size.height / 24);
+    final rect = Offset.zero & size;
 
-    final stroke = Paint()
-      ..color = AppColors.g2
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.7
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final fill = Paint()..color = AppColors.g2;
-    final tint = Paint()..color = AppColors.g1.withValues(alpha: 0.28);
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.g1.withValues(alpha: 0),
+            AppColors.g1.withValues(alpha: 0.20),
+          ],
+          stops: const [0.35, 1],
+        ).createShader(rect),
+    );
 
-    switch (glyph) {
-      case _ServiceGlyph.tooth:
-        final tooth = Path()
-          ..moveTo(12, 6.5)
-          ..cubicTo(10.5, 5, 8.5, 4.5, 6.8, 5)
-          ..cubicTo(4.6, 5.7, 3.8, 8, 4.3, 10.5)
-          ..cubicTo(4.8, 13, 5.8, 14.5, 6.3, 17)
-          ..cubicTo(6.7, 19, 7.2, 20.5, 8.3, 20.5)
-          ..cubicTo(9.6, 20.5, 9.8, 18.6, 10.2, 17)
-          ..cubicTo(10.5, 15.6, 11, 14.8, 12, 14.8)
-          ..cubicTo(13, 14.8, 13.5, 15.6, 13.8, 17)
-          ..cubicTo(14.2, 18.6, 14.4, 20.5, 15.7, 20.5)
-          ..cubicTo(16.8, 20.5, 17.3, 19, 17.7, 17)
-          ..cubicTo(18.2, 14.5, 19.2, 13, 19.7, 10.5)
-          ..cubicTo(20.2, 8, 19.4, 5.7, 17.2, 5)
-          ..cubicTo(15.5, 4.5, 13.5, 5, 12, 6.5)
-          ..close();
-        canvas.drawPath(tooth, tint);
-        canvas.drawPath(tooth, stroke);
-
-      case _ServiceGlyph.clipboard:
-        // Treatment plan: tinted board, solid clip, medical plus.
-        final board = RRect.fromLTRBR(5, 5, 19, 21, const Radius.circular(2.5));
-        canvas.drawRRect(board, tint);
-        canvas.drawRRect(board, stroke);
-        canvas.drawRRect(
-          RRect.fromLTRBR(9, 3, 15, 7, const Radius.circular(1.3)),
-          fill,
-        );
-        canvas.drawLine(const Offset(12, 10.5), const Offset(12, 17.5), stroke);
-        canvas.drawLine(const Offset(8.5, 14), const Offset(15.5, 14), stroke);
-
-      case _ServiceGlyph.chat:
-        // Chat bubble with a tail, merged so the outline stays seamless.
-        final bubble = Path.combine(
-          PathOperation.union,
-          Path()
-            ..addRRect(
-              RRect.fromLTRBR(3.5, 4, 20.5, 17, const Radius.circular(4.5)),
-            ),
-          Path()
-            ..moveTo(7, 15)
-            ..lineTo(6.5, 20.5)
-            ..lineTo(12, 15.5)
-            ..close(),
-        );
-        canvas.drawPath(bubble, tint);
-        canvas.drawPath(bubble, stroke);
-        // AI spark inside the bubble
-        final spark = Path()
-          ..moveTo(12, 6.9)
-          ..quadraticBezierTo(12.65, 9.85, 15.6, 10.5)
-          ..quadraticBezierTo(12.65, 11.15, 12, 14.1)
-          ..quadraticBezierTo(11.35, 11.15, 8.4, 10.5)
-          ..quadraticBezierTo(11.35, 9.85, 12, 6.9)
-          ..close();
-        canvas.drawPath(spark, fill);
-
-      case _ServiceGlyph.compare:
-        // Two frames side by side with a shared baseline: earlier | later.
-        final left =
-            RRect.fromLTRBR(3.5, 6, 11, 18, const Radius.circular(2.2));
-        final right =
-            RRect.fromLTRBR(13, 6, 20.5, 18, const Radius.circular(2.2));
-        canvas.drawRRect(right, tint);
-        canvas.drawRRect(left, stroke);
-        canvas.drawRRect(right, stroke);
-        canvas.drawLine(const Offset(12, 3.5), const Offset(12, 20.5), stroke);
-        canvas.drawCircle(const Offset(16.75, 12), 1.6, fill);
-    }
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(0.5), _radius),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.white.withValues(alpha: 0),
+            AppColors.g1.withValues(alpha: 0.55),
+          ],
+          stops: const [0.4, 1],
+        ).createShader(rect),
+    );
   }
 
   @override
-  bool shouldRepaint(_ServiceGlyphPainter old) => old.glyph != glyph;
+  bool shouldRepaint(_ServiceTilePainter old) => false;
 }
 
 // ── Daily tip card ────────────────────────────────────────────────

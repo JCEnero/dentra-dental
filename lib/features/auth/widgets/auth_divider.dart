@@ -2,38 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 
-/// Horizontal divider with centred "OR" label used between auth options.
+/// A quiet "or" between sign-in options: two teal hairlines fading toward
+/// the word.
 class AuthDivider extends StatelessWidget {
   const AuthDivider({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
+    Widget line(Alignment fadeFrom) => Expanded(
           child: Container(
             height: 1,
-            color: AppColors.border,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: fadeFrom,
+                end: -fadeFrom,
+                colors: [
+                  AppColors.g2.withValues(alpha: 0),
+                  AppColors.g2.withValues(alpha: 0.2),
+                ],
+              ),
+            ),
           ),
-        ),
+        );
+
+    return Row(
+      children: [
+        line(Alignment.centerLeft),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Text(
-            'OR',
+            'or',
             style: GoogleFonts.outfit(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.secondaryText.withValues(alpha: 0.6),
-              letterSpacing: 1.2,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppColors.secondaryText,
             ),
           ),
         ),
-        Expanded(
-          child: Container(
-            height: 1,
-            color: AppColors.border,
-          ),
-        ),
+        line(Alignment.centerRight),
       ],
     );
   }

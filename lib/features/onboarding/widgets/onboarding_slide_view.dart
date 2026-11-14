@@ -1,33 +1,36 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../data/onboarding_content.dart';
-import 'onboarding_palette.dart';
-import 'visuals/onboarding_hero_visual.dart';
 
 /// Height of the overlaid header (logo and Skip), below the status bar.
-const double kOnboardingHeaderExtent = 60;
+const double kOnboardingHeaderExtent = 64;
 
-/// Widest the content column grows on tablets and foldables.
-const double kOnboardingMaxContentWidth = 560;
+/// Widest the copy and controls grow on tablets and foldables.
+const double kOnboardingMaxContentWidth = 520;
 
-/// Diameter of the round controls, and height of the Get Started pill.
-const double kOnboardingButtonSize = 56;
+/// Height of the main button, and size of the round Back button.
+const double kOnboardingButtonHeight = 58;
 
-/// Vertical layout shared by the static stage, every slide and the
-/// controls, so the visual always sits on teal and the copy on the white
-/// surface, whatever the screen height, safe areas or text size.
+/// Deep teal from the logo's wordmark, for teal words on light glass. It
+/// keeps 4.5:1 contrast where the brand teal would not.
+const Color kOnboardingInk = Color(0xFF1D7F8E);
+
+/// Vertical layout shared by the stage, every slide's copy and the
+/// controls, so the picture and the words never overlap whatever the screen
+/// height, safe areas or text size.
 @immutable
 class OnboardingGeometry {
   const OnboardingGeometry._({
-    required this.surfaceTop,
-    required this.crestDepth,
-    required this.visualTop,
-    required this.visualBottom,
+    required this.stageTop,
+    required this.stageBottom,
     required this.copyTop,
-    required this.controlsExtent,
-    required this.controlsBottomPadding,
+    required this.copyBottom,
+    required this.controlsBottom,
   });
 
   factory OnboardingGeometry.of(BuildContext context) {
@@ -35,140 +38,82 @@ class OnboardingGeometry {
     final height = media.size.height;
     final textFactor = (media.textScaler.scale(16) / 16).clamp(1.0, 1.6);
 
-    final controlsBottomPadding = media.padding.bottom > 0
-        ? media.padding.bottom + AppSpacing.sm
-        : AppSpacing.lg;
-    final controlsExtent =
-        controlsBottomPadding + kOnboardingButtonSize + AppSpacing.md;
+    final controlsBottom = media.padding.bottom > 0
+        ? media.padding.bottom + AppSpacing.sm + 2
+        : AppSpacing.lg - 2;
+    // Dots, the gap under them, then the buttons.
+    const controlsHeight = 7 + 22 + kOnboardingButtonHeight;
+    final copyBottom = height - controlsBottom - controlsHeight - 20;
 
-    const crestDepth = 30.0;
-    const copyInset = 14.0;
-    // Fits eyebrow, a two-line headline, a three-line description and a
-    // note at the default text size; grows with larger system text.
-    final copyHeight = 216 * textFactor;
-
-    final visualTop = media.padding.top + kOnboardingHeaderExtent;
-    final wanted = crestDepth + copyInset + copyHeight + controlsExtent;
-    final surfaceHeight = wanted.clamp(height * 0.40, double.infinity);
-    // The visual always keeps at least 30% of the screen; past that, the
-    // copy scrolls instead.
-    final surfaceTop = (height - surfaceHeight)
-        .clamp(visualTop + height * 0.30, height)
-        .toDouble();
+    // A two-line headline, a two- or three-line sentence and a note at the
+    // default text size; grows with larger system text.
+    final copyHeight = 144 * textFactor;
+    final stageTop = media.padding.top + kOnboardingHeaderExtent;
+    // The picture keeps at least 30% of the screen; past that, the copy
+    // scrolls instead.
+    final copyTop = math.min(
+      math.max(copyBottom - copyHeight, stageTop + height * 0.3),
+      copyBottom,
+    );
 
     return OnboardingGeometry._(
-      surfaceTop: surfaceTop,
-      crestDepth: crestDepth,
-      visualTop: visualTop,
-      visualBottom: surfaceTop + crestDepth * 0.25,
-      // Never below the controls, so the copy band can't invert.
-      copyTop: (surfaceTop + crestDepth + copyInset)
-          .clamp(0.0, height - controlsExtent)
-          .toDouble(),
-      controlsExtent: controlsExtent,
-      controlsBottomPadding: controlsBottomPadding,
+      stageTop: stageTop,
+      stageBottom: math.max(stageTop, copyTop - 6),
+      copyTop: copyTop,
+      copyBottom: copyBottom,
+      controlsBottom: controlsBottom,
     );
   }
 
-  /// Highest point of the white surface's curved top edge.
-  final double surfaceTop;
+  /// The band the stage's scene is laid out in.
+  final double stageTop;
+  final double stageBottom;
 
-  /// How far the curved edge dips below [surfaceTop].
-  final double crestDepth;
-
-  /// Band of the teal stage the hero visual is centred in.
-  final double visualTop;
-  final double visualBottom;
-
-  /// Where the copy starts on the white surface. It runs down to the
-  /// controls.
+  /// The band each slide's copy sits in.
   final double copyTop;
+  final double copyBottom;
 
-  /// Height of the controls row plus the space around it.
-  final double controlsExtent;
-
-  /// Space below the controls (safe area included).
-  final double controlsBottomPadding;
-
-  double get visualHeight => visualBottom - visualTop;
+  /// Space below the controls, safe area included.
+  final double controlsBottom;
 
   @override
   bool operator ==(Object other) =>
       other is OnboardingGeometry &&
-      other.surfaceTop == surfaceTop &&
-      other.visualTop == visualTop &&
-      other.controlsExtent == controlsExtent;
+      other.stageTop == stageTop &&
+      other.copyTop == copyTop &&
+      other.copyBottom == copyBottom;
 
   @override
-  int get hashCode => Object.hash(surfaceTop, visualTop, controlsExtent);
+  int get hashCode => Object.hash(stageTop, copyTop, copyBottom);
 }
 
-/// One slide's moving content: the hero visual on the teal stage and the
-/// copy on the white surface. The stage itself, header and controls stay
-/// still behind and around it (see `OnboardingStage`).
+/// One slide's words: headline, sentence and optional note, centred under
+/// the stage. They slide with the page and trail it slightly, fading as
+/// they leave, while the stage above moves on its own.
 class OnboardingSlideView extends StatelessWidget {
   const OnboardingSlideView({
     super.key,
     required this.content,
     required this.index,
     required this.pageController,
-    required this.isActive,
     required this.geometry,
   });
 
   final OnboardingSlideContent content;
   final int index;
   final PageController pageController;
-  final bool isActive;
   final OnboardingGeometry geometry;
 
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final width = MediaQuery.sizeOf(context).width;
-    final side = [
-      geometry.visualHeight - AppSpacing.md,
-      width - AppSpacing.lg * 2,
-      360.0,
-    ].reduce((a, b) => a < b ? a : b).clamp(0.0, 360.0);
-
-    Widget withParallax(double factor, Widget child, {bool fade = false}) =>
-        reduceMotion
-            ? child
-            : _Parallax(
-                controller: pageController,
-                index: index,
-                factor: factor,
-                fade: fade,
-                child: child,
-              );
+    final copy = _SlideCopy(content: content);
 
     return Stack(
       children: [
         Positioned(
-          top: geometry.visualTop,
-          height: geometry.visualHeight,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: withParallax(
-              0.30,
-              fade: true,
-              RepaintBoundary(
-                child: SizedBox.square(
-                  dimension: side,
-                  child: OnboardingHeroVisual(
-                    content: content,
-                    animate: isActive,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
           top: geometry.copyTop,
-          bottom: geometry.controlsExtent,
+          height: math.max(0.0, geometry.copyBottom - geometry.copyTop),
           left: 0,
           right: 0,
           child: Align(
@@ -177,7 +122,13 @@ class OnboardingSlideView extends StatelessWidget {
               constraints: const BoxConstraints(
                 maxWidth: kOnboardingMaxContentWidth,
               ),
-              child: withParallax(0.12, _SlideCopy(content: content)),
+              child: reduceMotion
+                  ? copy
+                  : _Parallax(
+                      controller: pageController,
+                      index: index,
+                      child: copy,
+                    ),
             ),
           ),
         ),
@@ -186,8 +137,8 @@ class OnboardingSlideView extends StatelessWidget {
   }
 }
 
-/// Eyebrow, headline, description and optional note. Scrolls only when it
-/// cannot fit (very short screens or the largest text sizes).
+/// Scrolls only when it cannot fit (very short screens or the largest text
+/// sizes), with its last line fading so it reads as scrollable.
 class _SlideCopy extends StatelessWidget {
   const _SlideCopy({required this.content});
 
@@ -196,42 +147,30 @@ class _SlideCopy extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.sizeOf(context);
-    // Steps down on narrow or short screens, leaving room for the copy.
-    final headlineSize = [screen.width * 0.08, screen.height * 0.042]
-        .reduce((a, b) => a < b ? a : b)
-        .clamp(26.0, 32.0);
+    // Steps down on narrow or short screens, leaving room for the stage.
+    final headlineSize = math
+        .min(screen.width * 0.08, screen.height * 0.04)
+        .clamp(25.0, 32.0)
+        .toDouble();
 
-    // If the copy ever overflows, its last line fades out instead of being
-    // cut, so it reads as scrollable.
     return ShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (bounds) => LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: const [Colors.black, Colors.black, Colors.transparent],
-        stops: [0.0, 1 - 16 / bounds.height.clamp(16.0, double.infinity), 1.0],
+        stops: [0.0, 1 - 14 / bounds.height.clamp(14.0, double.infinity), 1.0],
       ).createShader(bounds),
       child: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg + 4),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              content.eyebrow.toUpperCase(),
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.6,
-                height: 1.2,
-                color: OnboardingPalette.ink,
-              ),
-            ),
-            const SizedBox(height: 10),
             Semantics(
               header: true,
               child: Text.rich(
                 _headlineSpan(),
+                textAlign: TextAlign.center,
                 // Display type is already large; cap extra scaling so the
                 // composition holds while staying readable.
                 textScaler: MediaQuery.textScalerOf(context).clamp(
@@ -240,15 +179,16 @@ class _SlideCopy extends StatelessWidget {
                 style: GoogleFonts.outfit(
                   fontSize: headlineSize,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: -headlineSize * 0.02,
+                  letterSpacing: -headlineSize * 0.025,
                   height: 1.12,
                   color: AppColors.navy,
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               content.description,
+              textAlign: TextAlign.center,
               style: GoogleFonts.outfit(
                 fontSize: 15.5,
                 fontWeight: FontWeight.w400,
@@ -257,31 +197,29 @@ class _SlideCopy extends StatelessWidget {
               ),
             ),
             if (content.note case final note?) ...[
-              const SizedBox(height: 14),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 1),
-                    child: Icon(
-                      Icons.info_outline_rounded,
-                      size: 15,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      note,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        height: 1.35,
+              const SizedBox(height: 12),
+              Text.rich(
+                TextSpan(children: [
+                  const WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: 5),
+                      child: Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
                         color: AppColors.secondaryText,
                       ),
                     ),
                   ),
-                ],
+                  TextSpan(text: note),
+                ]),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  height: 1.35,
+                  color: AppColors.secondaryText,
+                ),
               ),
             ],
             const SizedBox(height: AppSpacing.md),
@@ -301,28 +239,24 @@ class _SlideCopy extends StatelessWidget {
       TextSpan(text: text.substring(0, at)),
       TextSpan(
         text: accent,
-        style: const TextStyle(color: OnboardingPalette.ink),
+        style: const TextStyle(color: kOnboardingInk),
       ),
       TextSpan(text: text.substring(at + accent.length)),
     ]);
   }
 }
 
-/// Shifts a layer against the swipe direction by [factor] of the screen
-/// width, so the visual and copy trail the page at different depths.
+/// Holds the words back a little against the swipe and fades them as they
+/// leave, so they trail the page instead of moving as one block with it.
 class _Parallax extends StatelessWidget {
   const _Parallax({
     required this.controller,
     required this.index,
-    required this.factor,
     required this.child,
-    this.fade = false,
   });
 
   final PageController controller;
   final int index;
-  final double factor;
-  final bool fade;
   final Widget child;
 
   @override
@@ -335,15 +269,14 @@ class _Parallax extends StatelessWidget {
         if (controller.hasClients && controller.position.haveDimensions) {
           offset = (controller.page ?? index.toDouble()) - index;
         }
+        if (offset == 0) return child!;
         final width = MediaQuery.sizeOf(context).width;
-        final shifted = Transform.translate(
-          offset: Offset(offset * width * factor, 0),
-          child: child,
-        );
-        if (!fade || offset == 0) return shifted;
         return Opacity(
-          opacity: (1 - offset.abs() * 0.9).clamp(0.0, 1.0),
-          child: shifted,
+          opacity: (1 - offset.abs() * 1.4).clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(offset * width * 0.3, 0),
+            child: child,
+          ),
         );
       },
     );

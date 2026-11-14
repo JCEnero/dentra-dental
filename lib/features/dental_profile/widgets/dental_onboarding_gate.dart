@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../splash/widgets/loading_mark.dart';
 import '../providers/dental_profile_providers.dart';
 import '../screens/dental_questionnaire_screen.dart';
 
@@ -55,8 +56,37 @@ class DentalOnboardingGate extends ConsumerWidget {
         );
 }
 
-class _StatusLoading extends StatelessWidget {
+/// Only seen when the gate is reached without the launch loader (it
+/// loads the status first): the same glass mark, its line orbiting.
+class _StatusLoading extends StatefulWidget {
   const _StatusLoading();
+
+  @override
+  State<_StatusLoading> createState() => _StatusLoadingState();
+}
+
+class _StatusLoadingState extends State<_StatusLoading>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _orbit = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _orbit.stop();
+    } else if (!_orbit.isAnimating) {
+      _orbit.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _orbit.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +96,28 @@ class _StatusLoading extends StatelessWidget {
         child: Center(
           child: Semantics(
             label: 'Loading your profile',
-            child: const CircularProgressIndicator(color: AppColors.primary),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedBuilder(
+                  animation: _orbit,
+                  builder: (context, _) => LoadingMark(
+                    traceStart: _orbit.value,
+                    traceExtent: 0.22,
+                  ),
+                ),
+                const SizedBox(height: 26),
+                ExcludeSemantics(
+                  child: Text(
+                    'Loading your profile…',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

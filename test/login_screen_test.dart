@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dentra_mobile/features/auth/screens/login_screen.dart';
-import 'package:dentra_mobile/features/auth/screens/sign_in_loading_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/reset_password_screen.dart';
+import 'package:dentra_mobile/features/dental_profile/providers/dental_profile_providers.dart';
+import 'package:dentra_mobile/features/splash/screens/session_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/fake_dental_profile_repository.dart';
 
 /// Pumps through route transitions and the stub service's simulated latency.
 Future<void> settle(WidgetTester tester, {int steps = 12}) async {
@@ -114,23 +120,47 @@ void main() {
     );
   });
 
-  testWidgets('successful login shows the loader, then replaces the stack '
-      'with /home', (tester) async {
-    await pumpLogin(tester);
+  testWidgets('successful login shows the loader, which lets the user in '
+      'only once their data has loaded', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    // A returning user whose onboarding status answers only when released.
+    final status = Completer<void>();
+    final repo = FakeDentalProfileRepository.completed()..holdStatus = status;
+    await tester.pumpWidget(ProviderScope(
+      overrides: [dentalProfileRepositoryProvider.overrideWithValue(repo)],
+      child: MaterialApp(
+        home: const LoginScreen(),
+        // The real '/home' is the loader, in front of the app.
+        routes: {
+          '/home': (_) =>
+              const SessionLoader(app: Scaffold(body: Text('HOME'))),
+        },
+      ),
+    ));
+    await settle(tester, steps: 6);
+
     await tester.enterText(_email, 'jane@example.com');
     await tester.enterText(_password, 'secret123');
     await tester.tap(_logIn);
     await settle(tester, steps: 20);
 
-    expect(find.byType(SignInLoadingScreen), findsOneWidget);
-    expect(find.text('HOME'), findsNothing);
-
-    // The loader leaves on its own; wait out its exit and the route fade.
-    await tester.pumpAndSettle();
-
-    expect(find.text('HOME'), findsOneWidget);
-    expect(find.byType(SignInLoadingScreen), findsNothing);
+    expect(find.byType(SessionLoader), findsOneWidget);
     expect(find.byType(LoginScreen), findsNothing);
+
+    // Still waiting on the dental profile: well past any animation, the
+    // app must not show.
+    await settle(tester, steps: 60);
+    expect(find.text('HOME'), findsNothing);
+    expect(find.text('Loading your dental profile…'), findsOneWidget);
+
+    status.complete();
+    await settle(tester, steps: 60);
+    expect(find.text('HOME'), findsOneWidget);
+    expect(find.byType(LoginScreen), findsNothing);
+    expect(find.byTooltip('Back'), findsNothing);
   });
 
   testWidgets('Sign up opens the registration screen', (tester) async {

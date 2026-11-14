@@ -5,7 +5,7 @@ import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
 import 'package:dentra_mobile/features/onboarding/data/onboarding_content.dart';
 import 'package:dentra_mobile/features/onboarding/screens/onboarding_screen.dart';
 import 'package:dentra_mobile/features/onboarding/services/onboarding_storage.dart';
-import 'package:dentra_mobile/features/splash/screens/splash_screen.dart';
+import 'package:dentra_mobile/features/splash/screens/session_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -32,7 +32,7 @@ final _previous = find.bySemanticsLabel('Previous slide');
 String _headline(int i) => onboardingSlides[i].headline;
 
 Future<void> _advanceToLast(WidgetTester tester) async {
-  for (var i = 0; i < 2; i++) {
+  for (var i = 0; i < onboardingSlides.length - 1; i++) {
     await tester.tap(_next);
     await settle(tester);
   }
@@ -56,21 +56,17 @@ void main() {
     await tester.pump();
   }
 
-  test('content defines exactly three slides with the welcome copy', () {
-    expect(onboardingSlides, hasLength(3));
+  test('content defines four slides, one benefit each', () {
+    expect(onboardingSlides, hasLength(4));
     expect(_headline(0), 'Meet DENTRA');
-    expect(_headline(1), 'See Your Smile Differently');
-    expect(_headline(2), 'Your Smile, Your Journey');
+    expect(_headline(1), 'Scan Every Side');
+    expect(_headline(2), 'See What Needs Care');
+    expect(_headline(3), 'Track Your Smile');
     expect(onboardingSlides[0].description,
-        'Your companion for smarter oral health monitoring.');
-    expect(
-        onboardingSlides[1].description,
-        'Explore smart dental screening designed to help you monitor '
-        'your oral health.');
-    expect(
-        onboardingSlides[2].description,
-        'Keep track of your screening history and stay informed about your '
-        'oral health over time.');
+        'A wireless dental camera that works hand in hand with your phone.');
+    for (final slide in onboardingSlides) {
+      expect(slide.visualDescription, isNotEmpty);
+    }
   });
 
   for (final (name, size, textScale) in const [
@@ -89,10 +85,11 @@ void main() {
 
       await tester.pumpWidget(const MaterialApp(home: OnboardingScreen()));
       await tester.pump();
-      for (var i = 0; i < 3; i++) {
+      final last = onboardingSlides.length - 1;
+      for (var i = 0; i <= last; i++) {
         expect(find.text(_headline(i)), findsOneWidget);
         expect(tester.takeException(), isNull);
-        if (i < 2) {
+        if (i < last) {
           await tester.tap(_next);
           await settle(tester);
         }
@@ -109,7 +106,7 @@ void main() {
 
     await pumpApp(tester, completed: true);
     expect(find.byType(OnboardingScreen), findsNothing);
-    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(find.byType(SessionLoader), findsOneWidget);
 
     // Run the launch animation out, then the fade into login.
     await _runSplash(tester);
@@ -126,7 +123,7 @@ void main() {
         tester.binding.platformDispatcher.clearDefaultRouteNameTestValue);
 
     await pumpApp(tester, completed: true);
-    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(find.byType(SessionLoader), findsOneWidget);
     expect(find.byType(LoginScreen), findsNothing,
         reason: 'nothing may be stacked over the splash from the URL');
 
@@ -155,7 +152,7 @@ void main() {
     expect(find.byTooltip('Back'), findsNothing);
   });
 
-  testWidgets('Next walks all three slides, Back returns', (tester) async {
+  testWidgets('Next walks every slide, Back returns', (tester) async {
     await pumpApp(tester);
 
     expect(find.text(_headline(0)), findsOneWidget);
@@ -170,7 +167,7 @@ void main() {
     expect(find.text(_headline(0)), findsOneWidget);
 
     await _advanceToLast(tester);
-    expect(find.text(_headline(2)), findsOneWidget);
+    expect(find.text(_headline(onboardingSlides.length - 1)), findsOneWidget);
     expect(find.bySemanticsLabel('Get Started'), findsOneWidget);
     expect(find.bySemanticsLabel('Log in'), findsOneWidget);
     expect(_next, findsNothing);
