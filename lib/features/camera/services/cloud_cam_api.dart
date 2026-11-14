@@ -56,9 +56,8 @@ class CamPairing {
   final DateTime expiresAt;
 
   /// "K7P 2QX": easier to read out and type.
-  String get displayCode => code.length == 6
-      ? '${code.substring(0, 3)} ${code.substring(3)}'
-      : code;
+  String get displayCode =>
+      code.length == 6 ? '${code.substring(0, 3)} ${code.substring(3)}' : code;
 }
 
 enum PairingState { pending, claimed, expired }
@@ -106,7 +105,8 @@ class CloudCamApi {
       'expired' => PairingState.expired,
       _ => PairingState.pending,
     };
-    return PairingStatus(state, camera: CloudCamera.fromJson(pairing['device']));
+    return PairingStatus(state,
+        camera: CloudCamera.fromJson(pairing['device']));
   }
 
   /// The account's cameras, newest first.

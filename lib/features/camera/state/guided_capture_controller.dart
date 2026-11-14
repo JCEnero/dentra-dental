@@ -68,8 +68,10 @@ class GuidedCaptureController extends ChangeNotifier {
   bool isSkipped(String areaId) => _skipped.contains(areaId);
 
   /// Areas that have a photo, in order.
-  List<ScanRegion> get withPhotos =>
-      [for (final a in areas) if (_shots.containsKey(a.id)) a];
+  List<ScanRegion> get withPhotos => [
+        for (final a in areas)
+          if (_shots.containsKey(a.id)) a
+      ];
 
   int get keptCount =>
       _shots.values.where((s) => s.check == ShotCheck.passed).length;

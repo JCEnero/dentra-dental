@@ -7,19 +7,14 @@ import '../../onboarding/widgets/visuals/tooth_glyph.dart';
 import '../data/app_tour_steps.dart';
 
 /// Decorates the spotlight [hole]: a soft teal glow outside it, a bright
-/// glass rim, a ripple ring and a bobbing chevron pointing at it (from
-/// below when [arrowBelow]). [motion] loops 0 → 1; it stays at 0 when
+/// glass rim and a ripple ring. [motion] loops 0 → 1; it stays at 0 when
 /// animations are off, which leaves a still ring.
 class SpotlightPainter extends CustomPainter {
-  SpotlightPainter({
-    required this.hole,
-    required this.motion,
-    this.arrowBelow = false,
-  }) : super(repaint: motion);
+  SpotlightPainter({required this.hole, required this.motion})
+      : super(repaint: motion);
 
   final RRect hole;
   final Animation<double> motion;
-  final bool arrowBelow;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -48,9 +43,7 @@ class SpotlightPainter extends CustomPainter {
 
     final stroke = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+      ..strokeWidth = 1.6;
 
     canvas.drawRRect(
       hole,
@@ -66,27 +59,11 @@ class SpotlightPainter extends CustomPainter {
         ..color =
             AppColors.white.withValues(alpha: 0.7 * (1 - ripple) * strength),
     );
-
-    final bob = math.sin(t * 4 * math.pi) * 4;
-    final dir = arrowBelow ? -1.0 : 1.0; // +1 points down
-    final tip = Offset(
-      hole.center.dx,
-      arrowBelow ? hole.bottom + 30 - bob : hole.top - 30 + bob,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(tip.dx - 9, tip.dy - 9 * dir)
-        ..lineTo(tip.dx, tip.dy)
-        ..lineTo(tip.dx + 9, tip.dy - 9 * dir),
-      stroke
-        ..strokeWidth = 3
-        ..color = AppColors.white.withValues(alpha: strength),
-    );
   }
 
   @override
   bool shouldRepaint(SpotlightPainter old) =>
-      old.hole != hole || old.arrowBelow != arrowBelow || old.motion != motion;
+      old.hole != hole || old.motion != motion;
 }
 
 /// A small looping animation for each [TourSpot], drawn in a light teal

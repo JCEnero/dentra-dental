@@ -907,7 +907,8 @@ class _BottomBar extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             count,
-                            style: figureText(size: 12, weight: FontWeight.w700),
+                            style:
+                                figureText(size: 12, weight: FontWeight.w700),
                           ),
                         ],
                       ),

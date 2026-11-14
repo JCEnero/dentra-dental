@@ -429,9 +429,9 @@ void main() {
       expect(find.text(CamText.welcomeTitle), findsOneWidget);
       await tapText(tester, CamText.welcomeStart);
       await tapText(tester, CamText.powerReady);
-      expect(find.text('K7P 2QX'), findsOneWidget,
+      expect(find.byKey(const ValueKey('pairing-code K7P2QX')), findsOneWidget,
           reason: 'a code, not a Bluetooth search');
-      expect(find.text(CamText.findTitle), findsNothing);
+      expect(find.text(CamText.findSearching), findsNothing);
 
       await tester.tap(find.byTooltip(CamText.closeSetup));
       await settle(tester);

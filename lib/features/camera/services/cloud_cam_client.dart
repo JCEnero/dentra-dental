@@ -96,7 +96,8 @@ class CloudCamClient implements CamClient {
   bool? get cameraOnline => _session?.online;
 
   @override
-  Future<CamStatus> status({Duration timeout = const Duration(seconds: 3)}) async {
+  Future<CamStatus> status(
+      {Duration timeout = const Duration(seconds: 3)}) async {
     final session = await _open();
     final result = await session.command(
       {'cmd': 'status'},
@@ -166,7 +167,8 @@ class CloudCamClient implements CamClient {
           pictures = session.pictures.listen(
             out.add,
             onError: fail,
-            onDone: () => fail(const DentraCamException(CamFailure.unreachable)),
+            onDone: () =>
+                fail(const DentraCamException(CamFailure.unreachable)),
           );
           watching = session..watch(true);
         } catch (e) {
@@ -207,7 +209,8 @@ class CloudCamClient implements CamClient {
       throw _failure(e);
     }
     final session = _CloudSession(socket);
-    socket.send(jsonEncode({'type': 'auth', 'token': token, 'device': deviceId}));
+    socket
+        .send(jsonEncode({'type': 'auth', 'token': token, 'device': deviceId}));
     try {
       await session.ready.timeout(_openTimeout);
     } catch (e) {

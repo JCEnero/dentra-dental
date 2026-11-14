@@ -7,10 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
-import '../../../shared/widgets/app_backdrop.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/guide_kit.dart';
 import '../../auth/widgets/auth_password_field.dart';
 import '../../auth/widgets/auth_text_field.dart';
 import '../../profile/utils/device_settings.dart';
@@ -23,7 +23,6 @@ import '../services/camera_setup_link.dart';
 import '../state/camera_setup_controller.dart';
 import '../state/live_camera_controller.dart';
 import '../widgets/camera_bits.dart';
-import '../widgets/live_view.dart';
 import '../widgets/setup_page.dart';
 
 /// What the user chose at the end of setup.
@@ -111,81 +110,60 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
     if (ip != null && mounted) _setup.useAddress(ip);
   }
 
+  /// One icon per step, for the rail.
+  static const _stepIcons = [
+    Icons.waving_hand_rounded,
+    Icons.bluetooth_rounded,
+    Icons.power_settings_new_rounded,
+    Icons.search_rounded,
+    Icons.wifi_rounded,
+    Icons.link_rounded,
+  ];
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: _setup,
       builder: (context, _) {
         final step = _setup.step;
+        final pullToRescan =
+            step == SetupStep.wifi && _setup.chosen == null && !_setup.linkLost;
         return PopScope(
           canPop: !_setup.canGoBack,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop) _setup.back();
           },
-          child: Scaffold(
-            backgroundColor: AppColors.lightLavender,
-            body: AppBackdrop(
-              child: SafeArea(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 560),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SetupTopBar(
-                          step: step.index,
-                          total: SetupStep.values.length,
-                          label: CamText.stepNames[step.index],
-                          onClose: () => _close(),
-                        ),
-                        Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: AppGlass.divider,
-                        ),
-                        Expanded(child: _body()),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-                          child: _buttons(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          child: SetupFrame(
+            step: step.index,
+            icons: _stepIcons,
+            label: CamText.stepNames[step.index],
+            onClose: () => _close(),
+            sceneKey: ValueKey('${step.name}-${_sceneName()}'),
+            direction: _setup.direction,
+            scene: _scene(),
+            actions: _actions(),
+            onRefresh: pullToRescan ? _setup.rescanWifi : null,
           ),
         );
       },
     );
   }
 
-  // ── Content ─────────────────────────────────────────────────────
+  // ── Scenes ──────────────────────────────────────────────────────
 
-  Widget _body() {
-    final sub = switch (_setup.step) {
-      SetupStep.wifi => _setup.chosen == null ? 'list' : 'password',
-      SetupStep.connect => _setup.saved == null ? 'progress' : 'done',
-      _ => '',
-    };
-    final scroll = SetupBody(
-      contentKey: ValueKey('${_setup.step.name}-$sub'),
-      direction: _setup.direction,
-      child: _content(),
-    );
-    final pullToRescan = _setup.step == SetupStep.wifi &&
-        _setup.chosen == null &&
-        !_setup.linkLost;
-    return pullToRescan
-        ? RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: _setup.rescanWifi,
-            child: scroll,
-          )
-        : scroll;
-  }
+  /// Which of a step's scenes is showing. Rabi hops when it changes.
+  String _sceneName() => switch (_setup.step) {
+        SetupStep.find => _setup.cameras.isNotEmpty
+            ? 'list'
+            : _setup.searching || _setup.connecting != null
+                ? 'search'
+                : 'none',
+        SetupStep.wifi => _setup.chosen == null ? 'list' : 'password',
+        SetupStep.connect => _setup.saved == null ? 'progress' : 'done',
+        _ => '',
+      };
 
-  Widget _content() => switch (_setup.step) {
+  Widget _scene() => switch (_setup.step) {
         SetupStep.welcome => _welcome(),
         SetupStep.permissions => _permissions(),
         SetupStep.power => _power(),
@@ -194,103 +172,74 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
         SetupStep.connect => _setup.saved == null ? _connecting() : _success(),
       };
 
-  static const _welcomeIcons = [
-    Icons.battery_charging_full_rounded,
-    Icons.bluetooth_rounded,
-    Icons.wifi_password_rounded,
-    Icons.router_outlined,
-  ];
-
-  Widget _welcome() => SetupPage(
-        step: 0,
-        mood: MascotMood.wave,
-        title: CamText.welcomeTitle,
-        body: CamText.welcomeBody,
-        rabi: CamText.welcomeRabi,
-        children: [
-          for (var i = 0; i < CamText.welcomeItems.length; i++) ...[
-            if (i > 0) const SizedBox(height: 14),
-            CamInfoRow(
-              icon: _welcomeIcons[i % _welcomeIcons.length],
-              title: CamText.welcomeItems[i].$1,
-              body: CamText.welcomeItems[i].$2,
-            ),
-          ],
+  Widget _welcome() => const SetupWelcomeScene(
+        items: CamText.welcomeItems,
+        icons: [
+          Icons.battery_charging_full_rounded,
+          Icons.bluetooth_rounded,
+          Icons.wifi_password_rounded,
         ],
       );
 
   Widget _permissions() {
     final p = _setup.permission;
     final android = _setup.canLinkTurnOnBluetooth;
-    final busy =
-        p == PermissionState.checking || p == PermissionState.requesting;
-    return SetupPage(
-      step: 1,
-      mood: switch (p) {
-        PermissionState.needed => MascotMood.point,
-        PermissionState.checking ||
-        PermissionState.requesting =>
-          MascotMood.think,
-        PermissionState.granted => MascotMood.cheer,
-        PermissionState.denied ||
-        PermissionState.bluetoothOff ||
-        PermissionState.unsupported =>
+    final (String title, String? body, MascotMood mood) = switch (p) {
+      PermissionState.needed ||
+      PermissionState.checking ||
+      PermissionState.requesting =>
+        (
+          CamText.permissionTitle,
+          CamText.permissionBody,
+          p == PermissionState.needed ? MascotMood.point : MascotMood.think,
+        ),
+      PermissionState.granted => (
+          CamText.permissionGranted,
+          null,
+          MascotMood.cheer
+        ),
+      PermissionState.denied => (
+          CamText.permissionDeniedTitle,
+          android
+              ? CamText.permissionDeniedAndroid
+              : CamText.permissionDeniedIos,
           MascotMood.worried,
-      },
-      busy: busy,
-      title: CamText.permissionTitle,
-      body: CamText.permissionBody,
-      rabi: CamText.permissionRabi,
+        ),
+      PermissionState.bluetoothOff => (
+          CamText.bluetoothOffTitle,
+          android ? CamText.bluetoothOffAndroid : CamText.bluetoothOffIos,
+          MascotMood.worried,
+        ),
+      PermissionState.unsupported => (
+          CamText.bluetoothUnsupportedTitle,
+          CamText.bluetoothUnsupported,
+          MascotMood.worried,
+        ),
+    };
+    return SetupScene(
+      centered: true,
       children: [
-        if (android)
-          Text(
-            CamText.permissionLocationNote,
-            style: GoogleFonts.outfit(
-              fontSize: 12.5,
-              color: AppColors.secondaryText,
-              height: 1.45,
-            ),
-          ),
-        switch (p) {
-          PermissionState.checking ||
-          PermissionState.requesting =>
-            const CamBusyLine(CamText.permissionChecking),
-          PermissionState.granted => const CamInfoRow(
-              icon: Icons.check_circle_rounded,
-              title: CamText.permissionGranted,
-            ),
-          PermissionState.needed => const SizedBox.shrink(),
-          PermissionState.denied => SetupNotice(
-              title: CamText.permissionDeniedTitle,
-              body: android
-                  ? CamText.permissionDeniedAndroid
-                  : CamText.permissionDeniedIos,
-            ),
-          PermissionState.bluetoothOff => SetupNotice(
-              title: CamText.bluetoothOffTitle,
-              body: android
-                  ? CamText.bluetoothOffAndroid
-                  : CamText.bluetoothOffIos,
-            ),
-          PermissionState.unsupported =>
-            const SetupNotice(body: CamText.bluetoothUnsupported),
-        },
+        RabiSays(
+          place: RabiPlace.above,
+          mood: mood,
+          aim: MascotAim.down,
+          title: title,
+          highlight:
+              p == PermissionState.needed ? CamText.permissionHighlight : null,
+          body: body,
+          live: p != PermissionState.needed,
+        ),
+        if (android && p == PermissionState.needed) ...[
+          const SizedBox(height: 28),
+          const SetupHint(CamText.permissionLocationNote),
+        ],
       ],
     );
   }
 
-  Widget _power() => const SetupPage(
-        step: 2,
-        title: CamText.powerTitle,
+  Widget _power() => const SetupPowerScene(
         body: CamText.powerBody,
-        rabi: CamText.powerRabi,
-        children: [
-          CamInfoRow(
-            icon: Icons.restart_alt_rounded,
-            title: CamText.powerResetTitle,
-            body: CamText.powerResetBody,
-          ),
-        ],
+        reset: CamText.powerReset,
       );
 
   static const _findTipIcons = [
@@ -301,28 +250,33 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
 
   Widget _find() {
     final cameras = _setup.cameras;
-    final searching = _setup.searching;
     final connecting = _setup.connecting;
-    final working = searching || connecting != null;
-    return SetupPage(
-      step: 3,
-      // Looking, then showing what he found, or sorry there's nothing.
-      mood: working
-          ? MascotMood.think
-          : cameras.isEmpty || _setup.findError != null
-              ? MascotMood.worried
-              : MascotMood.point,
-      busy: working,
-      title: CamText.findTitle,
-      rabi: CamText.findRabi,
-      children: [
-        if (searching)
-          const CamBusyLine(CamText.findSearching)
-        else if (cameras.isNotEmpty)
-          Text(CamText.findFoundHint, style: camBodyStyle()),
-        if (cameras.isNotEmpty)
+    final manual = Align(
+      alignment: Alignment.center,
+      child: TextButton(
+        onPressed: connecting == null ? _enterAddress : null,
+        style: _linkStyle,
+        child: const Text(CamText.manualLink, textAlign: TextAlign.center),
+      ),
+    );
+
+    if (cameras.isNotEmpty) {
+      return SetupScene(
+        children: [
+          // Standing on the list, pointing down at it.
+          RabiSays(
+            place: RabiPlace.right,
+            perched: true,
+            mood: connecting == null ? MascotMood.point : MascotMood.think,
+            aim: MascotAim.down,
+            title: connecting == null
+                ? CamText.findFoundTitle
+                : CamText.findConnecting(connecting.name),
+            body: CamText.findPairHint,
+            live: connecting != null,
+          ),
           GlassCard(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             child: Column(
               children: [
                 for (var i = 0; i < cameras.length; i++) ...[
@@ -344,70 +298,102 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
               ],
             ),
           ),
-        if (_setup.findError != null)
-          DentraInlineNotice(message: _setup.findError),
-        if (!searching && cameras.isEmpty && connecting == null) ...[
-          Text(
-            CamText.findNothingTitle,
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.navy,
-            ),
-          ),
-          for (var i = 0; i < CamText.findTips.length; i++)
-            CamInfoRow(
-              icon: _findTipIcons[i % _findTipIcons.length],
-              title: CamText.findTips[i],
-            ),
-          if (_setup.canLinkTurnOnBluetooth)
-            const CamInfoRow(
-              icon: Icons.location_on_outlined,
-              title: CamText.findLocationTip,
-            ),
+          if (_setup.findError != null) ...[
+            const SizedBox(height: 12),
+            DentraInlineNotice(message: _setup.findError),
+          ],
+          const SizedBox(height: 6),
+          manual,
         ],
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: connecting == null ? _enterAddress : null,
-            style: _linkStyle,
-            child: const Text(CamText.manualLink),
+      );
+    }
+
+    if (_setup.searching || connecting != null) {
+      // In the middle of his own radar, ears turning.
+      return SetupScene(
+        centered: true,
+        children: [
+          const RabiSays(
+            place: RabiPlace.above,
+            mood: MascotMood.watch,
+            busy: true,
+            title: CamText.findSearching,
+            body: CamText.findPairHint,
+            live: true,
+            size: 144,
           ),
+          const SizedBox(height: 10),
+          manual,
+        ],
+      );
+    }
+
+    return SetupScene(
+      children: [
+        const RabiSays(
+          place: RabiPlace.left,
+          mood: MascotMood.worried,
+          title: CamText.findNothingTitle,
+          live: true,
         ),
+        const SizedBox(height: 18),
+        if (_setup.findError != null) ...[
+          DentraInlineNotice(message: _setup.findError),
+          const SizedBox(height: 12),
+        ],
+        for (var i = 0; i < CamText.findTips.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
+          CamInfoRow(
+            icon: _findTipIcons[i % _findTipIcons.length],
+            title: CamText.findTips[i],
+          ),
+        ],
+        if (_setup.canLinkTurnOnBluetooth) ...[
+          const SizedBox(height: 12),
+          const CamInfoRow(
+            icon: Icons.location_on_outlined,
+            title: CamText.findLocationTip,
+          ),
+        ],
+        const SizedBox(height: 10),
+        manual,
       ],
     );
   }
 
   Widget _networks() {
     final networks = _setup.networks;
-    final Widget status;
-    if (_setup.linkLost) {
-      status = const SetupNotice(body: CamText.errorLinkLost);
-    } else if (_setup.wifiLoading && networks.isEmpty) {
-      status = const CamBusyLine(CamText.wifiLoading);
-    } else if (_setup.wifiFailed) {
-      status = const SetupNotice(body: CamText.wifiFailed);
-    } else if (networks.isEmpty) {
-      status = Text(CamText.wifiEmpty, style: camBodyStyle());
-    } else {
-      status = const SizedBox.shrink();
-    }
-    return SetupPage(
-      step: 4,
-      mood: _setup.linkLost || _setup.wifiFailed
-          ? MascotMood.worried
-          : _setup.wifiLoading
-              ? MascotMood.think
-              : MascotMood.point,
-      busy: _setup.wifiLoading && !_setup.linkLost,
-      title: CamText.wifiTitle,
-      body: CamText.wifiBody,
-      rabi: CamText.wifiRabi,
+    final lost = _setup.linkLost;
+    final listed = networks.isNotEmpty && !lost;
+    final loading = _setup.wifiLoading && !lost;
+    final String? status = lost
+        ? CamText.errorLinkLost
+        : loading && networks.isEmpty
+            ? CamText.wifiLoading
+            : _setup.wifiFailed
+                ? CamText.wifiFailed
+                : networks.isEmpty
+                    ? CamText.wifiEmpty
+                    : null;
+    return SetupScene(
       children: [
-        status,
-        if (networks.isNotEmpty && !_setup.linkLost)
+        RabiSays(
+          place: RabiPlace.right,
+          perched: listed,
+          mood: lost || _setup.wifiFailed
+              ? MascotMood.worried
+              : loading
+                  ? MascotMood.watch
+                  : MascotMood.point,
+          aim: MascotAim.down,
+          busy: loading,
+          title: CamText.wifiTitle,
+          body: status,
+          live: true,
+        ),
+        if (listed)
           GlassCard(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             child: Column(
               children: [
                 for (var i = 0; i < networks.length; i++) ...[
@@ -429,37 +415,57 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
               ],
             ),
           ),
-        const _NotListed(),
+        if (!lost) ...[
+          const SizedBox(height: 6),
+          const _NotListed(),
+        ],
       ],
     );
   }
 
+  /// The password field has the keyboard: Rabi shuts his eyes.
+  bool _typing = false;
+
   Widget _passwordStep() {
     final network = _setup.chosen!;
-    return SetupPage(
-      step: 4,
-      mood: _setup.passwordError != null
-          ? MascotMood.worried
-          : MascotMood.point,
-      title: network.ssid,
-      body: network.secure ? CamText.wifiPasswordFor(network.ssid) : null,
-      rabi: CamText.wifiRabi,
+    final failed = _setup.passwordError != null;
+    return SetupScene(
       children: [
-        if (network.secure)
-          AuthPasswordField(
-            label: CamText.wifiPasswordLabel,
-            placeholder: CamText.wifiPasswordLabel,
-            controller: _password,
-            errorText: _setup.passwordError,
-            textInputAction: TextInputAction.done,
-            onEditingComplete: _join,
-            autofillHints: const [AutofillHints.password],
-          )
-        else ...[
-          const SetupNotice(body: CamText.wifiOpenNote),
-          if (_setup.passwordError != null)
-            DentraInlineNotice(message: _setup.passwordError),
-        ],
+        RabiSays(
+          place: RabiPlace.left,
+          mood: failed
+              ? MascotMood.worried
+              : _typing
+                  ? MascotMood.hush
+                  : MascotMood.point,
+          title: network.ssid,
+          body:
+              network.secure ? CamText.wifiPasswordBody : CamText.wifiOpenNote,
+        ),
+        const SizedBox(height: 18),
+        if (network.secure) ...[
+          Focus(
+            canRequestFocus: false,
+            skipTraversal: true,
+            onFocusChange: (focused) => setState(() => _typing = focused),
+            child: AuthPasswordField(
+              label: CamText.wifiPasswordLabel,
+              placeholder: CamText.wifiPasswordLabel,
+              controller: _password,
+              errorText: _setup.passwordError,
+              textInputAction: TextInputAction.done,
+              onEditingComplete: _join,
+              autofillHints: const [AutofillHints.password],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const SetupHint(
+            CamText.wifiPrivacy,
+            icon: Icons.lock_outline_rounded,
+          ),
+        ] else if (failed)
+          DentraInlineNotice(message: _setup.passwordError),
+        const SizedBox(height: 6),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
@@ -474,80 +480,41 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
 
   Widget _connecting() {
     final problem = _setup.problem;
-    final stages = _setup.manual
-        ? const [JoinStage.finding]
-        : const [
-            JoinStage.sending,
-            JoinStage.joining,
-            JoinStage.restarting,
-            JoinStage.finding,
-          ];
-    return SetupPage(
-      step: 5,
-      mood: problem == null ? MascotMood.think : MascotMood.worried,
-      busy: problem == null,
-      title: CamText.connectTitle,
-      rabi: CamText.connectRabi,
+    final stage = _setup.stage;
+    return SetupScene(
+      centered: true,
       children: [
-        GlassCard(
-          borderRadius: BorderRadius.circular(20),
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Column(
-            children: [
-              for (final stage in [...stages, JoinStage.done])
-                _StageRow(
-                  label: _stageLabel(stage),
-                  state: stage.index < _setup.stage.index
-                      ? _StageState.done
-                      : stage == _setup.stage
-                          ? (problem == null
-                              ? _StageState.active
-                              : _StageState.failed)
-                          : _StageState.pending,
-                ),
-            ],
-          ),
+        SetupLinkArt(
+          phase: LinkPhase.values[stage.index],
+          stuck: problem != null,
+          direct: _setup.manual,
         ),
-        if (problem != null) SetupNotice(body: _problemText(problem)),
+        const SizedBox(height: 14),
+        // Thinking it over, then waiting, then looking out for the camera.
+        RabiSays(
+          place: RabiPlace.above,
+          mood: problem != null
+              ? MascotMood.worried
+              : switch (stage) {
+                  JoinStage.sending => MascotMood.think,
+                  JoinStage.joining || JoinStage.restarting => MascotMood.wait,
+                  JoinStage.finding => MascotMood.watch,
+                  JoinStage.done => MascotMood.cheer,
+                },
+          busy: problem == null,
+          title: problem == null ? _stageLabel(stage) : CamText.errorTitle,
+          body: problem == null ? CamText.connectHint : _problemText(problem),
+          live: true,
+          size: 128,
+        ),
       ],
     );
   }
 
-  Widget _success() {
-    final preview = _preview;
-    return SetupPage(
-      mood: MascotMood.cheer,
-      title: CamText.successTitle,
-      body: CamText.successBody(_setup.saved?.ssid),
-      rabi: CamText.successRabi,
-      children: [
-        AspectRatio(
-          aspectRatio: 4 / 3,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: ColoredBox(
-              color: AppColors.lightLavender,
-              child: preview == null
-                  ? const Center(child: CamBusyCenter(CamText.connecting))
-                  : ListenableBuilder(
-                      listenable: preview,
-                      builder: (context, _) => Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          LiveView(frames: preview.frame),
-                          if (!preview.isLive)
-                            const Center(
-                              child: CamBusyCenter(CamText.connecting),
-                            ),
-                        ],
-                      ),
-                    ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _success() => SetupDoneScene(
+        body: CamText.successBody(_setup.saved?.ssid),
+        preview: _preview,
+      );
 
   static String _stageLabel(JoinStage stage) => switch (stage) {
         JoinStage.sending => CamText.stageSending,
@@ -576,132 +543,133 @@ class _CameraSetupScreenState extends ConsumerState<CameraSetupScreen> {
     textStyle: GoogleFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.w700),
   );
 
-  // ── Buttons ─────────────────────────────────────────────────────
+  // ── Actions ─────────────────────────────────────────────────────
 
-  Widget _buttons() {
-    DentraPillButton back(VoidCallback onPressed, [String label = CamText.back]) =>
-        DentraPillButton(
+  Widget _actions() {
+    final back = GuideBackButton(onPressed: _setup.back, label: CamText.back);
+    // Keyed by its label, so one action fades into the next.
+    Widget primary(String label, VoidCallback? onPressed, {IconData? icon}) =>
+        GuidePrimaryButton(
+          key: ValueKey(label),
           label: label,
-          variant: DentraButtonVariant.outline,
+          icon: icon,
           onPressed: onPressed,
         );
+    Widget status(String label) => GuideStatus(label, key: ValueKey(label));
 
     switch (_setup.step) {
       case SetupStep.welcome:
-        return DentraButtonRow(
-          secondary: back(() => _close(), CamText.welcomeLater),
-          primary: DentraPillButton(
-            label: CamText.welcomeStart,
-            onPressed: _setup.next,
+        return GuideActions(
+          leading: GuideQuietButton(
+            label: CamText.welcomeLater,
+            onPressed: () => _close(),
           ),
+          trailing: primary(CamText.welcomeStart, _setup.next),
         );
       case SetupStep.permissions:
-        final p = _setup.permission;
-        final busy =
-            p == PermissionState.checking || p == PermissionState.requesting;
-        final (String label, VoidCallback? action) = switch (p) {
-          PermissionState.needed => (
-              CamText.permissionAllow,
-              () => unawaited(_setup.allowBluetooth()),
-            ),
-          PermissionState.checking ||
-          PermissionState.requesting =>
-            (CamText.permissionAllow, null),
-          PermissionState.granted => (CamText.next, _setup.next),
-          PermissionState.denied => (
-              CamText.openSettings,
-              () => unawaited(openDeviceSettings(context)),
-            ),
-          PermissionState.bluetoothOff => _setup.canLinkTurnOnBluetooth
-              ? (
-                  CamText.turnOnBluetooth,
-                  () => unawaited(_setup.turnOnBluetooth()),
-                )
-              : (CamText.checkAgain, () => unawaited(_setup.recheck())),
-          PermissionState.unsupported => (CamText.close, () => _close()),
-        };
-        return DentraButtonRow(
-          secondary: back(_setup.back),
-          primary: DentraPillButton(
-            label: label,
-            loading: busy,
-            onPressed: action,
-          ),
+        return GuideActions(
+          leading: back,
+          trailing: switch (_setup.permission) {
+            PermissionState.needed => primary(
+                CamText.permissionAllow,
+                () => unawaited(_setup.allowBluetooth()),
+              ),
+            PermissionState.checking ||
+            PermissionState.requesting =>
+              status(CamText.permissionChecking),
+            PermissionState.granted => primary(CamText.next, _setup.next),
+            PermissionState.denied => primary(
+                CamText.openSettings,
+                () => unawaited(openDeviceSettings(context)),
+              ),
+            PermissionState.bluetoothOff => _setup.canLinkTurnOnBluetooth
+                ? primary(
+                    CamText.turnOnBluetooth,
+                    () => unawaited(_setup.turnOnBluetooth()),
+                  )
+                : primary(
+                    CamText.checkAgain,
+                    () => unawaited(_setup.recheck()),
+                  ),
+            PermissionState.unsupported => primary(CamText.close, _close),
+          },
         );
       case SetupStep.power:
-        return DentraButtonRow(
-          secondary: back(_setup.back),
-          primary: DentraPillButton(
-            label: CamText.powerReady,
-            onPressed: _setup.next,
-          ),
+        return GuideActions(
+          leading: back,
+          trailing: primary(CamText.powerReady, _setup.next),
         );
       case SetupStep.find:
-        return DentraButtonRow(
-          secondary: back(_setup.back),
-          primary: DentraPillButton(
-            label: CamText.findAgain,
-            loading: _setup.searching,
-            loadingLabel: CamText.findSearchingButton,
-            onPressed: _setup.connecting == null ? _setup.scanAgain : null,
-          ),
+        return GuideActions(
+          leading: back,
+          trailing: _setup.connecting != null
+              ? status(CamText.connectingShort)
+              : _setup.searching
+                  ? status(CamText.searching)
+                  : primary(
+                      CamText.findAgain,
+                      _setup.scanAgain,
+                      icon: Icons.refresh_rounded,
+                    ),
         );
       case SetupStep.wifi:
         if (_setup.linkLost) {
-          return DentraButtonRow(
-            secondary: back(_setup.back),
-            primary: DentraPillButton(
-              label: CamText.startOver,
-              onPressed: _setup.startOver,
-            ),
+          return GuideActions(
+            leading: back,
+            trailing: primary(CamText.startOver, _setup.startOver),
           );
         }
         if (_setup.chosen == null) {
-          return DentraButtonRow(
-            secondary: back(_setup.back),
-            primary: DentraPillButton(
-              label: CamText.wifiRescan,
-              loading: _setup.wifiLoading,
-              onPressed: () => unawaited(_setup.rescanWifi()),
-            ),
+          return GuideActions(
+            leading: back,
+            trailing: _setup.wifiLoading
+                ? status(CamText.searching)
+                : primary(
+                    CamText.wifiRescan,
+                    () => unawaited(_setup.rescanWifi()),
+                    icon: Icons.refresh_rounded,
+                  ),
           );
         }
-        return DentraButtonRow(
-          secondary: back(_setup.back),
-          primary: DentraPillButton(
-            label: CamText.wifiConnect,
-            onPressed: _join,
-          ),
+        return GuideActions(
+          leading: back,
+          trailing: primary(CamText.wifiConnect, _join),
         );
       case SetupStep.connect:
         if (_setup.saved != null) {
-          return DentraButtonRow(
-            secondary: back(() => _close(SetupOutcome.done), CamText.done),
-            primary: DentraPillButton(
-              label: CamText.startCapturing,
+          return GuideActions(
+            leading: GuideQuietButton(
+              label: CamText.done,
+              onPressed: () => _close(SetupOutcome.done),
+            ),
+            trailing: primary(
+              CamText.startCapturing,
+              () => _close(SetupOutcome.startCapturing),
               icon: Icons.photo_camera_outlined,
-              onPressed: () => _close(SetupOutcome.startCapturing),
             ),
           );
         }
         return switch (_setup.problem) {
-          null => const SizedBox.shrink(),
-          JoinProblem.linkLost => DentraPillButton(
-              label: CamText.startOver,
-              onPressed: _setup.startOver,
+          null => GuideActions(trailing: status(CamText.connectingShort)),
+          JoinProblem.linkLost => GuideActions(
+              trailing: primary(CamText.startOver, _setup.startOver),
             ),
-          JoinProblem.notOnNetwork => DentraButtonRow(
-              secondary: back(_setup.startOver, CamText.startOver),
-              primary: DentraPillButton(
-                label: CamText.tryAgain,
-                onPressed: _setup.findAgain,
+          JoinProblem.notOnNetwork => GuideActions(
+              leading: GuideQuietButton(
+                label: CamText.startOver,
+                onPressed: _setup.startOver,
               ),
+              trailing: primary(CamText.tryAgain, _setup.findAgain),
             ),
-          _ => DentraButtonRow(
-              secondary: back(_setup.back, CamText.wifiChooseAnother),
-              primary: DentraPillButton(
-                label: CamText.tryAgain,
-                onPressed: () => unawaited(_setup.join(_password.text)),
+          _ => GuideActions(
+              leading: GuideQuietButton(
+                label: CamText.wifiOther,
+                semanticLabel: CamText.wifiChooseAnother,
+                onPressed: _setup.back,
+              ),
+              trailing: primary(
+                CamText.tryAgain,
+                () => unawaited(_setup.join(_password.text)),
               ),
             ),
         };
@@ -736,7 +704,7 @@ class _CameraRow extends StatelessWidget {
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           child: Row(
@@ -745,7 +713,7 @@ class _CameraRow extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  connecting ? CamText.findConnecting(camera.name) : camera.name,
+                  camera.name,
                   style: GoogleFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -758,13 +726,7 @@ class _CameraRow extends StatelessWidget {
                 const SizedBox(width: 12),
               ],
               if (connecting)
-                const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primary,
-                  ),
-                )
+                const GuideDots()
               else
                 const Icon(
                   Icons.chevron_right_rounded,
@@ -890,72 +852,6 @@ class _NotListedState extends State<_NotListed> {
                 ),
         ),
       ],
-    );
-  }
-}
-
-enum _StageState { pending, active, done, failed }
-
-class _StageRow extends StatelessWidget {
-  const _StageRow({required this.label, required this.state});
-
-  final String label;
-  final _StageState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final Widget mark = switch (state) {
-      _StageState.done => const Icon(
-          Icons.check_circle_rounded,
-          size: 20,
-          color: ScanColors.clearInk,
-        ),
-      _StageState.active => const Padding(
-          padding: EdgeInsets.all(2),
-          child: SizedBox.square(
-            dimension: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-      _StageState.failed => const Icon(
-          Icons.error_outline_rounded,
-          size: 20,
-          color: AppColors.navy,
-        ),
-      _StageState.pending => Icon(
-          Icons.radio_button_unchecked_rounded,
-          size: 20,
-          color: ScanColors.muted.withValues(alpha: 0.9),
-        ),
-    };
-    return Semantics(
-      liveRegion: state == _StageState.active,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        child: Row(
-          children: [
-            SizedBox.square(dimension: 20, child: Center(child: mark)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: state == _StageState.pending
-                      ? FontWeight.w500
-                      : FontWeight.w700,
-                  color: state == _StageState.pending
-                      ? AppColors.secondaryText
-                      : AppColors.navy,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

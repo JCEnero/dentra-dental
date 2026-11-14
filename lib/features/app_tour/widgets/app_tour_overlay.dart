@@ -11,7 +11,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_mascot.dart';
-import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/guide_bubble.dart';
+import '../../../shared/widgets/guide_kit.dart';
+import '../../../shared/widgets/mascot_stage.dart';
 import '../data/app_tour_steps.dart';
 import '../data/app_tour_targets.dart';
 import '../providers/app_tour_provider.dart';
@@ -22,8 +24,9 @@ import 'tour_visuals.dart';
 ///
 /// The app stays visible under frosted glass while a clear lens glides
 /// from feature to feature (scrolling Home and switching tabs as it
-/// goes). Next, Back, a swipe on the card or a tap on the lit-up target
-/// move along; Skip or system back end it at any point.
+/// goes). Rabi hops along beside it and says what each one is for in his
+/// speech bubble. Next, Back, a swipe on the bubble or a tap on the lit-up
+/// target move along; Skip or system back end it at any point.
 class AppTour extends ConsumerStatefulWidget {
   const AppTour({
     super.key,
@@ -97,6 +100,11 @@ class _TourLayerState extends State<_TourLayer>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   int _step = 0;
 
+  /// Counts every move, forward or back. Keys what slides in, so going
+  /// back and forth quickly never brings in a key that is still on its way
+  /// out.
+  int _visit = 0;
+
   /// The current step's target, in this layer's coordinates.
   Rect? _target;
 
@@ -106,7 +114,7 @@ class _TourLayerState extends State<_TourLayer>
   /// Set when leaving, so taps during the fade-out do nothing.
   bool _closing = false;
 
-  /// Loops forever: ripple, arrow bob, feature glyphs, the mascot's sway.
+  /// Loops forever: the lens's ripple and the feature glyphs.
   late final AnimationController _motion = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 2400),
@@ -117,7 +125,7 @@ class _TourLayerState extends State<_TourLayer>
     duration: const Duration(milliseconds: 1700),
   );
 
-  /// The card's scroll (only moves on short screens or with large text).
+  /// The bubble's scroll (only moves on short screens or with large text).
   final ScrollController _cardScroll = ScrollController();
 
   AppTourStep get _current => appTourSteps[_step];
@@ -183,8 +191,8 @@ class _TourLayerState extends State<_TourLayer>
     });
   }
 
-  /// Scrolls Home so [spot] sits near the top, leaving the card room
-  /// below it. The lens follows along while the page moves.
+  /// Scrolls Home so [spot] sits near the top, leaving Rabi and his bubble
+  /// room below it. The lens follows along while the page moves.
   Future<void> _bringIntoView(TourSpot spot, int step) async {
     final ctx = widget.targets.keyFor(spot).currentContext;
     final position = ctx == null ? null : Scrollable.maybeOf(ctx)?.position;
@@ -219,10 +227,11 @@ class _TourLayerState extends State<_TourLayer>
       widget.onSelectTab(0);
     }
     HapticFeedback.selectionClick();
-    // Each step's card starts at its top.
+    // Each step's words start at their top.
     if (_cardScroll.hasClients) _cardScroll.jumpTo(0);
     setState(() {
       _step = step;
+      _visit++;
       _target = _measure();
     });
     if (_isLast && !_reduceMotion) {
@@ -275,8 +284,6 @@ class _TourLayerState extends State<_TourLayer>
     final target = _target;
     final safe = MediaQuery.paddingOf(context);
     final still = _reduceMotion;
-    final spotsSoFar =
-        appTourSteps.take(_step + 1).where((s) => s.spot != null).length;
 
     return PopScope(
       canPop: false,
@@ -305,127 +312,149 @@ class _TourLayerState extends State<_TourLayer>
                       )
                     : _lens(target);
 
-                // The card goes on whichever side of the target has room.
-                // Rabi stands on the card's top edge, so the card keeps
-                // that much clear of the target and the status bar.
-                const perch = _TourCard.guideSize;
+                // Rabi and his bubble go on whichever side of the target
+                // has room, with Rabi between the two.
+                const rabi = _TourGuide.rabiSize;
+                const gap = 8.0;
                 final roomBelow =
-                    size.height - hole.bottom - (perch + 14) - safe.bottom - 16;
-                final roomAbove = hole.top - 52 - safe.top - (perch + 6);
+                    size.height - hole.bottom - safe.bottom - 16 - rabi - gap;
+                final roomAbove = hole.top - safe.top - 6 - rabi - gap;
                 final below = target != null && roomBelow > roomAbove;
-                final EdgeInsets cardPadding;
-                final Alignment cardAlignment;
+                final EdgeInsets padding;
+                final Alignment alignment;
                 if (target == null) {
-                  cardPadding = EdgeInsets.fromLTRB(
+                  padding = EdgeInsets.fromLTRB(
                       20, safe.top + 16, 20, safe.bottom + 16);
-                  cardAlignment = Alignment.center;
+                  alignment = Alignment.center;
                 } else if (below) {
                   // Clamped: mid-scroll, the target can sit off screen.
-                  cardPadding = EdgeInsets.fromLTRB(
+                  padding = EdgeInsets.fromLTRB(
                       20,
-                      math.max(safe.top + perch + 6, hole.bottom + perch + 14),
+                      math.max(safe.top + 6, hole.bottom + gap),
                       20,
                       safe.bottom + 16);
-                  cardAlignment = Alignment.topCenter;
+                  alignment = Alignment.topCenter;
                 } else {
-                  cardPadding = EdgeInsets.fromLTRB(20, safe.top + perch + 6, 20,
-                      math.max(safe.bottom + 16, size.height - hole.top + 52));
-                  cardAlignment = Alignment.bottomCenter;
+                  padding = EdgeInsets.fromLTRB(20, safe.top + 6, 20,
+                      math.max(safe.bottom + 16, size.height - hole.top + gap));
+                  alignment = Alignment.bottomCenter;
                 }
 
-                // Rabi stands on the side away from the target and points
-                // across at it.
-                final mascotLeft =
-                    target != null && target.center.dx > size.width / 2;
+                // Where Rabi stands along that edge, as 0 (left) → 1
+                // (right) of the room he has, and which way he faces.
+                final width = math.min(_TourGuide.maxWidth, size.width - 40);
+                final left = (size.width - width) / 2;
+                var along = 0.5;
+                var faceRight = false;
+                if (target != null) {
+                  final double x;
+                  if (target.width > size.width * 0.55) {
+                    // A wide card: under one end of it, a different end
+                    // each time, pointing back at its middle.
+                    faceRight = _step.isOdd;
+                    x = faceRight ? left : left + width - rabi;
+                  } else {
+                    // A button: just beside it, on the roomier side.
+                    faceRight = target.center.dx > size.width / 2;
+                    x = faceRight ? hole.left - 6 - rabi : hole.right + 6;
+                  }
+                  along = width <= rabi
+                      ? 0.5
+                      : ((x - left) / (width - rabi)).clamp(0.0, 1.0);
+                }
 
-                return Stack(
-                  children: [
-                    Positioned.fill(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        // Tapping the lit-up target moves on, as if it
-                        // were the real thing.
-                        onTapUp: (details) {
-                          if (target != null &&
-                              hole.outerRect.contains(details.localPosition)) {
-                            _next();
-                          }
-                        },
-                        child: TweenAnimationBuilder<RRect>(
-                          tween: _RRectTween(end: hole),
-                          duration: dentraMotion(context, 520),
-                          curve: Curves.easeInOutCubic,
-                          builder: (context, lens, _) => Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              _FrostedScrim(lens: lens),
-                              CustomPaint(
-                                painter: SpotlightPainter(
-                                  hole: lens,
-                                  motion: _motion,
-                                  arrowBelow: below,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (_isLast && !still)
+                return MascotStage(
+                  child: Stack(
+                    children: [
                       Positioned.fill(
-                        child: IgnorePointer(
-                          child: CustomPaint(
-                            painter: ConfettiPainter(
-                              progress: _confetti,
-                              origin:
-                                  Offset(size.width / 2, size.height / 2 - 90),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          // Tapping the lit-up target moves on, as if it
+                          // were the real thing.
+                          onTapUp: (details) {
+                            if (target != null &&
+                                hole.outerRect
+                                    .contains(details.localPosition)) {
+                              _next();
+                            }
+                          },
+                          child: TweenAnimationBuilder<RRect>(
+                            tween: _RRectTween(end: hole),
+                            duration: dentraMotion(context, 520),
+                            curve: Curves.easeInOutCubic,
+                            builder: (context, lens, _) => Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _FrostedScrim(lens: lens),
+                                CustomPaint(
+                                  painter: SpotlightPainter(
+                                    hole: lens,
+                                    motion: _motion,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
-                    Positioned.fill(
-                      child: AnimatedPadding(
-                        duration: dentraMotion(context, 460),
-                        curve: Curves.easeOutCubic,
-                        padding: cardPadding,
-                        child: AnimatedAlign(
+                      if (_isLast && !still)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: CustomPaint(
+                              painter: ConfettiPainter(
+                                progress: _confetti,
+                                origin: Offset(
+                                    size.width / 2, size.height / 2 - 90),
+                              ),
+                            ),
+                          ),
+                        ),
+                      Positioned.fill(
+                        child: AnimatedPadding(
                           duration: dentraMotion(context, 460),
                           curve: Curves.easeOutCubic,
-                          alignment: cardAlignment,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 400),
-                            child: GestureDetector(
-                              // Swipe the card like a story.
-                              onHorizontalDragEnd: (d) {
-                                final v = d.primaryVelocity ?? 0;
-                                if (v < -250) _next();
-                                if (v > 250) _back();
-                              },
-                              child: _TourCard(
-                                step: step,
-                                stepIndex: _step,
-                                chapterLabel: step.chapter == null
-                                    ? null
-                                    : _chapterLabel(),
-                                progress: spotsSoFar / _spotCount,
-                                spotCount: _spotCount,
-                                isLast: _isLast,
-                                canGoBack: _step > 1 && step.spot != null,
-                                motion: _motion,
-                                still: still,
-                                mascotLeft: mascotLeft,
-                                targetAbove: below,
-                                onNext: _next,
-                                onBack: _back,
-                                onSkip: _finish,
-                                scrollController: _cardScroll,
+                          padding: padding,
+                          child: AnimatedAlign(
+                            duration: dentraMotion(context, 460),
+                            curve: Curves.easeOutCubic,
+                            alignment: alignment,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: _TourGuide.maxWidth,
+                              ),
+                              child: GestureDetector(
+                                // Swipe the bubble like a story.
+                                onHorizontalDragEnd: (d) {
+                                  final v = d.primaryVelocity ?? 0;
+                                  if (v < -250) _next();
+                                  if (v > 250) _back();
+                                },
+                                child: _TourGuide(
+                                  step: step,
+                                  visit: _visit,
+                                  chapterLabel: step.chapter == null
+                                      ? null
+                                      : _chapterLabel(),
+                                  spotCount: _spotCount,
+                                  isLast: _isLast,
+                                  canGoBack: _step > 1 && step.spot != null,
+                                  motion: _motion,
+                                  still: still,
+                                  rabiFirst: target == null || below,
+                                  rabiAlong: along,
+                                  rabiFacesRight: faceRight,
+                                  onNext: _next,
+                                  onBack: _back,
+                                  onSkip: _finish,
+                                  scrollController: _cardScroll,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),
@@ -493,24 +522,24 @@ class _OutsideLens extends CustomClipper<Path> {
   bool shouldReclip(_OutsideLens old) => old.lens != lens;
 }
 
-// ── Card ────────────────────────────────────────────────────────────
+// ── Rabi and his bubble ─────────────────────────────────────────────
 
-/// The glass card that does the talking, with the mascot perched on top.
-/// Contents slide in each step while the card resizes around them; a
-/// thin bar along the top fills as the tour goes on.
-class _TourCard extends StatelessWidget {
-  const _TourCard({
+/// Rabi beside his speech bubble. He stands on the side nearest the
+/// lit-up feature and the bubble's tail follows him; the words slide in
+/// each step while the bubble resizes around them.
+class _TourGuide extends StatelessWidget {
+  const _TourGuide({
     required this.step,
-    required this.stepIndex,
+    required this.visit,
     required this.chapterLabel,
-    required this.progress,
     required this.spotCount,
     required this.isLast,
     required this.canGoBack,
     required this.motion,
     required this.still,
-    required this.mascotLeft,
-    required this.targetAbove,
+    required this.rabiFirst,
+    required this.rabiAlong,
+    required this.rabiFacesRight,
     required this.onNext,
     required this.onBack,
     required this.onSkip,
@@ -518,186 +547,193 @@ class _TourCard extends StatelessWidget {
   });
 
   final AppTourStep step;
-  final int stepIndex;
+
+  /// Changes on every move, so each step's Rabi and words are new.
+  final int visit;
   final String? chapterLabel;
-  final double progress;
   final int spotCount;
   final bool isLast;
   final bool canGoBack;
   final Animation<double> motion;
   final bool still;
-  final bool mascotLeft;
 
-  /// The lit-up target is above the card (else below it).
-  final bool targetAbove;
+  /// Rabi is above the bubble (the feature is above them both), else
+  /// under it.
+  final bool rabiFirst;
+
+  /// 0 → 1: how far along from the left Rabi stands.
+  final double rabiAlong;
+  final bool rabiFacesRight;
   final VoidCallback onNext;
   final VoidCallback onBack;
   final VoidCallback onSkip;
   final ScrollController scrollController;
 
-  /// Rabi's size while he stands on the card.
-  static const double guideSize = 64;
+  static const double maxWidth = 400;
 
-  static const double _r = 26;
-  static const _radius = BorderRadius.all(Radius.circular(_r));
-
-  /// More see-through than the app's sheets: the frosted page shows
-  /// through. Nearly opaque on web, which has no blur behind it.
-  static final BoxDecoration _fill = BoxDecoration(
-    borderRadius: _radius,
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        AppColors.white.withValues(alpha: kIsWeb ? 0.94 : 0.62),
-        AppColors.lightLavender.withValues(alpha: kIsWeb ? 0.88 : 0.40),
-      ],
-    ),
-  );
+  /// Rabi's size beside a feature, and when he has the page to himself.
+  static const double rabiSize = 84;
+  static const double _heroSize = 124;
 
   @override
   Widget build(BuildContext context) {
     final duration = dentraMotion(context, 340);
     final hasSpot = step.spot != null;
+    final size = hasSpot ? rabiSize : _heroSize;
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        ClipRRect(
-          borderRadius: _radius,
-          child: GlassBlur(
-            strong: true,
-            child: CustomPaint(
-              foregroundPainter: const _GlassRimPainter(_r),
-              child: DecoratedBox(
-                decoration: _fill,
-                child: Stack(
-                  children: [
-                    AnimatedSize(
-                      duration: duration,
-                      curve: Curves.easeOutCubic,
-                      alignment: Alignment.bottomCenter,
-                      // Scrolls on short screens or with very large text,
-                      // so the buttons always stay reachable.
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-                        child: AnimatedSwitcher(
-                          duration: duration,
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          transitionBuilder: (child, animation) =>
-                              FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.08, 0),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: child,
-                            ),
-                          ),
-                          child: Semantics(
-                            key: ValueKey(stepIndex),
-                            // Announces each new step to screen readers.
-                            liveRegion: true,
-                            container: true,
-                            child: hasSpot
-                                ? _spotStep()
-                                : isLast
-                                    ? _finale()
-                                    : _welcome(),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (hasSpot)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: _ProgressLine(progress),
-                      ),
-                  ],
-                ),
-              ),
-            ),
+    // Each step has its own spot, so Rabi hops from the last one. The old
+    // spot stays until he has left it.
+    final rabi = AnimatedContainer(
+      key: const ValueKey('rabi'),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      height: size,
+      child: AnimatedSwitcher(
+        duration: dentraMotion(context, 420),
+        layoutBuilder: (current, previous) => Stack(
+          fit: StackFit.expand,
+          children: [...previous, if (current != null) current],
+        ),
+        transitionBuilder: (child, _) => child,
+        child: AnimatedAlign(
+          key: ValueKey(visit),
+          duration: duration,
+          curve: Curves.easeOutCubic,
+          alignment: Alignment(rabiAlong * 2 - 1, 0),
+          child: MascotSpot(
+            size: size,
+            mood: step.mood,
+            // His arm lifts toward a feature above, dips to one below.
+            aim: rabiFirst ? MascotAim.up : MascotAim.down,
+            mirrored: rabiFacesRight,
           ),
         ),
-        // Rabi walks along the top edge and points at each feature. On
-        // his own stop he just waves.
-        if (hasSpot)
-          Positioned(
-            top: -guideSize * 0.93,
-            left: 14,
-            right: 14,
-            height: guideSize,
-            child: IgnorePointer(
-              child: AnimatedAlign(
-                duration: dentraMotion(context, 520),
-                curve: Curves.easeInOutBack,
-                alignment:
-                    mascotLeft ? Alignment.centerLeft : Alignment.centerRight,
-                child: _Hop(
-                  key: ValueKey(stepIndex),
-                  child: Transform.rotate(
-                    // His arm lifts toward a target above, dips to one
-                    // below.
-                    angle: step.spot == TourSpot.rabi
-                        ? 0
-                        : (mascotLeft ? -1 : 1) * (targetAbove ? 0.2 : -0.14),
-                    alignment: const Alignment(0, 0.9),
-                    child: DentraMascot(
-                      mood: step.spot == TourSpot.rabi
-                          ? MascotMood.wave
-                          : MascotMood.point,
-                      size: guideSize,
-                      mirrored: mascotLeft,
+      ),
+    );
+
+    final bubble = Flexible(
+      key: const ValueKey('bubble'),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // The tail sits under (or over) the middle of Rabi.
+          final room = constraints.maxWidth - size;
+          final rabiCentre = room * rabiAlong + size / 2;
+          const corner = 33.0;
+          final tailAt = constraints.maxWidth <= 2 * corner
+              ? 0.5
+              : ((rabiCentre - corner) / (constraints.maxWidth - 2 * corner))
+                  .clamp(0.0, 1.0);
+          return GuideBubble(
+            tail: rabiFirst ? BubbleTail.top : BubbleTail.bottom,
+            tailAt: tailAt,
+            padding: EdgeInsets.zero,
+            child: AnimatedSize(
+              duration: duration,
+              curve: Curves.easeOutCubic,
+              alignment:
+                  rabiFirst ? Alignment.topCenter : Alignment.bottomCenter,
+              // Scrolls on short screens or with very large text, so the
+              // buttons always stay reachable.
+              child: SingleChildScrollView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(18, 16, 14, 12),
+                child: AnimatedSwitcher(
+                  duration: duration,
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  layoutBuilder: (current, previous) => Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                      for (final old in previous)
+                        Positioned(top: 0, left: 0, right: 0, child: old),
+                      if (current != null) current,
+                    ],
+                  ),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.08, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
                     ),
+                  ),
+                  child: Semantics(
+                    key: ValueKey(visit),
+                    // Announces each new step to screen readers.
+                    liveRegion: true,
+                    container: true,
+                    child: hasSpot
+                        ? _spotStep()
+                        : isLast
+                            ? _finale()
+                            : _welcome(),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+          );
+        },
+      ),
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rabiFirst ? [rabi, bubble] : [bubble, rabi],
     );
   }
 
-  /// Welcome: the mascot says hi and offers the tour.
+  /// Welcome: Rabi says hi and offers the tour.
   Widget _welcome() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const _PopIn(child: DentraMascot(size: 108)),
-        const SizedBox(height: 8),
-        _Caption('Quick tour · $spotCount stops'),
-        const SizedBox(height: 4),
-        _Title(step.title, textAlign: TextAlign.center),
-        const SizedBox(height: 6),
-        _Body(step.body, textAlign: TextAlign.center),
-        const SizedBox(height: 18),
-        _PillButton(label: step.action, onPressed: onNext),
-        const SizedBox(height: 2),
-        _SkipButton(label: 'Maybe later', onPressed: onSkip),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _Caption('Quick tour · $spotCount stops'),
+          const SizedBox(height: 4),
+          _Title(step.title, textAlign: TextAlign.center),
+          const SizedBox(height: 4),
+          _Body(step.body, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          GuidePrimaryButton(
+            label: step.action,
+            onPressed: onNext,
+            height: 46,
+            minWidth: 180,
+          ),
+          GuideQuietButton(
+            label: 'Maybe later',
+            semanticLabel: 'Maybe later, end the tour',
+            onPressed: onSkip,
+            height: 44,
+          ),
+        ],
+      ),
     );
   }
 
-  /// Send-off: a happy mascot, one line and one button.
+  /// Send-off: one line and one button.
   Widget _finale() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const _PopIn(
-          child: DentraMascot(mood: MascotMood.cheer, size: 104),
-        ),
-        const SizedBox(height: 10),
-        _Title(step.title, textAlign: TextAlign.center),
-        const SizedBox(height: 4),
-        _Body(step.body, textAlign: TextAlign.center),
-        const SizedBox(height: 18),
-        _PillButton(label: step.action, onPressed: onNext),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(right: 4, bottom: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _Title(step.title, textAlign: TextAlign.center),
+          const SizedBox(height: 4),
+          _Body(step.body, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          GuidePrimaryButton(
+            label: step.action,
+            onPressed: onNext,
+            height: 46,
+            minWidth: 180,
+          ),
+        ],
+      ),
     );
   }
 
@@ -715,7 +751,7 @@ class _TourCard extends StatelessWidget {
                   spot: step.spot!,
                   motion: motion,
                   still: still,
-                  size: 46,
+                  size: 44,
                 ),
               ),
             ),
@@ -725,7 +761,7 @@ class _TourCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _Caption(chapterLabel!),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1),
                   _Title(step.title),
                 ],
               ),
@@ -733,24 +769,43 @@ class _TourCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        _Body(step.body),
-        const SizedBox(height: 14),
+        Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: _Body(step.body),
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
-            _SkipButton(label: 'Skip', onPressed: onSkip),
+            // Lined up with the words above, not with its own padding.
+            Transform.translate(
+              offset: const Offset(-12, 0),
+              child: GuideQuietButton(
+                label: 'Skip',
+                semanticLabel: 'Skip, end the tour',
+                onPressed: onSkip,
+                height: 44,
+              ),
+            ),
+            // The main action keeps its size; it only narrows when Skip,
+            // Back and Next truly cannot share the row.
             Expanded(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   if (canGoBack) ...[
-                    _BackButton(onPressed: onBack),
+                    GuideBackButton(
+                      onPressed: onBack,
+                      label: 'Previous step',
+                      size: 44,
+                    ),
                     const SizedBox(width: 8),
                   ],
-                  // Narrows with very large text rather than overflowing.
                   Flexible(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 100),
-                      child: _PillButton(label: step.action, onPressed: onNext),
+                    child: GuidePrimaryButton(
+                      label: step.action,
+                      onPressed: onNext,
+                      height: 44,
+                      minWidth: 96,
                     ),
                   ),
                 ],
@@ -759,85 +814,6 @@ class _TourCard extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-/// Glass edge: a bright rim that fades round the card, with a soft
-/// sheen in the top-left corner.
-class _GlassRimPainter extends CustomPainter {
-  const _GlassRimPainter(this.radius);
-
-  final double radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bounds = Offset.zero & size;
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.9, -1.1),
-          radius: 0.9,
-          colors: [
-            AppColors.white.withValues(alpha: 0.38),
-            AppColors.white.withValues(alpha: 0),
-          ],
-        ).createShader(bounds),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(bounds.deflate(0.6), Radius.circular(radius)),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.white.withValues(alpha: 0.95),
-            AppColors.white.withValues(alpha: 0.25),
-            AppColors.g1.withValues(alpha: 0.6),
-          ],
-        ).createShader(bounds),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_GlassRimPainter old) => old.radius != radius;
-}
-
-/// Thin teal bar across the top of the card, filling with the tour.
-class _ProgressLine extends StatelessWidget {
-  const _ProgressLine(this.value);
-
-  final double value;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(end: value),
-      duration: dentraMotion(context, 520),
-      curve: Curves.easeOutCubic,
-      builder: (context, v, _) => Align(
-        alignment: Alignment.centerLeft,
-        child: FractionallySizedBox(
-          widthFactor: v,
-          child: Container(
-            height: 3,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius:
-                  const BorderRadius.horizontal(right: Radius.circular(3)),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.g1.withValues(alpha: 0.6),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -917,26 +893,6 @@ class _PopIn extends StatelessWidget {
   }
 }
 
-/// A little jump, once per step.
-class _Hop extends StatelessWidget {
-  const _Hop({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: dentraMotion(context, 520),
-      builder: (context, v, child) => Transform.translate(
-        offset: Offset(0, -12 * math.sin(v * math.pi)),
-        child: child,
-      ),
-      child: child,
-    );
-  }
-}
-
 /// Small plain caption above a title: the chapter and step.
 class _Caption extends StatelessWidget {
   const _Caption(this.text);
@@ -959,68 +915,6 @@ class _Caption extends StatelessWidget {
   }
 }
 
-/// Compact teal pill for the card's main action. Fills the width it's
-/// given.
-class _PillButton extends StatelessWidget {
-  const _PillButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  static const double _height = 44;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      excludeSemantics: true,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(_height / 2),
-          gradient: const LinearGradient(
-            colors: [AppColors.cardSolid, AppColors.g2],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.g2.withValues(alpha: 0.22),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          shape: const StadiumBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onPressed,
-            child: SizedBox(
-              height: _height,
-              width: double.infinity,
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _Title extends StatelessWidget {
   const _Title(this.text, {this.textAlign});
 
@@ -1031,16 +925,7 @@ class _Title extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       header: true,
-      child: Text(
-        text,
-        textAlign: textAlign,
-        style: GoogleFonts.outfit(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppColors.navy,
-          height: 1.25,
-        ),
-      ),
+      child: Text(text, textAlign: textAlign, style: guideTitleStyle()),
     );
   }
 }
@@ -1053,73 +938,6 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      textAlign: textAlign,
-      // Navy, not grey: it has to read on see-through glass.
-      style: GoogleFonts.outfit(
-        fontSize: 13.5,
-        color: AppColors.navy.withValues(alpha: 0.78),
-        height: 1.45,
-      ),
-    );
-  }
-}
-
-class _SkipButton extends StatelessWidget {
-  const _SkipButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: '$label, end the tour',
-      excludeSemantics: true,
-      child: TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.navy.withValues(alpha: 0.7),
-          minimumSize: const Size(44, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-}
-
-class _BackButton extends StatelessWidget {
-  const _BackButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Previous step',
-      excludeSemantics: true,
-      child: Material(
-        color: AppColors.white.withValues(alpha: 0.5),
-        shape: CircleBorder(
-          side: BorderSide(color: AppColors.white.withValues(alpha: 0.9)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: const SizedBox.square(
-            dimension: 44,
-            child:
-                Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.navy),
-          ),
-        ),
-      ),
-    );
+    return Text(text, textAlign: textAlign, style: guideBodyStyle());
   }
 }

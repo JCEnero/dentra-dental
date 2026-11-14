@@ -77,8 +77,8 @@ class _Section extends StatelessWidget {
 
 // ── Before you start ──────────────────────────────────────────────
 
-/// What the device can reach, then four tips for getting it ready: two columns
-/// of tiles, or one when the text is too large.
+/// Four tips for getting the device ready (two columns of tiles, or one when
+/// the text is too large), then what the device can reach.
 class _Prep extends StatelessWidget {
   const _Prep();
 
@@ -112,8 +112,6 @@ class _Prep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const DeviceReachPanel(),
-        const SizedBox(height: 10),
         LayoutBuilder(builder: (context, constraints) {
           if (constraints.maxWidth / scale < 310) {
             return Column(
@@ -144,6 +142,8 @@ class _Prep extends StatelessWidget {
             ],
           );
         }),
+        const SizedBox(height: 10),
+        const DeviceReachPanel(),
       ],
     );
   }

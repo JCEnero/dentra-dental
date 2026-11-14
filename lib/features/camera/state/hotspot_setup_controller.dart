@@ -52,8 +52,7 @@ class HotspotSetupController extends ChangeNotifier {
   /// The camera, once linked.
   SavedCamera? get saved => _saved;
 
-  bool get canGoBack =>
-      _step == HotspotStep.power || _step == HotspotStep.join;
+  bool get canGoBack => _step == HotspotStep.power || _step == HotspotStep.join;
 
   Timer? _check;
   Timer? _slowTimer;

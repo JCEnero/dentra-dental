@@ -303,13 +303,18 @@ class DeviceRenderer {
     return Path()..addPolygon([...left, ...right.reversed], true);
   }
 
+  /// Where the power switch sits, on the side of the handle.
+  static final DeviceFrame switchFrame = DeviceModel.patch(-30, 0.22);
+
   /// The lens, buttons, power switch and name, on the shell drawn by [paint].
-  /// [lit] and [shine] are as in [DeviceArt.head].
+  /// [lit] and [shine] are as in [DeviceArt.head]; [switchOn] is how far the
+  /// power switch has slid on, 0-1.
   static void paintParts(
     Canvas canvas,
     DevicePose pose, {
     double lit = 0,
     double shine = 0,
+    double switchOn = 1,
   }) {
     void place(
       DeviceFrame frame,
@@ -329,8 +334,8 @@ class DeviceRenderer {
         DeviceArt.captureSize.height, DeviceArt.captureButton);
     place(DeviceModel.front(-28), DeviceArt.lightSize, DeviceArt.lightSize,
         DeviceArt.lightButton);
-    place(DeviceModel.patch(-30, 0.22), DeviceArt.switchSize.width,
-        DeviceArt.switchSize.height, DeviceArt.powerSwitch);
+    place(switchFrame, DeviceArt.switchSize.width, DeviceArt.switchSize.height,
+        (c) => DeviceArt.powerSwitch(c, on: switchOn));
 
     // The name reads along the handle, up toward the head.
     final name = DeviceModel.front(-50);
@@ -647,8 +652,9 @@ abstract class DeviceArt {
     }
   }
 
-  /// The Power switch, a small slider in a slot on the side.
-  static void powerSwitch(Canvas canvas) {
+  /// The Power switch, a small slider in a slot on the side: down when off,
+  /// up when [on] is 1.
+  static void powerSwitch(Canvas canvas, {double on = 1}) {
     final w = switchSize.width, h = switchSize.height;
     final slot = RRect.fromRectAndRadius(
       Rect.fromLTWH(0, 0, w, h),
@@ -656,7 +662,12 @@ abstract class DeviceArt {
     );
     canvas.drawRRect(slot, Paint()..color = const Color(0xFF3F5A62));
     final thumb = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0.55, 0.7, w - 1.1, h * 0.52),
+      Rect.fromLTWH(
+        0.55,
+        0.7 + (1 - on) * (h - 1.4 - h * 0.52),
+        w - 1.1,
+        h * 0.52,
+      ),
       Radius.circular((w - 1.1) / 2),
     );
     canvas.drawRRect(

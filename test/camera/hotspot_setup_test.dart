@@ -261,7 +261,7 @@ void main() {
       expect(tester.takeException(), isNull);
 
       await tapText(tester, CamText.powerReady);
-      expect(find.text('K7P 2QX'), findsOneWidget);
+      expect(find.byKey(const ValueKey('pairing-code K7P2QX')), findsOneWidget);
       expect(find.text(CamText.hotspotWaiting), findsOneWidget);
       expect(tester.takeException(), isNull);
 

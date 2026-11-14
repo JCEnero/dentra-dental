@@ -46,7 +46,8 @@ class CameraStore {
 
   /// Whether the setup guide has opened by itself once already.
   Future<bool> setupOffered() => _readBool(_setupOffered);
-  Future<void> markSetupOffered() => _write((p) => p.setBool(_setupOffered, true));
+  Future<void> markSetupOffered() =>
+      _write((p) => p.setBool(_setupOffered, true));
 
   /// "Don't show again" on the capture tips.
   Future<bool> tipsHidden() => _readBool(_tipsHidden);
