@@ -483,14 +483,6 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     await capture(source);
   }
 
-  void dismissFailure() {
-    if (state.capturePhase != CapturePhase.failed) return;
-    state = state.copyWith(
-      capturePhase: CapturePhase.idle,
-      captureFailure: null,
-    );
-  }
-
   /// Ends scanning with the regions captured so far.
   Future<void> finish() async {
     if (!state.canFinish) return;

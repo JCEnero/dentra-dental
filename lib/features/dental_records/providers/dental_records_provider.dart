@@ -31,9 +31,6 @@ class DentalRecordsNotifier extends AsyncNotifier<List<DentalRecord>> {
     return _repo.fetchAll(_userId);
   }
 
-  DentalRecord? byId(String id) =>
-      state.valueOrNull?.where((r) => r.id == id).firstOrNull;
-
   Future<DentalRecord> create(DentalRecordInput input) async {
     final saved = await _repo.create(_userId, input);
     _replaceLocal(saved);

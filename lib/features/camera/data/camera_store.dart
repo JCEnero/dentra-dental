@@ -15,7 +15,6 @@ class CameraStore {
   static const _camera = 'dentra_cam.v1.camera';
   // v2: the upright default changed, so settings saved before it start over.
   static const _settings = 'dentra_cam.v2.view';
-  static const _setupOffered = 'dentra_cam.v1.setup_offered';
   static const _tipsHidden = 'dentra_cam.v1.tips_hidden';
 
   Future<SavedCamera?> loadCamera() async {
@@ -30,8 +29,6 @@ class CameraStore {
   Future<void> saveCamera(SavedCamera camera) =>
       _write((p) => p.setString(_camera, jsonEncode(camera.toJson())));
 
-  Future<void> forgetCamera() => _write((p) => p.remove(_camera));
-
   Future<CameraViewSettings> loadSettings() async {
     try {
       final raw = (await SharedPreferences.getInstance()).getString(_settings);
@@ -43,11 +40,6 @@ class CameraStore {
 
   Future<void> saveSettings(CameraViewSettings settings) =>
       _write((p) => p.setString(_settings, jsonEncode(settings.toJson())));
-
-  /// Whether the setup guide has opened by itself once already.
-  Future<bool> setupOffered() => _readBool(_setupOffered);
-  Future<void> markSetupOffered() =>
-      _write((p) => p.setBool(_setupOffered, true));
 
   /// "Don't show again" on the capture tips.
   Future<bool> tipsHidden() => _readBool(_tipsHidden);

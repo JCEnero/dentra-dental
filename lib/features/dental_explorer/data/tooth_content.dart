@@ -38,12 +38,6 @@ abstract class ToothContent {
   static ToothPositionContent forTooth(ToothInfo tooth) =>
       (tooth.arch == ToothArch.upper ? _upper : _lower)[tooth.position - 1];
 
-  /// Explains the tooth's number, e.g. "Quadrant 3 (lower left) ·
-  /// position 6 from the midline".
-  static String numberBreakdown(ToothInfo tooth) =>
-      'Quadrant ${tooth.quadrant} (${tooth.quadrantName.toLowerCase()}) · '
-      'position ${tooth.position} from the midline';
-
   static const List<String> facts = [
     'Adults usually have 32 permanent teeth, including four wisdom teeth.',
     'Enamel is the hardest substance in the human body.',

@@ -9,8 +9,6 @@ abstract class AppColors {
 
   // ── Card / surface tones ──────────────────────────────────────
   static const Color cardSolid    = Color(0xFF3BBFB8); // mid teal
-  static const Color cardSolidAlt = Color(0xFF4DD8C8); // bright teal-cyan
-  static const Color cardDeep     = Color(0xFF2CA6A4); // deeper teal
 
   // ── Neutrals ──────────────────────────────────────────────────
   static const Color lavender      = Color(0xFFB2EDE7); // light mint
@@ -60,29 +58,5 @@ abstract class AppColors {
       Color(0xFF5DE0D0), // bright cyan-mint highlight
       Color(0xFF2CA6A4), // medium teal base
     ],
-  );
-
-  // Vertical variant (headers / scan screen)
-  static const LinearGradient verticalGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [
-      Color(0xFF4DD8C8), // bright top
-      Color(0xFF2CA6A4), // medium teal bottom
-    ],
-  );
-
-  static const LinearGradient horizontalGradient = LinearGradient(
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-    colors: [g1, g2],
-  );
-
-  // ── Page background: very light mint tint → white ─────────────
-  static const LinearGradient pageBackground = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFFEAFAF8), Color(0xFFF8FDFB)],
-    stops: [0.0, 0.6],
   );
 }

@@ -52,7 +52,6 @@ class ToothDimensions {
   final double buccolingualCervical;
   final double rootLength;
 
-  double get totalLength => crownLength + rootLength;
 }
 
 class ToothInfo {
@@ -89,8 +88,6 @@ class ToothInfo {
   /// e.g. "Upper right first molar".
   String get name =>
       '${arch.label} ${side.label.toLowerCase()} ${positionName.toLowerCase()}';
-
-  String get quadrantName => '${arch.label} ${side.label.toLowerCase()}';
 
   ToothDimensions get dimensions => arch == ToothArch.upper
       ? _upperDimensions[position - 1]

@@ -10,8 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^6.2.1
-  video_player: ^2.9.2
-  fvp: ^0.38.1
   flutter_riverpod: ^2.6.1
   geolocator: ^13.0.2
   google_maps_flutter: ^2.18.0
@@ -44,5 +42,4 @@ flutter:
     - assets/images/mascot/
     - assets/images/treatments/
     - assets/images/treatments/icons/
-    - assets/videos/
     - assets/fonts/

@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/constants/app_colors.dart';
 import 'dentra_glass_ui.dart' show dentraMotion;
-import 'guide_bubble.dart';
 
 // The pieces Rabi's guides share (the Dentra Cam setup and the app tour):
 // what he says, the step rail, and compact buttons that never cut a label.
@@ -214,43 +213,6 @@ class _TypedState extends State<_Typed> with SingleTickerProviderStateMixin {
           ],
         );
       },
-    );
-  }
-}
-
-/// [GuideWords] in Rabi's speech bubble.
-class GuideSpeech extends StatelessWidget {
-  const GuideSpeech({
-    super.key,
-    required this.title,
-    this.body,
-    this.highlight,
-    this.tail = BubbleTail.none,
-    this.tailAt = 0.5,
-    this.center = false,
-    this.live = false,
-  });
-
-  final String title;
-  final String? body;
-  final String? highlight;
-  final BubbleTail tail;
-  final double tailAt;
-  final bool center;
-  final bool live;
-
-  @override
-  Widget build(BuildContext context) {
-    return GuideBubble(
-      tail: tail,
-      tailAt: tailAt,
-      child: GuideWords(
-        title: title,
-        body: body,
-        highlight: highlight,
-        center: center,
-        live: live,
-      ),
     );
   }
 }

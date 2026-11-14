@@ -126,13 +126,6 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
     }
   }
 
-  /// Removes all recorded sessions, e.g. when the account is deleted.
-  Future<void> clear() async {
-    state = const AsyncData([]);
-    ref.read(screeningImageCacheProvider.notifier).clear();
-    await _repo.deleteAll(_userId);
-  }
-
   /// Upserts by id, keeping newest-first order and no duplicates.
   void _replaceLocal(ScreeningSession session) {
     final current = state.valueOrNull ?? const <ScreeningSession>[];

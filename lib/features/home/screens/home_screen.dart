@@ -1,9 +1,7 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/avatar_widget.dart';
@@ -355,66 +353,14 @@ class HomeScreen extends ConsumerWidget {
 
 // ── Device hero card ──────────────────────────────────────────────
 
-class _DeviceHeroCard extends StatefulWidget {
+class _DeviceHeroCard extends StatelessWidget {
   final VoidCallback onScan;
   const _DeviceHeroCard({required this.onScan});
 
-  @override
-  State<_DeviceHeroCard> createState() => _DeviceHeroCardState();
-}
-
-class _DeviceHeroCardState extends State<_DeviceHeroCard> {
-  /// The waving mascot is a WebM with a transparent (VP9 alpha) channel.
-  /// Safari, which every iOS browser uses, can't show that transparency
-  /// and draws it on black, so the web build uses the same animation as
-  /// an animated WebP instead. Null on web.
-  VideoPlayerController? _controller;
-
-  static const _webMascot = 'assets/images/bunny_wave.webp';
-
-  /// False while Home is a hidden tab or covered by another page.
-  bool _onScreen = true;
-
-  @override
-  void initState() {
-    super.initState();
-    if (kIsWeb) return;
-    _controller = VideoPlayerController.asset('assets/videos/BUNNY.webm')
-      ..setLooping(true)
-      ..setVolume(0)
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {});
-          _syncPlayback();
-        }
-      });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // IndexedStack marks inactive tabs invisible, and routes under an
-    // opaque page have tickers disabled. Either way nobody sees the video,
-    // so stop decoding it until it is back on screen.
-    _onScreen = Visibility.of(context) && TickerMode.valuesOf(context).enabled;
-    _syncPlayback();
-  }
-
-  void _syncPlayback() {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
-    if (_onScreen) {
-      controller.play();
-    } else {
-      controller.pause();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
+  /// The waving mascot: an animated WebP with transparency (12 fps, 5 s
+  /// loop). `Image` stops advancing frames while TickerMode is off (a
+  /// hidden tab or a covered page) and when animations are disabled.
+  static const _mascot = 'assets/images/bunny_wave.webp';
 
   static const _radius = BorderRadius.all(Radius.circular(24));
 
@@ -513,7 +459,7 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                 // CTA
                 PrimaryButton(
                   label: 'Start Dental Scan',
-                  onTap: widget.onScan,
+                  onTap: onScan,
                 ),
               ],
             ),
@@ -535,25 +481,12 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
             height: 100,
             child: IgnorePointer(
               child: ExcludeSemantics(
-                child: switch (_controller) {
-                  null => Image.asset(
-                      _webMascot,
-                      fit: BoxFit.contain,
-                      alignment: Alignment.bottomRight,
-                      gaplessPlayback: true,
-                    ),
-                  final controller when controller.value.isInitialized =>
-                    FittedBox(
-                      fit: BoxFit.contain,
-                      alignment: Alignment.bottomRight,
-                      child: SizedBox(
-                        width: controller.value.size.width,
-                        height: controller.value.size.height,
-                        child: VideoPlayer(controller),
-                      ),
-                    ),
-                  _ => const SizedBox.shrink(),
-                },
+                child: Image.asset(
+                  _mascot,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.bottomRight,
+                  gaplessPlayback: true,
+                ),
               ),
             ),
           ),

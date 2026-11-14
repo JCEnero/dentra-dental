@@ -270,7 +270,7 @@ class _ResultCard extends StatelessWidget {
             const SizedBox(height: 6),
             _Figures(report: report, trend: trend),
             const SizedBox(height: 8),
-            _ScopeLine(report: report),
+            const _ScopeLine(),
           ],
           if (symptoms != null || records > 0) ...[
             const SizedBox(height: 12),
@@ -964,9 +964,7 @@ class _TrendBars extends StatelessWidget {
 
 /// What a result can't speak to, kept in view next to the figures.
 class _ScopeLine extends StatelessWidget {
-  const _ScopeLine({required this.report});
-
-  final ScreeningReport report;
+  const _ScopeLine();
 
   @override
   Widget build(BuildContext context) {

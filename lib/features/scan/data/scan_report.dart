@@ -195,14 +195,6 @@ class ReportSpot {
 
   String get where => describeAreas(areas);
 
-  /// Tells apart signs in the same general area of one photo.
-  String? get sideOfPhoto => switch (box?.center.dx) {
-        null => null,
-        final x when x < 0.4 => 'left of photo',
-        final x when x > 0.6 => 'right of photo',
-        _ => 'middle of photo',
-      };
-
   static Rect? boxOf(ScreeningFinding finding) => switch (finding.bbox) {
         [final x, final y, final w, final h] => Rect.fromLTWH(x, y, w, h),
         _ => null,
@@ -254,7 +246,6 @@ class ConditionRow {
   /// Of [count], how many were strong signs.
   final int strong;
 
-  bool get read => count != null;
 }
 
 /// One finished analysis, for the results page.
@@ -699,18 +690,6 @@ class ScanTrend {
   /// Flagged in this scan and the one before.
   List<MouthArea> get stillAreas =>
       _compare((now, then) => now.flagged && then.flagged);
-
-  /// Where things stand against the last scan, in a few words.
-  String get oneLine {
-    if (!hasHistory) return 'This scan is your starting point';
-    if (repeating.isNotEmpty) return 'A sign keeps showing up in the same area';
-    if (newAreas.isNotEmpty) {
-      return 'New since last scan: ${newAreas.first.label.toLowerCase()}'
-          '${newAreas.length > 1 ? ' and more' : ''}';
-    }
-    if (clearedAreas.isNotEmpty) return 'Fewer areas flagged than last scan';
-    return 'No change since your last scan';
-  }
 
   ScreeningReport? get _now => points.isEmpty ? null : points.last.report;
 

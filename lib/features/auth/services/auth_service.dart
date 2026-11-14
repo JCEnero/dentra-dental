@@ -102,9 +102,6 @@ class AuthService extends ChangeNotifier {
   String? get currentEmail => _currentEmail;
   String? get currentDisplayName => _currentDisplayName;
 
-  /// Whether a real backend is configured (false in demo mode).
-  bool get usesBackend => _api != null;
-
   /// Whether to offer "Continue with Google": only once it is configured.
   bool get googleSignInAvailable =>
       _api != null && _googleServerClientId != null;

@@ -51,14 +51,6 @@ enum CareLevel {
   /// Its stop on the scale.
   final String short;
 
-  static CareLevel of(ReportLevel level) => switch (level) {
-        ReportLevel.none => routine,
-        ReportLevel.nextVisit => nextVisit,
-        ReportLevel.soon => soon,
-        ReportLevel.prompt => prompt,
-      };
-
-  static CareLevel max(CareLevel a, CareLevel b) => a.index >= b.index ? a : b;
 }
 
 /// One thing to do.

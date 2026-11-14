@@ -64,8 +64,6 @@ abstract final class CamText {
   static const permissionDeniedIos =
       'In Settings, open DENTRA and turn on Bluetooth.';
   static const openSettings = 'Open settings';
-  static const settingsUnavailable =
-      "Couldn't open settings. Open your phone's settings and find DENTRA.";
   static const bluetoothOffTitle = 'Bluetooth is off';
   static const bluetoothOffAndroid = 'Turn it on to find the camera.';
   static const bluetoothOffIos = 'Turn it on in Control Center or Settings.';
@@ -138,8 +136,6 @@ abstract final class CamText {
   static const wifiPasswordBody = 'Enter its password.';
   static const wifiPrivacy =
       "Sent only to your camera. DENTRA doesn't keep it.";
-  static const showPassword = 'Show password';
-  static const hidePassword = 'Hide password';
   static const wifiPasswordShort =
       'Wi-Fi passwords have at least 8 characters.';
   static const wifiOpenNote =
@@ -195,8 +191,6 @@ abstract final class CamText {
       'been on a while, press its BOOT button once to connect it again.';
   static const retry = 'Retry';
   static const checkDevice = 'Check device';
-  static const statusConnected = 'Connected';
-  static const statusOffline = 'Not connected';
   static String signalWord(int bars) => switch (bars) {
         >= 4 => 'Strong',
         3 => 'Good',
@@ -207,7 +201,6 @@ abstract final class CamText {
         connected ? 'Camera connected' : 'Camera not connected',
         if (bars != null) 'Wi-Fi signal ${signalWord(bars).toLowerCase()}',
       ].join(', ');
-  static String areaProgress(int n, int total) => '$n of $total';
   static const skip = 'Skip';
   static String skipArea(String area) => 'Skip $area';
   static String takePhoto(String area) => 'Take photo of $area';

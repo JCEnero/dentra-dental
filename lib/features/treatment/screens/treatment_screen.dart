@@ -111,7 +111,6 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
                           final treatment = filtered[index];
                           return _TreatmentCard(
                             treatment: treatment,
-                            index: index,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -255,12 +254,10 @@ class _CategoryChip extends StatelessWidget {
 class _TreatmentCard extends StatelessWidget {
   final TreatmentModel treatment;
   final VoidCallback onTap;
-  final int index;
 
   const _TreatmentCard({
     required this.treatment,
     required this.onTap,
-    required this.index,
   });
 
   Color _getCategoryColor() {

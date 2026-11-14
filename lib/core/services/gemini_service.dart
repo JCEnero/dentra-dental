@@ -194,9 +194,6 @@ Guidelines:
     ].join();
   }
 
-  /// Resets the conversation history, starting a fresh session.
-  void resetSession() => _history.clear();
-
   /// Replaces the conversation context, e.g. to continue a saved chat.
   /// [turns] are (isUser, text) pairs in order.
   void restoreSession(Iterable<(bool, String)> turns) {

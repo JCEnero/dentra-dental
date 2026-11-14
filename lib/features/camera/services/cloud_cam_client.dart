@@ -91,10 +91,6 @@ class CloudCamClient implements CamClient {
   Future<_CloudSession>? _opening;
   bool _closed = false;
 
-  /// Whether the camera is connected to the API, as of the last word from
-  /// it. Null before the link opened.
-  bool? get cameraOnline => _session?.online;
-
   @override
   Future<CamStatus> status(
       {Duration timeout = const Duration(seconds: 3)}) async {

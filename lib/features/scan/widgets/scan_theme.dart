@@ -14,7 +14,6 @@ import 'scan_motion.dart';
 /// (clear) through deep teal (worth checking) to navy (see someone soon), so
 /// the more serious a result, the deeper its colour.
 abstract class ScanColors {
-  static const Color clear = AppColors.g1;
   static const Color check = Color(0xFF267C7D); // g2 toward navy
   static const Color urgent = AppColors.navy;
   static const Color muted = Color(0xFFB7C3C5); // border toward grey

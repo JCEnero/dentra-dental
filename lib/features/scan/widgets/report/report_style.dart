@@ -181,54 +181,6 @@ class ReportHeading extends StatelessWidget {
   }
 }
 
-/// A small swatch and its meaning.
-class ReportLegendItem extends StatelessWidget {
-  const ReportLegendItem(this.state, {super.key});
-
-  final AreaState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ReportSwatch(state),
-        const SizedBox(width: 5),
-        Flexible(child: Text(areaStateLabel(state), style: reportNote)),
-      ],
-    );
-  }
-}
-
-/// The states shown, darkest first, and one key for all that aren't read.
-class ReportLegend extends StatelessWidget {
-  const ReportLegend(this.states,
-      {super.key, this.alignment = WrapAlignment.start});
-
-  final Set<AreaState> states;
-  final WrapAlignment alignment;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: alignment,
-      spacing: 12,
-      runSpacing: 4,
-      children: [
-        for (final s in const [
-          AreaState.strong,
-          AreaState.possible,
-          AreaState.faint,
-          AreaState.clear,
-        ])
-          if (states.contains(s)) ReportLegendItem(s),
-        if (states.any((s) => !s.read))
-          const ReportLegendItem(AreaState.notRead),
-      ],
-    );
-  }
-}
-
 class ReportSwatch extends StatelessWidget {
   const ReportSwatch(this.state, {super.key, this.size = 11});
 

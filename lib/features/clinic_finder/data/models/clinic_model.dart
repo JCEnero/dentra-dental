@@ -11,13 +11,6 @@ class ClinicService {
     required this.price,
   });
 
-  factory ClinicService.fromJson(Map<String, dynamic> json) {
-    return ClinicService(
-      name: json['name'] as String,
-      price: (json['price'] as num).toDouble(),
-    );
-  }
-
   Map<String, dynamic> toJson() {
     return {
       'name': name,
@@ -41,15 +34,6 @@ class OperatingHours {
     required this.closeTime,
     this.isClosed = false,
   });
-
-  factory OperatingHours.fromJson(Map<String, dynamic> json) {
-    return OperatingHours(
-      weekday: json['weekday'] as int,
-      openTime: json['openTime'] as String,
-      closeTime: json['closeTime'] as String,
-      isClosed: json['isClosed'] as bool? ?? false,
-    );
-  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -92,26 +76,6 @@ class ClinicModel {
     required this.phoneNumber,
     this.imageUrl,
   });
-
-  factory ClinicModel.fromJson(Map<String, dynamic> json) {
-    return ClinicModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      address: json['address'] as String,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      rating: (json['rating'] as num).toDouble(),
-      reviewCount: json['reviewCount'] as int,
-      services: (json['services'] as List<dynamic>)
-          .map((e) => ClinicService.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      operatingHours: (json['operatingHours'] as List<dynamic>)
-          .map((e) => OperatingHours.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      phoneNumber: json['phoneNumber'] as String,
-      imageUrl: json['imageUrl'] as String?,
-    );
-  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -167,31 +131,4 @@ class ClinicModel {
     return services.map((s) => s.price).reduce((a, b) => a < b ? a : b);
   }
 
-  ClinicModel copyWith({
-    String? id,
-    String? name,
-    String? address,
-    double? latitude,
-    double? longitude,
-    double? rating,
-    int? reviewCount,
-    List<ClinicService>? services,
-    List<OperatingHours>? operatingHours,
-    String? phoneNumber,
-    String? imageUrl,
-  }) {
-    return ClinicModel(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      address: address ?? this.address,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
-      rating: rating ?? this.rating,
-      reviewCount: reviewCount ?? this.reviewCount,
-      services: services ?? this.services,
-      operatingHours: operatingHours ?? this.operatingHours,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      imageUrl: imageUrl ?? this.imageUrl,
-    );
-  }
 }

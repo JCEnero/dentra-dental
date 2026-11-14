@@ -7,7 +7,8 @@ wave, point, blink and look around instead of swapping still pictures.
 
     python tool/mascot_rig.py <render.png> <cutout.png> [--preview out.png]
 
-<render.png>  the 2048px render (assets/images/treatments/mascot.png)
+<render.png>  the 2048px render. It no longer ships in the app; restore it with
+              git show 774951e:assets/images/treatments/mascot.png > mascot.png
 <cutout.png>  the same picture with a transparent background, any size
 Needs numpy and opencv-python-headless.
 

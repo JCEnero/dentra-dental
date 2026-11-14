@@ -101,10 +101,6 @@ class ClinicFilterNotifier extends Notifier<ClinicFilterState> {
     state = state.copyWith(minRating: minRating);
   }
 
-  void setOpenNowOnly(bool openNowOnly) {
-    state = state.copyWith(openNowOnly: openNowOnly);
-  }
-
   // <-- ADDED BY CLAUDE
   void setSearchQuery(String query) {
     state = state.copyWith(searchQuery: query);
@@ -112,10 +108,6 @@ class ClinicFilterNotifier extends Notifier<ClinicFilterState> {
 
   void setSort(ClinicSort sort) {
     state = state.copyWith(sort: sort);
-  }
-
-  void reset() {
-    state = const ClinicFilterState();
   }
 }
 

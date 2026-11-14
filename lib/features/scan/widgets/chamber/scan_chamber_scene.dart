@@ -58,15 +58,6 @@ class ChamberTimeline {
     return n;
   }
 
-  /// The photo on stage at [p], if any.
-  int? activeIndex(double p) {
-    for (var i = 0; i < photos.length; i++) {
-      final f = flight(i, p);
-      if (f >= 0 && f < 1) return i;
-    }
-    return null;
-  }
-
   /// The step to explain at [p]: saving and sending while the model builds,
   /// what happens to each photo while they're read, then the results.
   static int stepAt(double p) {
@@ -934,14 +925,13 @@ class ChamberScene {
 class ChamberPainter extends CustomPainter {
   ChamberPainter({
     required this.scene,
-    required this.clock,
+    required Listenable clock,
     required this.progress,
     required this.seconds,
     required this.stageInsets,
   }) : super(repaint: clock);
 
   final ChamberScene scene;
-  final Listenable clock;
   final double Function() progress;
   final double Function() seconds;
 

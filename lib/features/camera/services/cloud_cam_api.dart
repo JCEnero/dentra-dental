@@ -120,7 +120,5 @@ class CloudCamApi {
     ];
   }
 
-  Future<void> forget(String id) => _api.send('DELETE', '/api/cam/devices/$id');
-
   static const _badResponse = 'Something went wrong. Please try again.';
 }
