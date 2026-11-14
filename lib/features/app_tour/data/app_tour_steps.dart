@@ -24,7 +24,7 @@ enum TourSpot {
 }
 
 /// One stop on the app tour. Steps with a [spot] put the spotlight on it;
-/// the welcome and send-off are Rabi and his bubble, centred.
+/// the welcome and send-off sit centred on their own.
 class AppTourStep {
   const AppTourStep({
     required this.title,
@@ -52,12 +52,10 @@ class AppTourStep {
 /// Welcome, Home's features, the dock (in order), then a send-off.
 const List<AppTourStep> appTourSteps = [
   AppTourStep(
-    title: "Hi, I'm Rabi",
-    body: "Let me show you around. In about a minute, I'll point out your "
-        '3D teeth, scans, history, nearby clinics and where to find me '
-        'when you need help.',
+    title: "Let's take a quick tour",
+    body: 'Get to know the app and where to find everything. It only takes '
+        'a minute.',
     action: 'Start the tour',
-    mood: MascotMood.wave,
   ),
   AppTourStep(
     spot: TourSpot.teeth,

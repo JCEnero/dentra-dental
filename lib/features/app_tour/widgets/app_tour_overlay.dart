@@ -11,10 +11,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_mascot.dart';
-import '../../../shared/widgets/gloss_pill_button.dart';
+import '../../../shared/widgets/glass_card.dart' show GlassBlur;
 import '../../../shared/widgets/guide_bubble.dart';
 import '../../../shared/widgets/guide_kit.dart';
-import '../../../shared/widgets/mascot_stage.dart' show MascotPop;
 import '../data/app_tour_steps.dart';
 import '../data/app_tour_targets.dart';
 import '../providers/app_tour_provider.dart';
@@ -23,8 +22,9 @@ import 'tour_visuals.dart';
 /// First-run tour of DENTRA. Sits above the app shell, starts on its own
 /// for accounts that haven't seen it, and can be replayed from Profile.
 ///
-/// It opens full screen over the frosted app, everything centred: Rabi on
-/// a glass orb, what the tour covers, Start the tour and Maybe later. Then
+/// It opens full screen over the frosted app, everything centred among
+/// soft teal glass: a short invitation, Start the tour and Maybe later.
+/// Then
 /// the app stays visible under frosted glass while a clear
 /// lens glides from feature to feature (scrolling Home and switching tabs
 /// as it goes). Rabi rides inside his speech bubble, whose tail points at
@@ -489,9 +489,9 @@ class _RRectTween extends Tween<RRect> {
 
 /// Frosted glass over the whole app except the [lens]: a light blur with
 /// a navy-to-teal tint, which brightens to a white-to-mint veil when
-/// [light] (the intro and the send-off, where Rabi stands on it without a
+/// [light] (the intro and the send-off, which stand on it without a
 /// bubble). With [deep] (the intro) the app is blurred further under a
-/// thinner veil, so the glass panel in front reads as a layer of its own.
+/// thinner veil, so the intro in front reads as a layer of its own.
 /// The web build skips the blur (see `GlassBlur`) and tints a little more
 /// instead.
 class _FrostedScrim extends StatelessWidget {
@@ -506,10 +506,11 @@ class _FrostedScrim extends StatelessWidget {
   final bool deep;
 
   static BoxDecoration _tint(double alpha, double light, double deep) {
-    // The web has no blur to hide the app, so there the intro's veil gets
-    // thicker instead of thinner.
-    final top = kIsWeb ? 0.9 + 0.06 * deep : 0.8 - 0.2 * deep;
-    final bottom = kIsWeb ? 0.94 + 0.04 * deep : 0.86 - 0.18 * deep;
+    // The intro's veil is thinner, so more of the app shows through. The
+    // web has no blur to soften the app, so its veil stays a little
+    // thicker there.
+    final top = kIsWeb ? 0.9 - 0.04 * deep : 0.8 - 0.28 * deep;
+    final bottom = kIsWeb ? 0.94 - 0.04 * deep : 0.86 - 0.26 * deep;
     return BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topCenter,
@@ -797,10 +798,10 @@ class _BubbleRabi extends StatelessWidget {
 
 // ── Intro ───────────────────────────────────────────────────────────
 
-/// The tour's opening, full screen over the frosted app, everything in
-/// the middle and no card: Rabi on a glass orb, his hello and what the
-/// tour covers, then Start the tour and Maybe later. The orb settles in,
-/// Rabi pops up on it, and the words and buttons rise in one after another.
+/// The tour's opening, full screen over the frosted app with nothing boxed
+/// in: soft teal glass in the corners, a short invitation in the middle,
+/// then Start the tour and Maybe later. The words and buttons rise in one
+/// after another.
 class _Intro extends StatefulWidget {
   const _Intro({
     super.key,
@@ -818,10 +819,10 @@ class _Intro extends StatefulWidget {
 }
 
 class _IntroState extends State<_Intro> with SingleTickerProviderStateMixin {
-  /// Runs once: the orb, Rabi, then the words and buttons.
+  /// Runs once: the backdrop, then the words and buttons.
   late final AnimationController _enter = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1300),
+    duration: const Duration(milliseconds: 1000),
   );
 
   bool _started = false;
@@ -850,26 +851,12 @@ class _IntroState extends State<_Intro> with SingleTickerProviderStateMixin {
     final step = widget.step;
     return LayoutBuilder(
       builder: (context, box) {
-        // Rabi grows with the screen but leaves the words the room.
-        final rabi = (box.maxHeight * 0.19).clamp(96.0, 164.0);
         final padding =
             EdgeInsets.fromLTRB(28, safe.top + 24, 28, safe.bottom + 24);
         return Stack(
           fit: StackFit.expand,
           children: [
-            // Soft light behind the words so they read on whatever is
-            // under the glass. It has no edge, so it is not a card.
-            const IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(0, 0.1),
-                    radius: 0.9,
-                    colors: [Color(0x8CFFFFFF), Color(0x00FFFFFF)],
-                  ),
-                ),
-              ),
-            ),
+            TourIntroBackdrop(enter: _enter),
             // Scrolls only on short screens or with very large text.
             SingleChildScrollView(
               padding: padding,
@@ -879,19 +866,10 @@ class _IntroState extends State<_Intro> with SingleTickerProviderStateMixin {
                 ),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 360),
+                    constraints: const BoxConstraints(maxWidth: 290),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Center(
-                          child: _IntroStage(
-                            enter: _enter,
-                            rabi: rabi,
-                            mood: step.mood,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
                         Semantics(
                           liveRegion: true,
                           container: true,
@@ -899,48 +877,48 @@ class _IntroState extends State<_Intro> with SingleTickerProviderStateMixin {
                             children: [
                               _Rise(
                                 enter: _enter,
-                                from: 0.26,
+                                from: 0.12,
                                 child: Semantics(
                                   header: true,
                                   child: Text(
                                     step.title,
                                     textAlign: TextAlign.center,
-                                    style: guideTitleStyle(large: true)
-                                        .copyWith(
-                                      fontSize: 32,
-                                      letterSpacing: -0.8,
-                                      height: 1.1,
+                                    style:
+                                        guideTitleStyle(large: true).copyWith(
+                                      fontSize: 25,
+                                      letterSpacing: -0.5,
+                                      height: 1.15,
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 8),
                               _Rise(
                                 enter: _enter,
-                                from: 0.31,
+                                from: 0.2,
                                 child: Text(
                                   step.body,
                                   textAlign: TextAlign.center,
                                   style: guideBodyStyle()
-                                      .copyWith(fontSize: 16, height: 1.5),
+                                      .copyWith(fontSize: 14, height: 1.45),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 34),
+                        const SizedBox(height: 26),
                         _Rise(
                           enter: _enter,
-                          from: 0.38,
-                          child: GlossPillButton(
+                          from: 0.3,
+                          child: _StartButton(
                             label: step.action,
                             onPressed: widget.onStart,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 6),
                         _Rise(
                           enter: _enter,
-                          from: 0.44,
+                          from: 0.38,
                           child: _LaterButton(onPressed: widget.onLater),
                         ),
                       ],
@@ -956,103 +934,198 @@ class _IntroState extends State<_Intro> with SingleTickerProviderStateMixin {
   }
 }
 
-/// Rabi on his glass orb. The orb and its glow settle in first, then he
-/// pops up on it the same way he appears in the camera setup.
-class _IntroStage extends StatelessWidget {
-  const _IntroStage({
-    required this.enter,
-    required this.rabi,
-    required this.mood,
-  });
+/// The intro's way in: a pill of frosted white glass with a bright rim,
+/// the label and an arrow in deep teal. A press sinks it a little.
+class _StartButton extends StatefulWidget {
+  const _StartButton({required this.label, required this.onPressed});
 
-  final Animation<double> enter;
-  final double rabi;
-  final MascotMood mood;
+  final String label;
+  final VoidCallback onPressed;
 
-  /// About a third of a second, like his pop in the camera setup.
-  static const Interval _pop = Interval(0.08, 0.31);
+  @override
+  State<_StartButton> createState() => _StartButtonState();
+}
+
+class _StartButtonState extends State<_StartButton> {
+  bool _down = false;
+
+  static const _radius = BorderRadius.all(Radius.circular(25));
 
   @override
   Widget build(BuildContext context) {
-    final size = Size(rabi * 1.7, rabi * 1.32);
-    // Rabi stands in the middle, his body (not his ears) on the orb's centre.
-    final rabiTop = (size.height - rabi) / 2 + rabi * 0.04;
-    final heart = Offset(size.width / 2, rabiTop + rabi * 0.56);
-    return ExcludeSemantics(
-      child: SizedBox.fromSize(
-        size: size,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: IntroOrbPainter(
-                  enter: enter,
-                  center: heart,
-                  radius: rabi * 0.56,
+    return Semantics(
+      button: true,
+      label: widget.label,
+      excludeSemantics: true,
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1,
+        duration: dentraMotion(context, 140),
+        curve: Curves.easeOut,
+        child: CustomPaint(
+          // A soft teal lift under the glass.
+          painter: const _GlassLiftPainter(),
+          child: ClipRRect(
+            borderRadius: _radius,
+            child: GlassBlur(
+              strong: true,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: _radius,
+                  // Brighter at the top, as if lit from above.
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.white.withValues(alpha: 0.9),
+                      AppColors.white.withValues(alpha: 0.66),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: AppColors.white,
+                    width: 1.4,
+                  ),
+                ),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    onTap: widget.onPressed,
+                    onHighlightChanged: (down) => setState(() => _down = down),
+                    splashColor: AppColors.g1.withValues(alpha: 0.14),
+                    highlightColor: AppColors.g1.withValues(alpha: 0.06),
+                    child: ConstrainedBox(
+                      constraints:
+                          const BoxConstraints(minHeight: 50, minWidth: 196),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Shrinks to fit rather than cut a word.
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  widget.label,
+                                  maxLines: 1,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.1,
+                                    color: guideAccent,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            AnimatedSlide(
+                              offset: Offset(_down ? 0.15 : 0, 0),
+                              duration: dentraMotion(context, 140),
+                              child: const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 17,
+                                color: guideAccent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-            Positioned(
-              left: (size.width - rabi) / 2,
-              top: rabiTop,
-              child: AnimatedBuilder(
-                animation: enter,
-                builder: (context, child) =>
-                    MascotPop.appear(_pop.transform(enter.value), child!),
-                child: DentraMascot(mood: mood, size: rabi, awake: true),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// The intro's quiet way out: a frosted glass pill, clearly a button but
-/// a step back from Start the tour.
-class _LaterButton extends StatelessWidget {
+/// A soft teal glow under the start button, fading out on every side
+/// with no edge of its own.
+class _GlassLiftPainter extends CustomPainter {
+  const _GlassLiftPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(size.width * 0.12, size.height * 0.45,
+        size.width * 0.76, size.height * 0.7);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2)),
+      Paint()
+        ..color = AppColors.g2.withValues(alpha: 0.2)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GlassLiftPainter old) => false;
+}
+
+/// The intro's quiet way out: just the words, with a short teal stroke
+/// under them that stretches across them while pressed.
+class _LaterButton extends StatefulWidget {
   const _LaterButton({required this.onPressed});
 
   final VoidCallback onPressed;
 
   @override
+  State<_LaterButton> createState() => _LaterButtonState();
+}
+
+class _LaterButtonState extends State<_LaterButton> {
+  bool _down = false;
+
+  @override
   Widget build(BuildContext context) {
+    final motion = dentraMotion(context, 180);
     return Semantics(
       button: true,
       label: 'Maybe later, end the tour',
       excludeSemantics: true,
       child: Material(
-        color: AppColors.white.withValues(alpha: 0.62),
-        shape: StadiumBorder(
-          side: BorderSide(
-            color: AppColors.g2.withValues(alpha: 0.2),
-            width: 1.2,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
+        type: MaterialType.transparency,
         child: InkWell(
-          onTap: onPressed,
-          splashColor: AppColors.g1.withValues(alpha: 0.14),
-          highlightColor: AppColors.g1.withValues(alpha: 0.06),
-          child: SizedBox(
-            height: 52,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'Maybe later',
-                    maxLines: 1,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.navy.withValues(alpha: 0.74),
+          onTap: widget.onPressed,
+          onHighlightChanged: (down) => setState(() => _down = down),
+          customBorder: const StadiumBorder(),
+          splashColor: AppColors.g1.withValues(alpha: 0.1),
+          highlightColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48, minWidth: 120),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Maybe later',
+                      maxLines: 1,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.navy.withValues(alpha: 0.66),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 5),
+                  AnimatedContainer(
+                    duration: motion,
+                    curve: Curves.easeOutCubic,
+                    width: _down ? 52 : 16,
+                    height: 2,
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.all(Radius.circular(2)),
+                      gradient: LinearGradient(
+                        colors: [AppColors.g1, AppColors.g2],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

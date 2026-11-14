@@ -10,8 +10,8 @@ import 'dentra_glass_ui.dart' show dentraMotion;
 /// centred and an arrow in teal on a white disc at the end. A soft band of
 /// light glides across it every few seconds, and a press sinks it a little.
 ///
-/// Used by the welcome slides, the auth screens and the app tour's intro, so
-/// the first steps through the app share one button.
+/// Used by the welcome slides and the auth screens, so the first steps
+/// through the app share one button.
 ///
 /// Pass `onPressed: null` to disable it. While [loading] the disc shows a
 /// spinner, the label switches to [loadingLabel] and taps are ignored.

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../onboarding/widgets/visuals/tooth_glyph.dart';
@@ -65,97 +66,189 @@ class SpotlightPainter extends CustomPainter {
       old.hole != hole || old.motion != motion;
 }
 
-/// The intro's glass orb behind Rabi, centred on [center]: a wide mint glow
-/// round it, then a disc of frosted glass, clear at the top left and
-/// misting toward mint at the bottom, with a bright rim. [enter] runs
-/// 0 → 1 once; the orb swells and brightens in over its first third.
-class IntroOrbPainter extends CustomPainter {
-  IntroOrbPainter({
-    required this.enter,
-    required this.center,
-    required this.radius,
-  }) : super(repaint: enter);
+/// The intro's abstract backdrop: soft panes of teal and mint glass that
+/// slowly change shape in the corners, kept clear of the middle where the
+/// words and buttons sit. Fades in over the first part of [enter]. Holds
+/// still under reduced motion.
+class TourIntroBackdrop extends StatefulWidget {
+  const TourIntroBackdrop({super.key, required this.enter});
 
   final Animation<double> enter;
-  final Offset center;
-  final double radius;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final t = Curves.easeOutCubic.transform((enter.value / 0.36).clamp(0.0, 1.0));
-    if (t == 0) return;
-    final r = radius * (0.86 + 0.14 * t);
+  State<TourIntroBackdrop> createState() => _TourIntroBackdropState();
+}
 
-    // The glow, reaching well past the orb and fading to nothing.
-    final glow = radius * 1.8;
-    canvas.drawCircle(
-      center,
-      glow,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [
-            AppColors.mintGreen.withValues(alpha: 0.6 * t),
-            AppColors.g1.withValues(alpha: 0.14 * t),
-            AppColors.g1.withValues(alpha: 0),
-          ],
-          stops: const [0, 0.55, 1],
-        ).createShader(Rect.fromCircle(center: center, radius: glow)),
-    );
+class _TourIntroBackdropState extends State<TourIntroBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _ticker = createTicker((elapsed) {
+    _seconds.value = elapsed.inMicroseconds / 1e6;
+  });
+  final _seconds = ValueNotifier<double>(0);
+  bool _still = false;
 
-    final orb = Rect.fromCircle(center: center, radius: r);
-    // Frosted glass: white at the top left, a little clearer through the
-    // middle, mint where light gathers at the bottom.
-    canvas.drawCircle(
-      center,
-      r,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.white.withValues(alpha: 0.82 * t),
-            AppColors.white.withValues(alpha: 0.36 * t),
-            AppColors.lightLavender.withValues(alpha: 0.7 * t),
-          ],
-          stops: const [0, 0.55, 1],
-        ).createShader(orb),
-    );
-    canvas.drawCircle(
-      center,
-      r,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(0, 0.85),
-          radius: 0.7,
-          colors: [
-            AppColors.g1.withValues(alpha: 0.2 * t),
-            AppColors.g1.withValues(alpha: 0),
-          ],
-        ).createShader(orb),
-    );
-
-    // The rim: bright where the light comes from, softer opposite.
-    canvas.drawCircle(
-      center,
-      r - 0.7,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.white.withValues(alpha: 0.98 * t),
-            AppColors.white.withValues(alpha: 0.5 * t),
-            AppColors.g1.withValues(alpha: 0.4 * t),
-          ],
-        ).createShader(orb),
-    );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (_still) {
+      if (_ticker.isActive) _ticker.stop();
+    } else if (!_ticker.isActive) {
+      _ticker.start();
+    }
   }
 
   @override
-  bool shouldRepaint(IntroOrbPainter old) =>
-      old.center != center || old.radius != radius || old.enter != enter;
+  void dispose() {
+    _ticker.dispose();
+    _seconds.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ExcludeSemantics(
+        child: RepaintBoundary(
+          child: CustomPaint(
+            size: Size.infinite,
+            painter: _BackdropPainter(_seconds, widget.enter, _still),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One pane: where its centre sits (fractions of the screen), its size (a
+/// fraction of the shorter side), its two colours and strength, and its own
+/// beat so no two move together.
+class _Pane {
+  const _Pane(this.x, this.y, this.r, this.from, this.to, this.alpha, this.seed);
+
+  final double x, y, r;
+  final Color from, to;
+  final double alpha;
+  final double seed;
+}
+
+class _BackdropPainter extends CustomPainter {
+  _BackdropPainter(this.seconds, this.enter, this.still)
+      : super(repaint: Listenable.merge([seconds, enter]));
+
+  final ValueNotifier<double> seconds;
+  final Animation<double> enter;
+  final bool still;
+
+  static const _panes = [
+    // Top right, the largest, mostly off screen.
+    _Pane(1.02, 0.05, 0.5, AppColors.g1, AppColors.g2, 0.24, 0.0),
+    // Bottom left.
+    _Pane(-0.04, 0.95, 0.42, AppColors.mintGreen, AppColors.cardSolid, 0.26,
+        1.9),
+    // A small one low on the right.
+    _Pane(0.97, 0.8, 0.11, AppColors.lavender, AppColors.g1, 0.42, 3.4),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final t = still ? 0.0 : seconds.value;
+    final fade = still
+        ? 1.0
+        : Curves.easeOutCubic.transform((enter.value / 0.4).clamp(0.0, 1.0));
+    if (fade <= 0) return;
+    // Sized from the shorter side so a wide window keeps them in the
+    // corners.
+    final unit = math.min(size.width, size.height * 0.62);
+    for (final p in _panes) {
+      final drift = Offset(
+        6 * math.sin(t * 0.21 + p.seed),
+        8 * math.cos(t * 0.17 + p.seed),
+      );
+      _pane(
+        canvas,
+        Offset(p.x * size.width, p.y * size.height) + drift,
+        p.r * unit,
+        p,
+        t,
+        fade,
+      );
+    }
+  }
+
+  /// A soft, slowly changing shape filled with a two-teal gradient, light
+  /// along its top and a bright rim, like a pane of tinted glass.
+  void _pane(
+      Canvas canvas, Offset c, double r, _Pane p, double t, double fade) {
+    final phase = p.seed + t * 0.2;
+    const n = 40;
+    final points = <Offset>[
+      for (var i = 0; i < n; i++)
+        () {
+          final a = 2 * math.pi * i / n;
+          final k = 1 +
+              0.08 * math.sin(3 * a + phase) +
+              0.05 * math.sin(5 * a - phase * 1.3) +
+              0.03 * math.cos(2 * a + phase * 0.7);
+          return c + Offset(math.cos(a), math.sin(a)) * (r * k);
+        }(),
+    ];
+    final path = _closedSmooth(points);
+    final bounds = Rect.fromCircle(center: c, radius: r * 1.15);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            p.from.withValues(alpha: p.alpha * fade),
+            p.to.withValues(alpha: p.alpha * 0.75 * fade),
+          ],
+        ).createShader(bounds),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.white.withValues(alpha: 0.4 * fade),
+            AppColors.white.withValues(alpha: 0),
+          ],
+          stops: const [0, 0.6],
+        ).createShader(bounds),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.3
+        ..color = AppColors.white.withValues(alpha: 0.7 * fade),
+    );
+  }
+
+  /// A smooth closed curve through [points] (Catmull-Rom as Béziers).
+  static Path _closedSmooth(List<Offset> points) {
+    final n = points.length;
+    final path = Path()..moveTo(points[0].dx, points[0].dy);
+    for (var i = 0; i < n; i++) {
+      final p0 = points[(i - 1 + n) % n];
+      final p1 = points[i];
+      final p2 = points[(i + 1) % n];
+      final p3 = points[(i + 2) % n];
+      final c1 = p1 + (p2 - p0) / 6;
+      final c2 = p2 - (p3 - p1) / 6;
+      path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, p2.dx, p2.dy);
+    }
+    return path..close();
+  }
+
+  @override
+  bool shouldRepaint(_BackdropPainter old) =>
+      old.seconds != seconds || old.enter != enter || old.still != still;
 }
 
 /// The send-off's burst behind Rabi, centred on [center]: a halo that
