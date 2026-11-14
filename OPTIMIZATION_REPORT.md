@@ -341,3 +341,100 @@ Everything below keeps the design as it was, except the four items you approved:
 - **Impeller:** on by default for Android in Flutter 3.47, with no opt-out in the manifest. Nothing to change.
 
 Tests: 494 passed. Analyzer: 0 issues.
+
+## Phase 5: verify and measure
+
+### Before and after
+
+AAB and split APKs are built with `--obfuscate --split-debug-info=build/symbols`. The size-analysis APK is not obfuscated, since Flutter doesn't allow `--analyze-size` together with `--split-debug-info`.
+
+| | Baseline | Final | Saved |
+|---|---|---|---|
+| Split APK, arm64-v8a | 65.8 MB (69,028,614 B) | 23.3 MB (24,422,228 B) | 42.5 MB (-64.6%) |
+| Split APK, armeabi-v7a | 60.9 MB (63,897,772 B) | 21.4 MB (22,486,304 B) | 39.5 MB (-64.8%) |
+| Split APK, x86_64 | 68.4 MB (71,670,873 B) | 25.0 MB (26,168,144 B) | 43.4 MB (-63.5%) |
+| App bundle (.aab) | 117.5 MB (123,212,515 B) | 62.2 MB (65,233,960 B) | 55.3 MB (-47.1%) |
+| APK, arm64 target, size analysis | 89.3 MB (93,659,253 B) | 25.2 MB (26,443,468 B) | 64.1 MB (-71.8%) |
+| Dart files in `lib/` | 264 | 263 | |
+| Asset files / size on disk | 47 / 28 MB | 42 / 1.2 MB | |
+| Direct dependencies | 22 (+2 dev) | 20 (+3 dev) | `fvp`, `video_player`, `flutter_svg` out; `vector_graphics` (+ `vector_graphics_compiler` dev) in |
+| Packages in `pubspec.lock` | 158 | 151 | |
+| `flutter analyze` | 0 issues | 0 issues | |
+| `flutter test` | 494 passed | 494 passed | |
+
+What's left in the arm64 APK: `libflutter.so` 11.2 MB (the engine, fixed), `libapp.so` 9.9 MB (all Dart code), Flutter assets 1.07 MB, `classes.dex` 0.77 MB, and about 0.3 MB of resources and small native libraries.
+
+The AAB is 62 MB mostly because it contains three ABIs plus the debug symbols and R8 map that Play keeps for crash reports. A phone downloads roughly its split APK, compressed further by Play.
+
+### Frame timing (not measured here)
+
+No phone was connected, and profile mode doesn't run on emulators, so no frame times were captured. The fixes above follow from reading the code and the Flutter source. To measure them, plug in a mid-range Android phone with USB debugging on and run:
+
+```bash
+~/snap/flutter/common/flutter/bin/flutter run --profile
+```
+
+Then open DevTools (the URL is printed in the terminal), go to Performance, and turn on "Track widget builds". For each check, record about 10 seconds and look for frames over 16 ms (8 ms on 120 Hz screens):
+
+1. **Idle:** sit on Profile for 10 s. The timeline should go quiet. Before the fix, it drew a frame every vsync.
+2. **Rabi streaming:** ask Rabi a long question. Only the last bubble should rebuild while the reply streams.
+3. **Scrolling:** scroll History (with many scans), Treatments, and Clinics.
+4. **Tabs:** switch tabs quickly. Each switch should rebuild only the nav and the new tab's tickers.
+5. **Cold start:** force-stop the app, launch it, and watch the time to the first mint frame (no white or black flash).
+6. **Report PDF:** download a report with signs. The spinner should keep turning smoothly.
+
+If first-run animations stutter once and then run smoothly, that is shader compilation. Impeller precompiles its shaders, so it shouldn't happen on Android, but note it if it does.
+
+## Build commands from now on
+
+```bash
+# Play Store
+flutter build appbundle --release --obfuscate --split-debug-info=build/symbols
+
+# Direct-install APKs, one per CPU type (most phones use arm64-v8a)
+flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols
+
+# Size check, when needed (cannot be combined with --split-debug-info)
+flutter build apk --release --analyze-size --target-platform android-arm64
+```
+
+Keep the `build/symbols` folder from each release you ship (for example, copy it next to the build with the version number). Without it, obfuscated crash stack traces can't be read. To decode one:
+
+```bash
+flutter symbolize -i crash.txt -d build/symbols/app.android-arm64.symbols
+```
+
+Upload `build/app/outputs/mapping/release/mapping.txt` to Play Console with each release, or keep it, for the Java/Kotlin side.
+
+## Manual test checklist for the release build
+
+Install the arm64 split APK (`adb install build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`) on a real phone. Release builds use R8 and obfuscation, which debug builds don't, so most release-only crashes show up as `ClassNotFoundException`, `NoSuchMethodException` or a plugin that silently does nothing. Check `adb logcat` while you go.
+
+- [ ] **Launch:** mint window from tap to first frame, in light and dark mode (Android 12+ shows the icon on mint). No white or black flash.
+- [ ] **Onboarding and welcome:** slides, the glossy button, the teal teeth.
+- [ ] **Sign-in:** email and password, Google sign-in (Credential Manager, a common R8 casualty), forgot password, 2FA, verify email, sign out.
+- [ ] **Home:** the waving bunny plays smoothly and loops, and pauses when you switch tabs or open a page on top. The four Services icons show on the first frame, with no pop-in. The daily tip shows. ExtraBold headings are in Outfit, not the system font, including the very first launch with Wi-Fi off.
+- [ ] **Scan tab:** intro animations run; switching away and back resumes them.
+- [ ] **Scan flow, own camera:** capture, photo check, analysis, the report with the 3D mouth.
+- [ ] **Dentra Cam:** Bluetooth setup (universal_ble), live view, capture, light and controls sheet, screen stays awake (wakelock).
+- [ ] **Report PDF:** download and share a report with marked photos. Photos and crops look right, and the PDF is smaller than before.
+- [ ] **History:** calendar, search (type fast), filters, open a screening, open a record, tooth history.
+- [ ] **Dental records:** add a record with a photo (image_picker) and with a file (file_selector), edit, delete.
+- [ ] **Clinics:** location permission (geolocator), the map with pins, leave the tab and come back (pins appear at once), clinic detail, call or directions links (url_launcher), filters.
+- [ ] **Treatments:** list scrolls smoothly, icons are sharp, cards fade in once, the detail page.
+- [ ] **Comparison:** the before/after slider drags smoothly.
+- [ ] **Rabi chat:** open and close (smooth slide), send, streaming reply, markdown (bullets, numbers, bold), the long-press copy toast, minimize to the pill and drag it, history, new chat, the screening suggestion card. The avatar is sharp at every size.
+- [ ] **Dock:** the bubble on the active tab still looks frosted (blur reduced from 8 to 4).
+- [ ] **Profile:** edit profile, avatar, change password, 2FA, privacy, help, delete account dialog.
+- [ ] **Notifications:** bell, list, detail sheet.
+- [ ] **Secure storage:** close the app fully and reopen: still signed in (flutter_secure_storage).
+
+If something fails only in release: reproduce it, find the missing class in logcat, and add a `-keep class that.package.** { *; }` line to `android/app/proguard-rules.pro`.
+
+## Risks and follow-ups
+
+- **Tablets:** while the chat is open, the app beneath pauses its animations. The panel covers phones fully, but on very wide screens part of Home stays visible, and its animations freeze until the chat closes or minimizes.
+- **Bunny resolution:** the WebP is 270 px against the old 360 px video, shown in a 100-point box. On 3x+ screens it is scaled up about 1.1x. If it looks soft, re-export it at 300 to 360 px (the web build would benefit too).
+- **The mascot source render** now lives only in git history (see Phase 2). `tool/mascot_rig.py` says how to restore it.
+- **`dart format`** touched 130 files in one commit. If it conflicts with other branches, merge `main` into them after this lands, or revert `20bab35`.
+- **`.env` ships inside the app** (as it did before). Its keys are readable from the APK, so the Maps key should stay restricted to the app's package and signing certificate in Google Cloud.
