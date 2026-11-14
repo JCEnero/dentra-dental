@@ -335,8 +335,8 @@ class AuthService extends ChangeNotifier {
 
   // ── Password Reset ────────────────────────────────────────────
 
-  /// Emails a 6-digit reset code. The server answers the same for unknown
-  /// emails, so success doesn't mean an account exists.
+  /// Emails a 6-digit reset code. Fails with "No DENTRA account uses that
+  /// email." when no account matches.
   Future<AuthResult> sendPasswordResetEmail({required String email}) async {
     final api = _api;
     if (api == null) {

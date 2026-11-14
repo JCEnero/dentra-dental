@@ -185,9 +185,12 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'jane@example.com');
     await tester.tap(find.bySemanticsLabel('Send code'));
     await settle(tester, steps: 4);
-    expect(find.text('Reset password'), findsNothing);
+    // The dialog stays up while the code is sent, then hands over.
+    expect(find.text('Reset password'), findsOneWidget);
 
-    await settle(tester, steps: 10);
+    await settle(tester, steps: 14);
+    expect(find.text("Enter your email and we'll send you a 6-digit code."),
+        findsNothing);
     expect(find.byType(ResetPasswordScreen), findsOneWidget);
   });
 

@@ -209,39 +209,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _forgotPassword() async {
-    final resetEmail = await showDialog<String>(
+    // The dialog sends the code itself, so a mistyped or unknown address
+    // can be fixed right there.
+    final sent = await showDialog<({String email, int resendIn})>(
       context: context,
       barrierColor: AppGlass.barrier,
       builder: (_) => _ForgotPasswordDialog(
         initialEmail: _emailCtrl.text.trim(),
+        onSend: _sendResetCode,
       ),
     );
+    if (sent == null || !mounted) return;
 
-    if (resetEmail == null || !mounted) return;
-
-    final toast = DentraToast.of(context)
-      ..show('Sending a reset code to $resetEmail…',
-          tone: DentraFeedbackTone.info);
-
-    AuthResult result;
-    try {
-      result = await _authService.sendPasswordResetEmail(email: resetEmail);
-    } catch (_) {
-      result = const AuthResult(success: false, error: _connectionError);
-    }
-    if (!mounted) return;
-
-    toast.hide();
-    if (!result.success) {
-      toast.show(result.error ?? _genericError, tone: DentraFeedbackTone.error);
-      return;
-    }
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ResetPasswordScreen(
-        email: resetEmail,
-        resendAvailableIn: result.resendAvailableIn ?? 60,
+        email: sent.email,
+        resendAvailableIn: sent.resendIn,
       ),
     ));
+  }
+
+  Future<AuthResult> _sendResetCode(String email) async {
+    try {
+      final result = await _authService.sendPasswordResetEmail(email: email);
+      return result.success || result.error != null
+          ? result
+          : const AuthResult(success: false, error: _genericError);
+    } catch (_) {
+      return const AuthResult(success: false, error: _connectionError);
+    }
   }
 
   void _navigateToApp() {
@@ -358,9 +354,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 /// Collects the reset email and validates it in place. Pops with the
 /// email to send to, or null when cancelled.
 class _ForgotPasswordDialog extends StatefulWidget {
-  const _ForgotPasswordDialog({required this.initialEmail});
+  const _ForgotPasswordDialog({
+    required this.initialEmail,
+    required this.onSend,
+  });
 
   final String initialEmail;
+
+  /// Emails the code. A failed result's error shows under the field, e.g.
+  /// "No DENTRA account uses that email."
+  final Future<AuthResult> Function(String email) onSend;
 
   @override
   State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
@@ -369,6 +372,7 @@ class _ForgotPasswordDialog extends StatefulWidget {
 class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
   late final _controller = TextEditingController(text: widget.initialEmail);
   String? _error;
+  bool _sending = false;
 
   @override
   void dispose() {
@@ -376,14 +380,32 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_sending) return;
     final email = _controller.text.trim();
     final error = AuthValidators.email(email);
     if (error != null) {
       setState(() => _error = error);
       return;
     }
-    Navigator.pop(context, email);
+
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    final result = await widget.onSend(email);
+    if (!mounted) return;
+    if (!result.success) {
+      setState(() {
+        _sending = false;
+        _error = result.error;
+      });
+      return;
+    }
+    Navigator.pop(
+      context,
+      (email: email, resendIn: result.resendAvailableIn ?? 60),
+    );
   }
 
   @override
@@ -473,7 +495,12 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
                   onEditingComplete: _submit,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                AuthPillButton(label: 'Send code', onPressed: _submit),
+                AuthPillButton(
+                  label: 'Send code',
+                  loading: _sending,
+                  loadingLabel: 'Sending code…',
+                  onPressed: _submit,
+                ),
                 const SizedBox(height: AppSpacing.xs),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
