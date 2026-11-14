@@ -209,11 +209,15 @@ class _GlassBubble extends StatelessWidget {
 
   static const double _disc = 44;
 
+  /// A light frost: the bubble sits on the dock's glass, which is already
+  /// blurred, so a small sigma keeps the frosted look at a lower cost.
+  static final ImageFilter _frost = ImageFilter.blur(sigmaX: 4, sigmaY: 4);
+
   @override
   Widget build(BuildContext context) {
     return ClipOval(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        filter: _frost,
         child: Container(
           width: _disc,
           height: _disc,

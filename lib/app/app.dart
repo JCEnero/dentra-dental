@@ -135,16 +135,18 @@ class _AppShellState extends State<AppShell> {
     setState(() => _tab = index);
   }
 
+  /// Built once: their arguments never change, so switching tabs only
+  /// rebuilds what depends on the selected index, not every tab.
+  late final List<Widget> _screens = [
+    HomeScreen(onNavigate: _navigate, tourTargets: _tour),
+    ScanScreen(onNavigate: _navigate),
+    HistoryScreen(onNavigate: _navigate),
+    const ClinicsScreen(),
+    ProfileScreen(onNavigate: _navigate),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final screens = <Widget>[
-      HomeScreen(onNavigate: _navigate, tourTargets: _tour),
-      ScanScreen(onNavigate: _navigate),
-      HistoryScreen(onNavigate: _navigate),
-      const ClinicsScreen(),
-      ProfileScreen(onNavigate: _navigate),
-    ];
-
     return AiChatScope(
       controller: _aiChat,
       child: Scaffold(
@@ -153,21 +155,36 @@ class _AppShellState extends State<AppShell> {
           child: Stack(
             children: [
               // ── Main app UI ─────────────────────────────────
-              Column(
-                children: [
-                  Expanded(
-                    child: IndexedStack(
-                      index: _tab,
-                      sizing: StackFit.expand,
-                      children: screens,
+              // Animations pause while the chat panel covers the app,
+              // as they do on hidden tabs below.
+              ListenableBuilder(
+                listenable: _aiChat,
+                builder: (context, child) => TickerMode(
+                  enabled: !(_aiChat.isOpen && !_aiChat.isMinimized),
+                  child: child!,
+                ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: IndexedStack(
+                        index: _tab,
+                        sizing: StackFit.expand,
+                        children: [
+                          // IndexedStack doesn't stop a hidden tab's
+                          // animations, so its tickers would keep the app
+                          // drawing frames the user never sees.
+                          for (var i = 0; i < _screens.length; i++)
+                            TickerMode(enabled: i == _tab, child: _screens[i]),
+                        ],
+                      ),
                     ),
-                  ),
-                  AppBottomNav(
-                    activeIndex: _tab,
-                    onTap: _navigate,
-                    itemKeys: _tour.tabs,
-                  ),
-                ],
+                    AppBottomNav(
+                      activeIndex: _tab,
+                      onTap: _navigate,
+                      itemKeys: _tour.tabs,
+                    ),
+                  ],
+                ),
               ),
 
               // ── AI chat overlay (floats above everything) ───

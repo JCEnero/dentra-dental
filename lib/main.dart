@@ -12,7 +12,13 @@ Future<void> main() async {
   // fonts from the network: a missing weight would otherwise show in the
   // system font until the download landed, then swap.
   GoogleFonts.config.allowRuntimeFetching = false;
-  await dotenv.load(fileName: '.env'); // GEMINI_API_KEY, API_BASE_URL, ...
+  // Config and the onboarding flag are independent, so read them together.
+  // The flag is read before the first frame so returning users never see
+  // a flash of onboarding.
+  final (_, onboardingCompleted) = await (
+    dotenv.load(fileName: '.env'), // API_BASE_URL, MAPS_API_KEY, ...
+    OnboardingStorage.isCompleted(),
+  ).wait;
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -23,9 +29,6 @@ Future<void> main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
-  // Read before the first frame so returning users never see a flash of
-  // onboarding.
-  final onboardingCompleted = await OnboardingStorage.isCompleted();
   // The session is restored by the launch loader, not here: the first
   // frame never waits on the network, and the loader only lets a user in
   // once the server has confirmed the session and their data is loaded.

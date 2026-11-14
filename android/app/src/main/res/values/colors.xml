@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app's page color (AppColors.lightLavender). The window shows it
+         from launch until Flutter's first frame, so there is no white or
+         black flash before the app appears. -->
+    <color name="launch_background">#FFE8F8F7</color>
+</resources>

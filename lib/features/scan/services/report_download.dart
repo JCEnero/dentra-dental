@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image/image.dart' as img;
@@ -100,19 +101,30 @@ Future<ReportPhoto> loadReportPhoto(ImageProvider provider) async {
   );
   try {
     final raw = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-    final jpeg = img.encodeJpg(
-      img.Image.fromBytes(
-        width: image.width,
-        height: image.height,
-        bytes: raw!.buffer,
-        numChannels: 4,
-      ),
-      quality: 80,
-    );
+    final rgba = raw!.buffer.asUint8List(raw.offsetInBytes, raw.lengthInBytes);
+    // JPEG encoding is pure Dart and takes a noticeable moment per photo, so
+    // it runs on a background isolate (inline on web) to keep frames flowing.
+    final jpeg = await compute(_encodeJpeg, (rgba, image.width, image.height));
     return ReportPhoto(jpeg: jpeg, width: image.width, height: image.height);
   } finally {
     image.dispose();
   }
+}
+
+/// RGBA pixels to a quality-80 JPEG. Top level so [compute] can send it to
+/// another isolate.
+Uint8List _encodeJpeg((Uint8List, int, int) photo) {
+  final (rgba, width, height) = photo;
+  return img.encodeJpg(
+    img.Image.fromBytes(
+      width: width,
+      height: height,
+      bytes: rgba.buffer,
+      bytesOffset: rgba.offsetInBytes,
+      numChannels: 4,
+    ),
+    quality: 80,
+  );
 }
 
 Future<ui.Image> _resolve(ImageProvider provider) {
@@ -131,5 +143,12 @@ Future<ui.Image> _resolve(ImageProvider provider) {
     },
   );
   stream.addListener(listener);
-  return done.future.timeout(const Duration(seconds: 30));
+  return done.future.timeout(
+    const Duration(seconds: 30),
+    onTimeout: () {
+      // Stop listening, or a late image would never be disposed.
+      stream.removeListener(listener);
+      throw TimeoutException('Photo took too long to load');
+    },
+  );
 }

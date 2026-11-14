@@ -44,309 +44,312 @@ class HomeScreen extends ConsumerWidget {
       bottom: false,
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── HEADER ──────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 36, AppSpacing.screenH, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // One quiet line, so it doesn't compete with
-                        // the device card's headline below.
-                        Text.rich(
-                          TextSpan(
-                            text: 'Good morning, ',
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.secondaryText,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: firstName.isEmpty ? 'there' : firstName,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.navy,
-                                ),
+        // Scrolling moves this layer instead of re-recording the page.
+        child: RepaintBoundary(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── HEADER ──────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenH, 36, AppSpacing.screenH, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // One quiet line, so it doesn't compete with
+                          // the device card's headline below.
+                          Text.rich(
+                            TextSpan(
+                              text: 'Good morning, ',
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.secondaryText,
                               ),
-                            ],
+                              children: [
+                                TextSpan(
+                                  text: firstName.isEmpty ? 'there' : firstName,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.navy,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  NotificationBell(
-                    key: tourTargets?.notifications,
-                    onOpenProfile: () => onNavigate(4),
-                  ),
-                  const SizedBox(width: 10),
-                  // Opens Edit Profile; the Profile tab until it has loaded.
-                  Semantics(
-                    button: true,
-                    label: 'Edit profile',
-                    excludeSemantics: true,
-                    child: Tooltip(
-                      message: 'Edit profile',
-                      child: Material(
-                        type: MaterialType.transparency,
-                        shape: const CircleBorder(),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () async {
-                            if (profile == null) return onNavigate(4);
-                            final saved =
-                                await Navigator.of(context, rootNavigator: true)
-                                    .push(EditProfileScreen.route(profile));
-                            if (saved != true || !context.mounted) return;
-                            ref
-                                .read(notificationsProvider.notifier)
-                                .record(NotificationEvents.profileUpdated());
-                            showDentraSnack(context, 'Profile updated.');
-                          },
-                          child: AvatarWidget(
-                            size: 44,
-                            initials: profile?.initials ?? '',
-                            imageBytes: profile?.avatarBytes,
+                    NotificationBell(
+                      key: tourTargets?.notifications,
+                      onOpenProfile: () => onNavigate(4),
+                    ),
+                    const SizedBox(width: 10),
+                    // Opens Edit Profile; the Profile tab until it has loaded.
+                    Semantics(
+                      button: true,
+                      label: 'Edit profile',
+                      excludeSemantics: true,
+                      child: Tooltip(
+                        message: 'Edit profile',
+                        child: Material(
+                          type: MaterialType.transparency,
+                          shape: const CircleBorder(),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () async {
+                              if (profile == null) return onNavigate(4);
+                              final saved = await Navigator.of(context,
+                                      rootNavigator: true)
+                                  .push(EditProfileScreen.route(profile));
+                              if (saved != true || !context.mounted) return;
+                              ref
+                                  .read(notificationsProvider.notifier)
+                                  .record(NotificationEvents.profileUpdated());
+                              showDentraSnack(context, 'Profile updated.');
+                            },
+                            child: AvatarWidget(
+                              size: 44,
+                              initials: profile?.initials ?? '',
+                              imageBytes: profile?.avatarBytes,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // ── DEVICE HERO CARD ──────────────────────────────
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: _DeviceHeroCard(onScan: () => onNavigate(1)),
-            ),
+              // ── DEVICE HERO CARD ──────────────────────────────
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: _DeviceHeroCard(onScan: () => onNavigate(1)),
+              ),
 
-            const SizedBox(height: 28),
+              const SizedBox(height: 28),
 
-            // ── SERVICES ─────────────────────────────────────
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Services',
-                    style: GoogleFonts.outfit(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
+              // ── SERVICES ─────────────────────────────────────
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Services',
+                      style: GoogleFonts.outfit(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 14),
+              const SizedBox(height: 14),
 
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: Row(
-                children: [
-                  _ServiceButton(
-                    key: tourTargets?.teeth,
-                    icon: ServiceIcons.teeth,
-                    label: 'Teeth',
-                    semanticLabel: 'Dental Explorer',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const ToothHistoryExplorer(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _ServiceButton(
-                    key: tourTargets?.treatment,
-                    icon: ServiceIcons.treatment,
-                    label: 'Treatment',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => TreatmentScreen(
-                            onNavigateToTab: onNavigate,
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: Row(
+                  children: [
+                    _ServiceButton(
+                      key: tourTargets?.teeth,
+                      icon: ServiceIcons.teeth,
+                      label: 'Teeth',
+                      semanticLabel: 'Dental Explorer',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ToothHistoryExplorer(),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _ServiceButton(
-                    key: tourTargets?.comparison,
-                    icon: ServiceIcons.comparison,
-                    label: 'Comparison',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (routeContext) => ComparisonScreen(
-                            onStartScreening: () {
-                              Navigator.of(routeContext).pop();
-                              onNavigate(1);
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _ServiceButton(
-                    key: tourTargets?.rabi,
-                    icon: ServiceIcons.rabi,
-                    label: 'Rabi AI',
-                    onTap: () => AiChatScope.read(context).open(),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 28),
-
-            // ── DAILY TIP ─────────────────────────────────────
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: _DailyTipCard(tip: tip),
-            ),
-
-            const SizedBox(height: 28),
-            const GradientDivider(),
-
-            // ── SCREENING HISTORY GRAPH ───────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const LatestScanCard(),
-                  const ScreeningActivityCard(),
-                  const SizedBox(height: 2),
-                  // Full history and reports live on the History tab.
-                  _LinkButton(
-                    label: 'View Full History',
-                    onTap: () => onNavigate(2),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-            const GradientDivider(),
-
-            // ── RABI AI ───────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.g1,
-                              ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _ServiceButton(
+                      key: tourTargets?.treatment,
+                      icon: ServiceIcons.treatment,
+                      label: 'Treatment',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => TreatmentScreen(
+                              onNavigateToTab: onNavigate,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'RABI AI',
-                              style: GoogleFonts.outfit(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.1,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Need help understanding your\nscreening results?',
-                          style: GoogleFonts.outfit(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
-                            height: 1.4,
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  _AskAiButton(),
-                ],
+                    const SizedBox(width: 8),
+                    _ServiceButton(
+                      key: tourTargets?.comparison,
+                      icon: ServiceIcons.comparison,
+                      label: 'Comparison',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (routeContext) => ComparisonScreen(
+                              onStartScreening: () {
+                                Navigator.of(routeContext).pop();
+                                onNavigate(1);
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _ServiceButton(
+                      key: tourTargets?.rabi,
+                      icon: ServiceIcons.rabi,
+                      label: 'Rabi AI',
+                      onTap: () => AiChatScope.read(context).open(),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: AppSpacing.sectionGap),
+              const SizedBox(height: 28),
 
-            // ── PROFESSIONAL CARE ─────────────────────────────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: GradientDivider(),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 24, AppSpacing.screenH, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'PROFESSIONAL CARE',
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Screening information is not a diagnosis. If you have concerns about your oral health, consider speaking with a licensed dentist.',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: AppColors.secondaryText,
-                      height: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _LinkButton(
-                    label: 'Find a nearby clinic',
-                    onTap: () => onNavigate(3),
-                  ),
-                ],
+              // ── DAILY TIP ─────────────────────────────────────
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: _DailyTipCard(tip: tip),
               ),
-            ),
 
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 28),
+              const GradientDivider(),
+
+              // ── SCREENING HISTORY GRAPH ───────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const LatestScanCard(),
+                    const ScreeningActivityCard(),
+                    const SizedBox(height: 2),
+                    // Full history and reports live on the History tab.
+                    _LinkButton(
+                      label: 'View Full History',
+                      onTap: () => onNavigate(2),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: AppSpacing.sectionGap),
+              const GradientDivider(),
+
+              // ── RABI AI ───────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.g1,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'RABI AI',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.1,
+                                  color: AppColors.secondaryText,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            'Need help understanding your\nscreening results?',
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.navy,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    _AskAiButton(),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: AppSpacing.sectionGap),
+
+              // ── PROFESSIONAL CARE ─────────────────────────────
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: GradientDivider(),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenH, 24, AppSpacing.screenH, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PROFESSIONAL CARE',
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Screening information is not a diagnosis. If you have concerns about your oral health, consider speaking with a licensed dentist.',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: AppColors.secondaryText,
+                        height: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _LinkButton(
+                      label: 'Find a nearby clinic',
+                      onTap: () => onNavigate(3),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );

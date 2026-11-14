@@ -42,6 +42,10 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
   AiChatController? _ctrl;
   Offset? _pillOffset;
 
+  ScreeningSession? _suggestionSource;
+  ChatSuggestion? _suggestion;
+  bool _suggestionReady = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -84,14 +88,28 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
   @override
   Widget build(BuildContext context) {
     final ctrl = _ctrl!;
-    ctrl.personalSuggestion = _screeningSuggestion(
-      ref.watch(screeningSessionsProvider).valueOrNull?.firstOrNull,
-    );
+    final latest =
+        ref.watch(screeningSessionsProvider).valueOrNull?.firstOrNull;
+    // Building the suggestion reads the whole screening report, so only
+    // redo it when the latest screening itself changes.
+    if (!identical(latest, _suggestionSource) || !_suggestionReady) {
+      _suggestionSource = latest;
+      _suggestion = _screeningSuggestion(latest);
+      _suggestionReady = true;
+    }
+    ctrl.personalSuggestion = _suggestion;
     final firstName = ref.watch(profileProvider).valueOrNull?.firstName ?? '';
+
+    // Built once per state change and handed to the slide below, so the
+    // open/close animation moves the panel without rebuilding it per frame.
+    final panel = RepaintBoundary(
+      child: _ChatPanel(ctrl: ctrl, firstName: firstName),
+    );
 
     return AnimatedBuilder(
       animation: _panel,
-      builder: (context, _) {
+      child: panel,
+      builder: (context, panel) {
         final t = _panel.value;
         final curved = Curves.easeOutCubic.transform(t);
         return Stack(
@@ -110,7 +128,7 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
               Positioned.fill(
                 child: FractionalTranslation(
                   translation: Offset(0, 1 - curved),
-                  child: _ChatPanel(ctrl: ctrl, firstName: firstName),
+                  child: panel,
                 ),
               ),
             ],
@@ -122,15 +140,15 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
   }
 
   Widget _buildPill(AiChatController ctrl) {
-    final media = MediaQuery.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.paddingOf(context);
     const pillSize = Size(132, 48);
-    final maxX = media.size.width - pillSize.width - 12;
-    final maxY =
-        media.size.height - pillSize.height - media.padding.bottom - 96;
+    final maxX = size.width - pillSize.width - 12;
+    final maxY = size.height - pillSize.height - padding.bottom - 96;
     final offset = _pillOffset ?? Offset(maxX, maxY);
     Offset clamp(Offset o) => Offset(
           o.dx.clamp(12, maxX),
-          o.dy.clamp(media.padding.top + 12, maxY),
+          o.dy.clamp(padding.top + 12, maxY),
         );
     final position = clamp(offset);
 
@@ -649,6 +667,11 @@ class _ChatBody extends StatefulWidget {
 }
 
 class _ChatBodyState extends State<_ChatBody> {
+  static const _pendingKey = ValueKey<String>('pending-reply');
+
+  static String _messageKey(ChatMessage m) =>
+      '${m.sentAt.microsecondsSinceEpoch}-${m.isUser}';
+
   final ScrollController _scroll = ScrollController();
   bool _showJump = false;
 
@@ -685,6 +708,12 @@ class _ChatBodyState extends State<_ChatBody> {
 
     final messages = ctrl.messages;
     final extra = ctrl.isLoading ? 1 : 0;
+    // Where each saved message sits in the reversed list, so a send (which
+    // shifts every index) moves the built bubbles instead of rebuilding them.
+    final indexOfKey = <String, int>{
+      for (var j = 0; j < messages.length; j++)
+        _messageKey(messages[j]): messages.length - 1 - j + extra,
+    };
     return Stack(
       children: [
         ListView.builder(
@@ -692,25 +721,35 @@ class _ChatBodyState extends State<_ChatBody> {
           reverse: true,
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           itemCount: messages.length + extra,
+          findChildIndexCallback: (key) => key == _pendingKey
+              ? (ctrl.isLoading ? 0 : null)
+              : key is ValueKey<String>
+                  ? indexOfKey[key.value]
+                  : null,
           itemBuilder: (context, i) {
             if (ctrl.isLoading && i == 0) {
-              final partial = ctrl.streamingText;
-              if (partial == null) return const _TypingBubble();
               // The reply as it streams in; replaced by the saved message.
-              return _MessageTile(
-                message: ChatMessage(
-                  text: partial,
-                  isUser: false,
-                  sentAt: DateTime.now(),
-                ),
-                streaming: true,
+              // Only this bubble listens to the chunks.
+              return ValueListenableBuilder<String?>(
+                key: _pendingKey,
+                valueListenable: ctrl.partialReply,
+                builder: (context, partial, _) => partial == null
+                    ? const _TypingBubble()
+                    : _MessageTile(
+                        message: ChatMessage(
+                          text: partial,
+                          isUser: false,
+                          sentAt: DateTime.now(),
+                        ),
+                        streaming: true,
+                      ),
               );
             }
             final index = messages.length - 1 - (i - extra);
             final m = messages[index];
             final isLast = index == messages.length - 1;
             return _MessageTile(
-              key: ValueKey('${m.sentAt.microsecondsSinceEpoch}-${m.isUser}'),
+              key: ValueKey(_messageKey(m)),
               message: m,
               onRetry:
                   m.isError && isLast && !ctrl.isLoading ? ctrl.retry : null,
@@ -966,7 +1005,8 @@ class _MessageTile extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: _RichReply(text: message.text),
+                          child:
+                              _RichReply(text: message.text, cache: !streaming),
                         ),
                       ),
                 const SizedBox(height: 2),
@@ -1151,16 +1191,46 @@ class _ErrorBubble extends StatelessWidget {
 /// Renders Rabi's light markdown: paragraphs, `-`/`*` bullets, numbered
 /// lists, `#` headings (as bold lines) and inline `**bold**`.
 class _RichReply extends StatelessWidget {
-  const _RichReply({required this.text});
+  const _RichReply({required this.text, this.cache = true});
 
   final String text;
+
+  /// False while the reply streams in: its text changes with every chunk,
+  /// so caching it would only push finished replies out.
+  final bool cache;
 
   static final _bullet = RegExp(r'^\s*[-*•]\s+(.*)$');
   static final _numbered = RegExp(r'^\s*(\d+)[.)]\s+(.*)$');
   static final _heading = RegExp(r'^\s*#{1,6}\s+(.*)$');
 
+  /// Parsed replies by text. Saved replies never change, so each is parsed
+  /// once; the cap keeps memory flat in long chats.
+  static final _parsed = <String, List<Widget>>{};
+  static const _maxParsed = 64;
+
   @override
   Widget build(BuildContext context) {
+    if (!cache) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: _parse(text),
+      );
+    }
+    var blocks = _parsed.remove(text);
+    if (blocks == null) {
+      blocks = _parse(text);
+      if (_parsed.length >= _maxParsed) _parsed.remove(_parsed.keys.first);
+    }
+    _parsed[text] = blocks; // most recent last
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: blocks,
+    );
+  }
+
+  static List<Widget> _parse(String text) {
     final base = GoogleFonts.outfit(
       fontSize: 15,
       color: AppColors.navy,
@@ -1181,18 +1251,15 @@ class _RichReply extends StatelessWidget {
         gap = true;
         continue;
       }
-      final bullet = _bullet.firstMatch(line);
-      final numbered = _numbered.firstMatch(line);
-      final heading = _heading.firstMatch(line);
-      if (bullet != null) {
+      if (_bullet.firstMatch(line) case final bullet?) {
         add(_ListItem(marker: '•', text: bullet.group(1)!, style: base));
-      } else if (numbered != null) {
+      } else if (_numbered.firstMatch(line) case final numbered?) {
         add(_ListItem(
           marker: '${numbered.group(1)}.',
           text: numbered.group(2)!,
           style: base,
         ));
-      } else if (heading != null) {
+      } else if (_heading.firstMatch(line) case final heading?) {
         add(Text.rich(
           _inline(
               heading.group(1)!, base.copyWith(fontWeight: FontWeight.w700)),
@@ -1201,12 +1268,7 @@ class _RichReply extends StatelessWidget {
         add(Text.rich(_inline(line, base)));
       }
     }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: blocks,
-    );
+    return List.unmodifiable(blocks);
   }
 
   static TextSpan _inline(String text, TextStyle style) {
@@ -1359,12 +1421,6 @@ class _InputBarState extends State<_InputBar> {
   final FocusNode _focus = FocusNode();
 
   @override
-  void initState() {
-    super.initState();
-    _input.addListener(() => setState(() {}));
-  }
-
-  @override
   void dispose() {
     _input.dispose();
     _focus.dispose();
@@ -1382,7 +1438,6 @@ class _InputBarState extends State<_InputBar> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final length = _input.text.length;
     const max = AiChatController.maxInputLength;
     final keyboardOpen = media.viewInsets.bottom > 0;
 
@@ -1449,10 +1504,14 @@ class _InputBarState extends State<_InputBar> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _SendButton(
-                  enabled: _canSend,
-                  loading: widget.ctrl.isLoading,
-                  onPressed: _send,
+                // Typing rebuilds only the parts that depend on the text.
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _input,
+                  builder: (context, _, __) => _SendButton(
+                    enabled: _canSend,
+                    loading: widget.ctrl.isLoading,
+                    onPressed: _send,
+                  ),
                 ),
               ],
             ),
@@ -1469,17 +1528,23 @@ class _InputBarState extends State<_InputBar> {
                     ),
                   ),
                 ),
-                if (length > max - 200)
-                  Text(
-                    '$length/$max',
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: length >= max
-                          ? AppColors.danger
-                          : AppColors.secondaryText,
-                    ),
-                  ),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _input,
+                  builder: (context, value, _) {
+                    final length = value.text.length;
+                    if (length <= max - 200) return const SizedBox.shrink();
+                    return Text(
+                      '$length/$max',
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: length >= max
+                            ? AppColors.danger
+                            : AppColors.secondaryText,
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ],
@@ -1539,11 +1604,14 @@ class _SendButton extends StatelessWidget {
             onTap: enabled ? onPressed : null,
             child: Center(
               child: loading
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.g2,
+                  // Own layer: the spin repaints only itself.
+                  ? const RepaintBoundary(
+                      child: SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.g2,
+                        ),
                       ),
                     )
                   : Icon(
@@ -1901,11 +1969,14 @@ class _MinimizedPill extends StatelessWidget {
                           ),
                           if (loading) ...[
                             const SizedBox(width: 10),
-                            const SizedBox.square(
-                              dimension: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.g2,
+                            // Own layer: the spin repaints only itself.
+                            const RepaintBoundary(
+                              child: SizedBox.square(
+                                dimension: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.g2,
+                                ),
                               ),
                             ),
                           ],

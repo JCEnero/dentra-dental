@@ -481,7 +481,10 @@ class _Viewport extends StatelessWidget {
               Semantics(
                 image: true,
                 label: CamText.captureScreen,
-                child: LiveView(frames: live.frame),
+                // Each camera frame repaints only the picture, not the page around it.
+                child: RepaintBoundary(
+                  child: LiveView(frames: live.frame),
+                ),
               ),
               AnimatedSwitcher(
                 duration: duration,

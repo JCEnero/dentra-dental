@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show compute;
+
 import 'package:http/http.dart' as http;
 
 /// The DENTRA API answered with an error. [message] comes from the server
@@ -84,7 +86,7 @@ class ApiClient {
         bearer: bearer);
     final streamed = await _client.send(request).timeout(_timeout);
     final response = await http.Response.fromStream(streamed).timeout(_timeout);
-    return _decode(response);
+    return _decodeAsync(response);
   }
 
   /// Opens an authorized JSON request and hands back the response as it
@@ -158,18 +160,26 @@ class ApiClient {
   /// Returns the JSON body of a 2xx response, or throws [ApiException].
   Map<String, dynamic> decode(http.Response response) => _decode(response);
 
-  Map<String, dynamic> _decode(http.Response response) {
-    Map<String, dynamic>? body;
-    if (response.body.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic>) body = decoded;
-      } on FormatException {
-        // A proxy error page or similar; handled below.
-      }
-    }
+  Map<String, dynamic> _decode(http.Response response) =>
+      _checked(response.statusCode, _jsonMap(response.body));
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
+  /// Like [_decode], but parses large bodies (such as the full screening
+  /// history) on a background isolate (inline on web), so a big response
+  /// doesn't stall an animation. `response.body` decodes the bytes on
+  /// every read, so it is read once.
+  Future<Map<String, dynamic>> _decodeAsync(http.Response response) async {
+    final text = response.body;
+    final body = text.length > _backgroundParseChars
+        ? await compute(_jsonMap, text)
+        : _jsonMap(text);
+    return _checked(response.statusCode, body);
+  }
+
+  /// Bodies longer than this are parsed off the UI isolate.
+  static const _backgroundParseChars = 64 * 1024;
+
+  Map<String, dynamic> _checked(int statusCode, Map<String, dynamic>? body) {
+    if (statusCode >= 200 && statusCode < 300) {
       return body ?? const {};
     }
 
@@ -177,7 +187,7 @@ class ApiClient {
     if (error is Map<String, dynamic>) {
       final fields = error['fields'];
       throw ApiException(
-        response.statusCode,
+        statusCode,
         error['code'] as String? ?? 'unknown',
         error['message'] as String? ?? _genericError,
         fields: fields is Map
@@ -185,7 +195,19 @@ class ApiClient {
             : const {},
       );
     }
-    throw ApiException(response.statusCode, 'unknown', _genericError);
+    throw ApiException(statusCode, 'unknown', _genericError);
+  }
+}
+
+/// The JSON object in [text], or null when it is empty or not an object
+/// (a proxy error page or similar). Top level so [compute] can run it.
+Map<String, dynamic>? _jsonMap(String text) {
+  if (text.isEmpty) return null;
+  try {
+    final decoded = jsonDecode(text);
+    return decoded is Map<String, dynamic> ? decoded : null;
+  } on FormatException {
+    return null;
   }
 }
 

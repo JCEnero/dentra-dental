@@ -301,3 +301,43 @@ Measured after Phase 3 (AAB and split APKs built with `--obfuscate --split-debug
 | APK, arm64 target, size analysis (not obfuscated) | 89.3 MB | 25.2 MB | -64.1 MB (-71.8%) |
 
 Inside the arm64 split APK: `libapp.so` 12.1 to 9.9 MB, the fvp libraries (12.8 MB) are gone, Flutter assets 27.7 to 1.07 MB, `classes.dex` 1.39 to 0.77 MB, and `resources.arsc` 183 to 34 KB.
+
+## Phase 4: smoothness (done)
+
+Everything below keeps the design as it was, except the four items you approved: the reduced dock blur, one-time card fades, the mint launch screen, and precompiled SVGs (Phase 3).
+
+| # (from 1D) | Fix | Files |
+|---|---|---|
+| 1 | Each tab is wrapped in `TickerMode(enabled: i == _tab)`, so hidden tabs stop animating and the app can go idle. The whole shell also pauses its tickers while the chat panel covers it (the panel slides over everything, so nothing visible stops). | `lib/app/app.dart` |
+| 2 | Streamed chunks go into `AiChatController.partialReply`, a `ValueNotifier` that only the pending bubble listens to. Chunks no longer call `notifyListeners()`, so the panel, header, input and saved bubbles stay put while Rabi types. | `ai_chat_controller.dart`, `ai_assistant.dart` |
+| 3 | The five tab widgets are created once in the shell's State instead of in every `build()`, so switching tabs no longer rebuilds four tabs. | `lib/app/app.dart` |
+| 4 | Images are now stored at the size they're shown (Phase 3). A treatment icon decodes to 256 KB instead of 4 to 6 MB, the avatar to 576 KB instead of 14.7 MB. | assets |
+| 5 | Report photos are JPEG-encoded with `compute()` (a background isolate on phones, inline on web where isolates don't exist). Each photo becomes one shared `pw.MemoryImage`, so a photo used for several teeth is embedded once. A load timeout now also detaches its image listener. | `report_download.dart`, `report_pdf.dart` |
+| 6 | `Outfit-ExtraBold.ttf` ships and runtime font fetching is off (Phase 3), so w800 text is right from the first frame and never swaps. | `main.dart`, `assets/fonts` |
+| 7 | The chat panel is built once per state change and handed to the slide animation as its `child`, inside a `RepaintBoundary`. Both loading spinners sit in their own `RepaintBoundary`. Typing rebuilds only the send button and the character counter (`ValueListenableBuilder` on the text controller). The pill reads `MediaQuery.sizeOf`/`paddingOf` instead of `MediaQuery.of`. The screening suggestion is rebuilt only when the latest screening changes. | `ai_assistant.dart` |
+| 7 | Rabi's markdown is parsed once per reply and cached (64 replies, least recently used out). The streaming bubble skips the cache. The line patterns now stop at the first match. | `ai_assistant.dart` |
+| 7 | The chat list has a `findChildIndexCallback`, so sending a message moves the built bubbles instead of rebuilding each one. | `ai_assistant.dart` |
+| 8 | History search text is built once per screening or record (cached on the immutable objects) instead of for every entry on every keystroke. | `history_query.dart` |
+| 9 | API responses read `response.body` once (it decodes the bytes on every read). Bodies over 64 KB, such as the full screening history, are parsed with `compute()`. | `core/network/api_client.dart` |
+| 10 | Rendered map pins are cached for the app's lifetime, keyed by pixel ratio, so returning to Clinics doesn't redraw every pin. | `clinic_map.dart` |
+| Further | `RepaintBoundary` around the scroll content of Home, Profile, screening detail, comparison and the clinic list, and around the live camera picture. | 6 files |
+| Further | Dock bubble blur reduced from sigma 8 to 4 as approved; the frosted tint and border are unchanged. The filter is now one shared object instead of a new one per build. | `app_bottom_nav.dart` |
+| Further | Treatment cards fade in once per screen visit instead of every time they scroll back into view. | `treatment_screen.dart` |
+| Startup | `.env` and the onboarding flag load in parallel. `fvp` setup is gone from `main()`. | `main.dart` |
+| Startup | The Android launch window is the app's mint (`#E8F8F7`) in light and dark mode, including the Android 12+ system splash (`values-v31`, `values-night-v31`). No white or black flash, no new package. | `android/app/src/main/res` |
+| Leaks | The pairing-code poll can no longer be orphaned by two overlapping requests (website flow). Clinic card keys are pruned to the clinics on screen. | `hotspot_setup_controller.dart`, `clinics_screen.dart` |
+| Lints | `prefer_const_constructors`, `prefer_const_literals_to_create_immutables` and `prefer_const_declarations` are now listed in `analysis_options.yaml`. They were already on through `flutter_lints`, and the code already passed them. | `analysis_options.yaml` |
+
+**Not changed, and why**
+
+- **History list:** it still builds every card in one `ListView` child, and the results key still includes the query. Making it lazy and keeping the key stable would drop the cross-fade that plays when the results change while typing. That is a visible change you didn't approve. The search-text cache removes the heaviest part of each keystroke.
+- **Mounting tabs one at a time after the loader:** deferred. The tabs no longer rebuild or animate while hidden, so the remaining cost is a single frame at the end of the loader's fade. Profile it first (Phase 5 checklist).
+- **Opacity over glass** on the History calendar's dimmed state and on skeleton pulses: removing these layers would change how they look.
+- **`GoogleFonts.outfit(...)` in `build()`** (about 550 call sites): each call is cheap. With the rebuild fixes above, they run far less often. Converting them all to `static final` styles is a large, mechanical change for a small gain.
+- **Per-frame `saveLayer`** in Mouth3D, the welcome stage and the auth backdrop: needed for their look, and they already stop when hidden.
+- **The chat's saved-session JSON** is still encoded on the UI isolate after each reply. It applies only to chats saved on the device (demo mode), and stays small.
+- **Photo quality check pixel loops:** only used in demo mode or when the server analysis is unavailable.
+- **The session photo cache** keeps photos for the whole run. Capping it would make older scans reload their photos from the network.
+- **Impeller:** on by default for Android in Flutter 3.47, with no opt-out in the manifest. Nothing to change.
+
+Tests: 494 passed. Analyzer: 0 issues.

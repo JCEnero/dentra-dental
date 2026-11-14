@@ -74,20 +74,23 @@ class ComparisonScreen extends ConsumerWidget {
                         18,
                         AppSpacing.screenH,
                         32 + MediaQuery.paddingOf(context).bottom),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 600),
-                        child: AnimatedSwitcher(
-                          duration: dentraMotion(context, 220),
-                          switchInCurve: Curves.easeOut,
-                          layoutBuilder: (current, previous) => Stack(
-                            alignment: Alignment.topCenter,
-                            children: [
-                              ...previous,
-                              if (current != null) current
-                            ],
+                    // Scrolling moves this layer instead of re-recording the page.
+                    child: RepaintBoundary(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 600),
+                          child: AnimatedSwitcher(
+                            duration: dentraMotion(context, 220),
+                            switchInCurve: Curves.easeOut,
+                            layoutBuilder: (current, previous) => Stack(
+                              alignment: Alignment.topCenter,
+                              children: [
+                                ...previous,
+                                if (current != null) current
+                              ],
+                            ),
+                            child: _body(context, ref, items, sel),
                           ),
-                          child: _body(context, ref, items, sel),
                         ),
                       ),
                     ),
