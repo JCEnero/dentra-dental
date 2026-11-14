@@ -100,3 +100,175 @@ Notes:
 ### Analyzer
 
 `flutter analyze`: no issues found (0 errors, 0 warnings, 0 infos), using the `flutter_lints` 4.0.0 rule set.
+
+### Tests
+
+`flutter test`: 494 passed, 0 failed (31 test files, about 1 minute).
+
+## Phase 1: audit
+
+Read only. Nothing was deleted or changed in this phase.
+
+### 1A. Unused code
+
+Method:
+
+- An import graph from `lib/main.dart`, following `import`, `export`, `part` and conditional imports, found which files are never reached.
+- A resolver-based reachability check (a scratch script on `package:analyzer` 10.2.0, so nothing was added to `pubspec.yaml`) walked from `main()` through every top-level declaration and class member. It treats `@override` members, `toJson`, operators and `@pragma('vm:entry-point')` as used, ignores doc-comment mentions, and separately walks from `test/` to tag test-only code. It scanned 9,593 declarations.
+- Every finding was cross-checked with a plain text search. Where a name is common (`of`, `read`, `clear`, `fromJson`), the hits were checked by hand.
+
+Dart's AOT compiler already leaves unreachable code out of `libapp.so`, so deleting dead code does not make the APK smaller. The benefit is less code to read and maintain.
+
+Only 1 of the 264 files is unreachable. The code base is tidy at the file level.
+
+**Proposed for deletion**
+
+| Code | Location | Lines | Reason | Confidence |
+|---|---|---|---|---|
+| `SectionLabel` (whole file) | `lib/shared/widgets/section_label.dart` | 23 | No file imports it | high |
+| `SetupPowerArt` and `_PowerPainter` | `lib/features/camera/widgets/setup_page.dart:847-918` | 72 | Never built; left over from the earlier camera setup art | high |
+| `ReportLegend` and `ReportLegendItem` | `lib/features/scan/widgets/report/report_style.dart:184-230` | 47 | Never built (`ReportSwatch` next to them is used and stays) | high |
+| `GuideSpeech` | `lib/shared/widgets/guide_kit.dart:221-256` | 36 | Never built | high |
+| `projectPoint()` | `lib/features/scan/rendering/scan_scene.dart:148-162` | 15 | Never called | high |
+| Unused constants: `AppColors.cardSolidAlt`, `cardDeep`, `verticalGradient`, `horizontalGradient`, `pageBackground`; `AppRadius.xl`, `xlAll`, `xxlAll`; `AppSpacing.xxl`; `ScanColors.clear`; `GlassBarEdge.bottom` | `lib/core/constants/*`, `scan_theme.dart`, `glass_card.dart` | about 20 | Never read | high |
+| Unused strings: `CamText.settingsUnavailable`, `showPassword`, `hidePassword`, `statusConnected`, `statusOffline`, `areaProgress()` | `lib/features/camera/camera_strings.dart` | about 12 | Never read | high |
+| Unused methods and getters: `CameraStore.forgetCamera`, `setupOffered`, `markSetupOffered` (and its key); `CloudCamApi.forget`; `CloudCamClient.cameraOnline`; `GeminiService.resetSession`; `AuthService.usesBackend`; `ClinicFilterNotifier.setOpenNowOnly`, `reset`; `DentalRecordsNotifier.byId`; `ScanSessionNotifier.dismissFailure`; `ScreeningSessionsNotifier.clear`; `CareLevel.of`, `CareLevel.max`; `ReportSpot.sideOfPhoto`; `ConditionRow.read`; `ScanTrend.oneLine`; `ChamberTimeline.activeIndex`; `ToothDimensions.totalLength`; `ToothInfo.quadrantName`; `ToothContent.numberBreakdown`; `DentitionRenderer.drawnTriangles`; `ExplorerCamera.isAttached` | various | about 120 | Never called | high |
+| Unused model constructors: `ClinicModel.fromJson`, `ClinicService.fromJson`, `OperatingHours.fromJson`, `ClinicModel.copyWith` | `lib/features/clinic_finder/data/models/clinic_model.dart` | about 90 | Never called; clinics are built another way | medium (keep if a clinic API is planned) |
+
+**Fields that are set but never read (proposed to keep)**
+
+`AuthResult.userId`, `CamFrameSize.width`/`height`, `CloudCamera.online`, `CamPairing.expiresAt`, `AreaReport.photoIds`, `ToothUrgency.short`, `SpotMarker.strength`, `ToothAnchor.occlusal`, `DentalProfileException.sessionEnded`, `ChamberPainter.clock`, `_ScopeLine.report`, `_TreatmentCard.index`. Most mirror server payloads or constructor arguments. Removing them means changing constructors and call sites for no size gain. The last three are private widget or painter fields and could go if you want them gone.
+
+**Used only by tests (keep)**
+
+`MemoryQuestionnaireDraftStore` (a fake store the tests inject), `AuthResult.needsTwoFactor`, `CamPairing.displayCode`, `CamStatus.frameSize`/`vflip`/`hmirror`/`lightOn`/`lightLevel`, `GuidedCaptureController.allVisited`, `CarePlan.drivenByContext`, `PatientContext.isEmpty`, `ScreeningReport.sentence`, `Procedures.all`, `HeroStory.taken`, `ScanCheckIn.copyWith`.
+
+**Keep: used indirectly**
+
+| Code | Why it looks unused | How it is used |
+|---|---|---|
+| `lib/core/services/maps_loader_web.dart` | The VM-side analysis never resolves it | Web half of a conditional import in `maps_loader.dart` |
+| `toJson()` methods | Not called by name | `jsonEncode` calls them |
+| `@override` members (`build`, `dispose`, `paint`, ...) | Not called by name | The framework calls them |
+| `'/home'` route | String-based | `onGenerateRoute` in `lib/app/app.dart` |
+| `lib/shared/widgets/mascot_rig.g.dart` | Generated | Written by `tool/mascot_rig.py`, used by `dentra_mascot.dart` |
+
+There are no platform channels, background handlers, `@pragma('vm:entry-point')` functions, code-generation packages (freezed, json_serializable) or dependency-injection containers in this app.
+
+### 1B. Assets
+
+Each file was searched for by name across `lib/`, `test/`, `web/`, `android/`, `ios/` and `tool/`. No asset path is built at runtime: there is no interpolated `'assets/...$x'` string, and every `Image.asset(variable)` traces back to a constant. The `scan_region_*.png` names in `scan_regions.dart` sit in comments only.
+
+| Asset | Size | Referenced | Shown at | Proposal | Estimated result |
+|---|---|---|---|---|---|
+| `treatments/icons/*.png` (23 files, 1024 to 1254 px, opaque) | 16.8 MB | `treatment_data.dart` | 48 x 48 points (`treatment_screen.dart:317`, `treatment_detail_screen.dart:334`) | WebP quality 82, 256 px | 0.09 MB |
+| `treatments/mascot.png` (2048 px) | 3.8 MB | Only by `tool/mascot_rig.py`, as the source render for the Rabi rig | Never in the app | Move out of the bundled folder, to `tool/source/mascot.png`, and update the tool's note | 0 in the APK |
+| `justhelogobig.png` (3202 x 3748) | 2.5 MB | Nowhere | - | Delete | 0 |
+| `rabi_avatar.png` (1920 px) | 2.1 MB | `ai_assistant.dart`, `next_steps.dart` | 28 to 96 points | WebP quality 82, 384 px | 0.04 MB |
+| `rabi.png` (3000 px) | 0.76 MB | Nowhere | - | Delete | 0 |
+| `logowithtext.png` (3982 x 1542) | 0.49 MB | Nowhere | - | Delete | 0 |
+| `videos/BUNNY.webm` | 0.16 MB | `home_screen.dart` (Android/iOS) | 100 x 100 points | Delete with `video_player`/`fvp`; `bunny_wave.webp` takes over | 0 |
+| `treatments/*.jpg` (4 files, 1024 px) | 0.23 MB | `treatment_data.dart` | Only as a 60 x 60 fallback that never shows, since every treatment has an icon | WebP quality 82, 512 px | 0.06 MB |
+| `dentralogoforapp.png` (1024 px) | 63 KB | Nowhere | - | Delete | 0 |
+| `fonts/Outfit-*.ttf` (4 weights) | 188 KB | `google_fonts` by file name, and the PDF report | - | Keep all four, and add `Outfit-ExtraBold.ttf` (about 48 KB) | +48 KB |
+| `dentra_mark.png`, `dentra_logo.png` | 175 KB | Logo widget, launch loader, PDF report | - | Keep as PNG. The PDF embeds the mark, and the gain is small | - |
+| `bunny_wave.webp`, `mascot/rabi_rig.webp`, 4 SVGs, `OFL.txt`, `.env` | 0.5 MB | yes | - | Keep. `OFL.txt` is the font licence | - |
+
+A 512 px WebP of a treatment icon was compared side by side with the original at the same size and showed no visible difference. These are smooth illustrations, which WebP compresses very well.
+
+If you'd rather keep the unused logo and Rabi renders as design sources, they can move to a folder that isn't bundled, the same as `mascot.png`, instead of being deleted.
+
+Font weights in use: w400 (11 styles), w500 (56), w600 (139), w700 (156), w800 (47). Only w400 to w700 are bundled. For w800, `google_fonts` looks for `Outfit-ExtraBold.ttf`, doesn't find it, and downloads it from fonts.gstatic.com at runtime, because `GoogleFonts.config.allowRuntimeFetching` is never turned off outside tests. See 1D.
+
+Estimated effect of all asset changes: Flutter assets go from 27.7 MB to about 1.2 MB in every APK.
+
+### 1C. Dependencies
+
+| Package | Used in | What it costs (arm64) | Verdict |
+|---|---|---|---|
+| `fvp` | `main.dart` only (`fvp.registerWith()`) | 12.8 MB of native libraries per ABI, plus 73 KB Dart | **Remove** (see below) |
+| `video_player` | `home_screen.dart` only: the waving Tooth Bunny on the device card | ExoPlayer (928 kept classes in `classes.dex`) plus 49 KB Dart | **Remove** together with `fvp` |
+| `flutter_svg` | `home_screen.dart`: 4 small icons (`teeth.svg`, `treatment.svg`, `comparison.svg`, `rabi-ai.svg`) | 267 KB Dart for parsing SVG XML at runtime | Optional: precompile the 4 SVGs at build time with `vector_graphics_compiler` and draw them with `vector_graphics`. Same vectors, no XML parsing on the device |
+| `google_fonts` | 113 files, 551 call sites, all `GoogleFonts.outfit` | Small code; loads bundled Outfit files by name at runtime | **Keep**, but bundle the missing ExtraBold file and turn off runtime fetching (see 1B and 1D) |
+| `image` | `report_download.dart` | 778 KB Dart | Keep. `pdf` depends on it anyway |
+| `pdf`, `printing` | Scan report PDF | 481 KB Dart (`pdf` + `bidi`) | Keep |
+| `google_maps_flutter`, `geolocator` | Clinic finder | 194 KB Dart plus Play Services Maps and Location | Keep |
+| `universal_ble`, `web_socket_channel`, `wakelock_plus` | Dentra Cam setup and live capture | 137 KB Dart plus a small Kotlin plugin | Keep |
+| `google_sign_in`, `flutter_secure_storage`, `shared_preferences`, `http`, `url_launcher`, `image_picker`, `file_selector`, `flutter_dotenv`, `flutter_riverpod` | Sign-in, storage, network, links, photos, record files, config, state | Small | Keep |
+
+The Tooth Bunny is a 360 px VP9 WebM with an alpha channel. Android's built-in player can't show that alpha, which is why `fvp` (ffmpeg plus the mdk player) was added. The same animation already ships as `assets/images/bunny_wave.webp`, an animated WebP the web build uses because Safari has the same alpha problem. Both are 12 fps, 5 seconds, looping (60 frames of 83 ms in the WebP; 83.3 ms per frame in the WebM). The WebP is 270 px against the WebM's 360 px, shown in a 100 x 100 point box (300 px on a 3x screen). Showing the WebP on every platform removes both packages, about 12.8 MB per ABI of native code, ExoPlayer, `fvp.registerWith()` at startup, and the 170 KB WebM. Flutter's `Image` already pauses animated images when `TickerMode` is off, so the existing pause-when-hidden behavior carries over.
+
+No duplicate-purpose packages were found. `image_picker` (camera and gallery photos) and `file_selector` (record documents) do different jobs, as do `shared_preferences` and `flutter_secure_storage` (tokens).
+
+`android/app/build.gradle.kts` declares no native dependencies of its own. Every native library comes from a Flutter plugin.
+
+### 1D. Performance hotspots
+
+Method: a pattern scan of all 264 files (blur, Opacity, clips, saveLayer, tickers, setState, list builders, image decode sizes, JSON, isolates), then a read-through of the chat, the app shell and tabs, the glass kit, the lists, the camera and scan pipeline, startup, and the 3D and custom-painted visuals. Framework behavior was checked against the local Flutter 3.47.5 source. The top items below were confirmed by reading the code directly. Frame times can't be measured statically, so impact is an estimate until Phase 5 profiles on a phone.
+
+Ranked by expected impact:
+
+| # | Issue | Where | Why it costs frames | Fix (no visual change unless noted) |
+|---|---|---|---|---|
+| 1 | Hidden tabs never stop animating | `lib/app/app.dart:159` | In 3.47 `IndexedStack` adds no `TickerMode`. The Scan tab's intro runs four endless animations (`scan_hero.dart:40`, `how_it_works_card.dart:84`, `device_reach_panel.dart:66`, `scan_theme.dart:114`), so the app renders a full frame, including the dock blur, every vsync on every tab. It never idles: heat, battery, and UI-thread time taken from scrolling | Wrap each tab in `TickerMode(enabled: i == _tab)` |
+| 2 | Each streamed Rabi chunk rebuilds the whole chat | `ai_chat_controller.dart:355`, `ai_assistant.dart:85-121, 1162-1225` | `notifyListeners()` per chunk rebuilds the overlay, header, input and every built bubble. Each bubble re-parses its markdown, and the screening suggestion (a full `ScreeningReport`) is rebuilt too | Put the partial text in a `ValueNotifier` that only the streaming bubble listens to; notify the controller only at start and end; cache the parsed markdown and the suggestion |
+| 3 | Switching tabs rebuilds four tabs | `lib/app/app.dart:140-146` | The tab widgets are created inside `build()`, so `setState(_tab)` re-runs Home, Scan, History and Profile. History rebuilds every card and its `ScreeningReport` | Create the tab list once in the State |
+| 4 | Full-resolution decodes of tiny images | `treatment_screen.dart:317`, `treatment_detail_screen.dart:334`, `ai_assistant.dart:633`, `next_steps.dart:310` | Each 48-point treatment icon decodes to 4.2 to 6.3 MB. All 23 together are about 100 MB, the whole default image cache, so scrolling evicts and re-decodes them. The Rabi avatar decodes to 14.7 MB for at most 96 points | Resize the files (1B) and add `cacheWidth` at the call sites |
+| 5 | PDF export blocks the UI | `report_download.dart:103-111`, `report_pdf.dart:140-165, 785, 1095` | `img.encodeJpg` runs in pure Dart on the UI isolate for each photo (about 1000 x 750), and the PDF layout runs there too. A new `pw.MemoryImage` per tooth crop embeds the same photo again | Encode in `Isolate.run`; reuse one `MemoryImage` per photo; optionally build the whole PDF in an isolate |
+| 6 | Missing ExtraBold font is downloaded at runtime | `lib/app/theme.dart`, 47 `FontWeight.w800` styles | Until the download finishes, which is never when offline, that text uses the system font. When it lands, text re-lays out. Offline, every later w800 style retries the lookup and the HTTP request | Bundle `Outfit-ExtraBold.ttf`; set `GoogleFonts.config.allowRuntimeFetching = false` in `main()`. Text now shows in Outfit ExtraBold from the first frame, as designed |
+| 7 | Chat open/close and waiting are costly | `ai_assistant.dart:92-121, 1364, 1541, 1902` | The panel is built inside the slide's `AnimatedBuilder`, so it rebuilds about 20 times per open. The two loading spinners have no `RepaintBoundary`, so each tick repaints Home, the dock and the panel. The input bar calls `setState` on every keystroke | Pass the panel as `AnimatedBuilder.child`; wrap the spinners in `RepaintBoundary`; rebuild only the send button and counter per keystroke |
+| 8 | History builds everything, and again on every keystroke | `history_screen.dart:156-203, 250-253`, `history_query.dart:155-208` | The calendar and all cards sit in one `ListView` child, so nothing is lazy. The results key includes the query, so each keystroke remounts every card, and the search text of every entry is rebuilt | `CustomScrollView` with `SliverList.builder`; cache each entry's search text; keep the key stable |
+| 9 | JSON on the UI isolate, every body decoded twice | `core/network/api_client.dart:162-164`, `api_screening_repository.dart:17-23` | `response.body` is a getter that re-decodes the bytes, and it is read twice. `/api/screenings` is unpaged (the backend caps it at 500 sessions) and is parsed during the launch loader animation | Read the body once; decode large lists in `Isolate.run` |
+| 10 | Clinics map rebuilt on every visit | `clinics_screen.dart:289, 330`, `clinic_map.dart:75-151, 438-459` | The map is unmounted when the tab hides. Each return creates a new GoogleMap platform view and redraws every pin with `toImage` plus a PNG encode | Cache the pin images by look and DPR. Keeping the hidden map mounted is the bigger fix but needs a device check |
+
+**Further items, lower impact**
+
+- When the launch loader exits, all five tabs build in one frame (`session_loader.dart:425`), together with the records fetch and Home's video start. Fix: mount the active tab first and the rest over the next frames.
+- Opacity layers wrap glass cards during entrance fades: clinic cards (`clinics_screen.dart:633`), treatment cards (`treatment_screen.dart:281`, replayed for every card scrolled into view), skeleton pulses, and the dimmed calendar (`history_calendar.dart:73`). Each adds an offscreen pass with a blur inside. Playing the fade once per item is a small behavior change, so it needs your call.
+- The dock's bubble has its own `BackdropFilter` outside the shared group (`app_bottom_nav.dart:214`), an extra blur on every frame of every tab. It sits over the dock's already-blurred glass, so removing it is probably invisible, but it is a visual change and needs a screenshot comparison and your OK.
+- Scroll pages without a `RepaintBoundary` around their content redraw it all per scroll frame: `home_screen.dart:46`, `profile_screen.dart:310`, `screening_detail_screen.dart:159`, `comparison_screen.dart:70`, `clinics_screen.dart:422`.
+- The chat list has keyed items but no `findChildIndexCallback`, so every send shifts indexes and rebuilds each visible bubble from scratch (`ai_assistant.dart:690-719`). The chat's saved sessions are re-encoded on the UI isolate after every reply (`ai_chat_controller.dart:527-544`).
+- While the chat covers the screen, the home video keeps playing under its full-height blur. Disabling tickers under an open panel stops that.
+- Live camera view: `setState` per frame with no `RepaintBoundary` around it (`live_view.dart:73`, `live_capture_screen.dart:481`).
+- Clinics search and the comparison slider call `setState` on the whole screen per keystroke or drag event (`clinics_screen.dart:229`, `image_comparison.dart:125`).
+- Mouth3D, the welcome stage and the auth backdrop call `canvas.saveLayer` every frame while animating (`mouth_3d.dart:321`, `welcome_stage.dart:600`, `auth_abstract_backdrop.dart:108`). They pause correctly when hidden; cost is limited to those screens.
+- About 550 `GoogleFonts.outfit(...)` calls build a new `TextStyle` inside `build()`, some in list items and one per animation frame (`screening_activity_card.dart:299`). Cheap on its own; moving hot ones to `static final` helps items 3 and 8.
+- `GlossPillButton` ticks every frame though the sheen draws only 30% of each loop (`gloss_pill_button.dart:62-70`).
+- The local photo check loops over about 200K pixels on the UI isolate (`photo_quality.dart:74-114`), only in demo mode or when analysis is unavailable.
+
+**Startup**
+
+Before the first frame, `main()` awaits `dotenv.load`, calls `fvp.registerWith()` (which also schedules native player setup), and awaits `OnboardingStorage.isCompleted()`. Removing `fvp` takes its work away. `dotenv.load` and the onboarding read can run in parallel. The launch loader correctly waits for the server-confirmed session and user data. The daily tip and SVG precache then run serially after that data, inside a 2.5 s cap, and could start earlier and run in parallel without changing what the user sees.
+
+The Android launch theme is the Flutter template: a white window in light mode, and black in dark mode, before the first mint (`#E8F8F7`) Flutter frame. That's a visible flash. Setting the window background to `#E8F8F7` in `values`, `values-night` and a new `values-v31` (Android 12 splash) removes it without a new package. `flutter_native_splash` isn't needed for a solid color.
+
+**Memory and leaks**
+
+All controllers, focus nodes, tickers, timers and subscriptions on Android paths are disposed. Three small issues:
+
+- `hotspot_setup_controller.dart:89-108` (website-only flow): two overlapping `newCode()` calls orphan a 2 s polling timer.
+- `report_download.dart:118-135`: after the 30 s timeout the image listener stays attached.
+- `clinics_screen.dart:136`: `_cardKeys` keeps a GlobalKey for every clinic ever shown.
+
+The session photo cache (`screening_sessions_provider.dart:155-169`) keeps up to 18 JPEGs per scan for the whole app run. Capping it is a small behavior change (older scans would load their photos from the network again), so it is listed, not proposed.
+
+**Already done well (leave as is)**
+
+- One `BackdropGroup` per page with a single shared sigma-18 blur, so Impeller reads the backdrop and blurs once per frame. Page glass should stay on that one sigma.
+- The ambient backdrop painter sits in a `RepaintBoundary`.
+- The home video, Mouth3D, GuideStage, the Rabi mascot and the clinics map already pause or unmount when not visible.
+- The camera pipeline: Content-Length MJPEG splitting, one decode in flight, old images disposed, frames delivered via `ValueNotifier`.
+- 3D meshes are built with `compute`. Thumbnails decode at display size (`CoverResizeImage`, `cacheWidth`). Phone photos are capped at 2048 px and avatars at 512 px.
+- The chat's reversed list keeps the newest message at offset 0 with no per-chunk scrolling, and its typing dots respect reduced motion.
+- Records and notifications are paged. Treatments use a lazy list. There is no `shrinkWrap: true` in a scroll view anywhere.
+- Impeller is on (no opt-out in the manifest).
+
+## Expected outcome (estimate)
+
+| | Baseline | After proposals |
+|---|---|---|
+| Split APK, arm64-v8a | 65.8 MB | about 26 MB (about -60%) |
+| Native libraries per ABI | 36.3 MB | about 23.5 MB (without `fvp`) |
+| Flutter assets | 27.7 MB | about 1.2 MB |
+
+`--obfuscate --split-debug-info` should trim `libapp.so` further. Phase 5 will replace these estimates with measured numbers.
