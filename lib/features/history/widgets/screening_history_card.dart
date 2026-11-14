@@ -14,8 +14,9 @@ import '../../screening/data/models/screening_session.dart';
 /// The scan's result in a few words, once its analysis has really read something.
 String? _resultOf(ScreeningSession session) {
   final analysis = session.analysis;
-  if (analysis == null || analysis.status != AnalysisStatus.complete)
+  if (analysis == null || analysis.status != AnalysisStatus.complete) {
     return null;
+  }
   final report = ScreeningReport(analysis, session.capturedRegions);
   if (report.detectorOff || report.photosRead == 0) return null;
   return report.headline;

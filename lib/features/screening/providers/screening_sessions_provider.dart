@@ -109,8 +109,9 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
       );
     } catch (_) {
       // Only this answer goes back, so another one saved meanwhile stays.
-      if (stored() case final s?)
+      if (stored() case final s?) {
         _replaceLocal(s.withAnswer(findingId, before));
+      }
       rethrow;
     }
   }

@@ -97,8 +97,9 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
       await _notifier.addAttachment(r.id, file.bytes, fileName: file.name);
       if (mounted) showDentraSnack(context, 'File added.');
     } on PickFileException catch (e) {
-      if (mounted)
+      if (mounted) {
         showDentraSnack(context, e.message, tone: DentraFeedbackTone.error);
+      }
     } catch (e) {
       if (mounted) {
         showDentraSnack(

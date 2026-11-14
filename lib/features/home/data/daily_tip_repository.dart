@@ -53,8 +53,9 @@ class DailyTipRepository {
     final prefs = await SharedPreferences.getInstance();
     final cached = _read(prefs);
     // A fallback tip is retried, so the day still gets its real one.
-    if (cached != null && cached.date == date && cached.aiGenerated)
+    if (cached != null && cached.date == date && cached.aiGenerated) {
       return cached;
+    }
 
     final api = _api;
     if (api != null) {

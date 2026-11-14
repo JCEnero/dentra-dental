@@ -188,8 +188,9 @@ class CoverResizeImage extends ImageProvider<CoverResizeKey> {
         buffer,
         getTargetSize: (width, height) {
           final scale = math.max(pixels / width, pixels / height);
-          if (scale >= 1)
+          if (scale >= 1) {
             return ui.TargetImageSize(width: width, height: height);
+          }
           return ui.TargetImageSize(
             width: (width * scale).ceil(),
             height: (height * scale).ceil(),

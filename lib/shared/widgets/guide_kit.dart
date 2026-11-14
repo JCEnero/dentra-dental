@@ -168,8 +168,9 @@ class _TypedState extends State<_Typed> with SingleTickerProviderStateMixin {
       if (text.isEmpty) continue;
       final style = lit ? base.copyWith(color: guideAccent) : base;
       final seen = left.clamp(0, text.length);
-      if (seen > 0)
+      if (seen > 0) {
         spans.add(TextSpan(text: text.substring(0, seen), style: style));
+      }
       if (seen < text.length) {
         spans.add(TextSpan(
           text: text.substring(seen),
