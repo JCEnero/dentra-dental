@@ -47,12 +47,12 @@ class TreatmentModel {
   final Color iconColor;
   final Color iconBackground;
 
-  /// Optional custom image asset path (e.g. 'assets/images/treatments/braces.jpg').
+  /// Optional custom image asset path (e.g. 'assets/images/treatments/braces.webp').
   /// When provided, the card renders this image instead of [icon].
   final String? imagePath;
 
   /// Optional custom tooth-icon asset path
-  /// (e.g. 'assets/images/treatments/icons/tooth_cleaning.png').
+  /// (e.g. 'assets/images/treatments/icons/tooth_cleaning.webp').
   /// When provided, both the list card and the detail hero render this
   /// image instead of the Material [icon] or [imagePath].
   final String? iconPath;

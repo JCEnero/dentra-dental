@@ -623,7 +623,7 @@ class _RabiAvatar extends StatelessWidget {
 
   final double size;
 
-  static const String asset = 'assets/images/rabi_avatar.png';
+  static const String asset = 'assets/images/rabi_avatar.webp';
 
   @override
   Widget build(BuildContext context) {

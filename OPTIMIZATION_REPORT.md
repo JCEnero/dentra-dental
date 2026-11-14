@@ -272,3 +272,32 @@ The session photo cache (`screening_sessions_provider.dart:155-169`) keeps up to
 | Flutter assets | 27.7 MB | about 1.2 MB |
 
 `--obfuscate --split-debug-info` should trim `libapp.so` further. Phase 5 will replace these estimates with measured numbers.
+
+## Phase 2: cleanup (done)
+
+Approved in full. Deleted everything in the 1A deletion table, the three never-read private fields (`ChamberPainter.clock` became a plain constructor argument), the `GlassBarEdge` enum (only `top` was ever used), every unused asset in 1B, and the `video_player` and `fvp` packages. The waving Tooth Bunny now plays `bunny_wave.webp` on every platform. `Image` pauses its frames when `TickerMode` is off or animations are disabled, so the old pause-when-hidden code was no longer needed.
+
+`tool/mascot_rig.py` still documents its 2048 px source render, which now lives only in git history (`git show 774951e:assets/images/treatments/mascot.png`).
+
+`dart fix --apply` had nothing to fix. `dart format lib test` reformatted 130 files. That is in its own commit (`20bab35`), so it can be reverted alone if it gets in the way of other branches. A follow-up commit braces the 7 `if` statements the formatter split over two lines. Analyzer: 0 issues. Tests: 494 passed.
+
+## Phase 3: size (done)
+
+- **Images:** 23 treatment icons converted to 256 px WebP, the Rabi avatar to 384 px WebP, and the 4 treatment photos to 512 px WebP, all at quality 82. All references were updated.
+- **Fonts:** added `Outfit-ExtraBold.ttf`. It is byte-identical to the file `google_fonts` downloaded at runtime, verified against the SHA-256 pinned in the package (the bundled Bold file matches its pinned hash too). `GoogleFonts.config.allowRuntimeFetching = false` is now set in `main()`.
+- **SVG icons:** the 4 Services icons moved to `assets/images/icons/` and are compiled to vector_graphics format at build time by the `vector_graphics_compiler` transformer. `flutter_svg` was replaced by `vector_graphics` 1.2.3, with `vector_graphics_compiler` 1.3.0 as a dev dependency. Both were already in the lockfile at those versions. The icons are still precached before Home appears.
+- **Android:** `androidResources.localeFilters += "en"` (the AGP 9 replacement for `resConfigs`). R8 and resource shrinking are now spelled out in `build.gradle.kts` (the Flutter plugin already enabled them). Added `proguard-rules.pro`. No extra keep rules are needed today, because every plugin ships consumer rules.
+- **Icons:** Material icon tree shaking is on (1.6 MB down to 29 KB in the build log).
+- **Deferred loading:** not used. On Android, `deferred as` only splits code when the app ships as Play Feature Delivery modules. No feature here is large enough to justify that.
+
+Measured after Phase 3 (AAB and split APKs built with `--obfuscate --split-debug-info=build/symbols`):
+
+| Build | Baseline | After Phase 3 | Change |
+|---|---|---|---|
+| Split APK, arm64-v8a | 65.8 MB | 23.3 MB | -42.5 MB (-64.6%) |
+| Split APK, armeabi-v7a | 60.9 MB | 21.4 MB | -39.5 MB (-64.8%) |
+| Split APK, x86_64 | 68.4 MB | 25.0 MB | -43.4 MB (-63.5%) |
+| App bundle | 117.5 MB | 62.2 MB | -55.3 MB (-47.1%) |
+| APK, arm64 target, size analysis (not obfuscated) | 89.3 MB | 25.2 MB | -64.1 MB (-71.8%) |
+
+Inside the arm64 split APK: `libapp.so` 12.1 to 9.9 MB, the fvp libraries (12.8 MB) are gone, Flutter assets 27.7 to 1.07 MB, `classes.dex` 1.39 to 0.77 MB, and `resources.arsc` 183 to 34 KB.

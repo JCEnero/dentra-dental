@@ -308,7 +308,7 @@ class ReportActions extends StatelessWidget {
             SizedBox.square(
               dimension: 34,
               child: Image.asset(
-                'assets/images/rabi_avatar.png',
+                'assets/images/rabi_avatar.webp',
                 fit: BoxFit.contain,
                 excludeFromSemantics: true,
                 errorBuilder: (_, __, ___) =>

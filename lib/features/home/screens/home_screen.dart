@@ -1,7 +1,8 @@
+import 'package:flutter/services.dart' show ByteData;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:vector_graphics/vector_graphics.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/avatar_widget.dart';
@@ -568,25 +569,35 @@ class _StatusPill extends StatelessWidget {
 /// The four Services icons, drawn on the glass with no backing disc.
 /// Public so the loading phase can decode them before Home appears.
 abstract class ServiceIcons {
-  static const teeth = 'assets/images/teeth.svg';
-  static const treatment = 'assets/images/treatment.svg';
-  static const comparison = 'assets/images/comparison.svg';
-  static const rabi = 'assets/images/rabi-ai.svg';
+  static const teeth = 'assets/images/icons/teeth.svg';
+  static const treatment = 'assets/images/icons/treatment.svg';
+  static const comparison = 'assets/images/icons/comparison.svg';
+  static const rabi = 'assets/images/icons/rabi-ai.svg';
 
   static const all = [teeth, treatment, comparison, rabi];
 
-  /// Parses every icon into flutter_svg's cache, so the row is complete
-  /// on Home's first frame instead of popping in a moment later.
+  /// Loads every icon into memory, so the row is complete on Home's first
+  /// frame instead of popping in a moment later.
   static Future<void> precache() => Future.wait([
-        for (final asset in all) _precache(SvgAssetLoader(asset)),
+        for (final asset in all) _IconLoader(asset).loadBytes(null),
       ]);
+}
 
-  static Future<void> _precache(SvgAssetLoader loader) => svg.cache
-      .putIfAbsent(loader.cacheKey(null), () => loader.loadBytes(null));
+/// Loads an icon compiled at build time (the vector_graphics_compiler
+/// transformer in pubspec.yaml) and keeps its bytes, so the SVG is never
+/// parsed on the device and each icon is read from the bundle once.
+class _IconLoader extends AssetBytesLoader {
+  const _IconLoader(super.assetName);
+
+  static final _bytes = <String, Future<ByteData>>{};
+
+  @override
+  Future<ByteData> loadBytes(BuildContext? context) =>
+      _bytes.putIfAbsent(assetName, () => super.loadBytes(context));
 }
 
 class _ServiceButton extends StatelessWidget {
-  /// SVG asset from [ServiceIcons].
+  /// Icon asset from [ServiceIcons].
   final String icon;
   final String label;
 
@@ -618,8 +629,8 @@ class _ServiceButton extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SvgPicture.asset(
-                    icon,
+                  VectorGraphic(
+                    loader: _IconLoader(icon),
                     width: 30,
                     height: 30,
                     excludeFromSemantics: true,

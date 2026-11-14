@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app/app.dart';
 import 'features/onboarding/services/onboarding_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Every Outfit weight the app uses ships in assets/fonts, so never fetch
+  // fonts from the network: a missing weight would otherwise show in the
+  // system font until the download landed, then swap.
+  GoogleFonts.config.allowRuntimeFetching = false;
   await dotenv.load(fileName: '.env'); // GEMINI_API_KEY, API_BASE_URL, ...
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

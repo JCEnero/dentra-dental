@@ -72,8 +72,23 @@ android {
         }
     }
 
+    // The app is English only. Drop the translated strings that AndroidX and
+    // Play Services libraries bring in for dozens of other languages.
+    androidResources {
+        localeFilters += listOf("en")
+    }
+
     buildTypes {
         release {
+            // R8 code shrinking and resource shrinking. The Flutter Gradle
+            // plugin turns these on for release builds anyway; spelled out
+            // here so nobody turns them off by accident.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             // Without key.properties, fall back to debug keys so
             // `flutter run --release` still works on other machines.
             signingConfig = if (keystorePropertiesFile.exists()) {

@@ -10,7 +10,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'teeth_cleaning',
       name: 'Teeth Cleaning',
-      imagePath: 'assets/images/treatments/cleaning.jpg',
+      imagePath: 'assets/images/treatments/cleaning.webp',
       shortDescription: 'Professional cleaning to remove plaque and tartar.',
       longDescription:
           'Professional teeth cleaning (prophylaxis) is a preventive dental procedure '
@@ -19,7 +19,7 @@ abstract class TreatmentData {
           'at least twice a year for most patients.',
       category: TreatmentCategory.general,
       icon: Icons.cleaning_services_rounded,
-      iconPath: 'assets/images/treatments/icons/tooth_cleaning.png',
+      iconPath: 'assets/images/treatments/icons/tooth_cleaning.webp',
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '45 – 60 minutes',
@@ -61,7 +61,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'tooth_filling',
       name: 'Tooth Filling',
-      imagePath: 'assets/images/treatments/cleaning.jpg',
+      imagePath: 'assets/images/treatments/cleaning.webp',
       shortDescription: 'Restore cavities with tooth-colored composite resin.',
       longDescription:
           'A dental filling repairs a tooth damaged by decay, restoring its normal shape '
@@ -69,7 +69,7 @@ abstract class TreatmentData {
           'fillings bond directly to the tooth structure and are virtually invisible.',
       category: TreatmentCategory.general,
       icon: Icons.healing_rounded,
-      iconPath: 'assets/images/treatments/icons/tooth_filling.png',
+      iconPath: 'assets/images/treatments/icons/tooth_filling.webp',
       iconColor: Color(0xFF4CAF93),
       iconBackground: Color(0xFFE8F5F1),
       duration: '30 – 60 minutes',
@@ -139,7 +139,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'root_canal',
       name: 'Root Canal',
-      imagePath: 'assets/images/treatments/cleaning.jpg',
+      imagePath: 'assets/images/treatments/cleaning.webp',
       shortDescription: 'Treat infected tooth pulp and save the natural tooth.',
       longDescription:
           'Root canal therapy removes infected or inflamed pulp tissue from inside the '
@@ -148,7 +148,7 @@ abstract class TreatmentData {
           'uncomfortable than having a filling placed.',
       category: TreatmentCategory.general,
       icon: Icons.medical_services_rounded,
-      iconPath: 'assets/images/treatments/icons/root_canal.png',
+      iconPath: 'assets/images/treatments/icons/root_canal.webp',
       iconColor: Color(0xFFE8896A),
       iconBackground: Color(0xFFFDF0EB),
       duration: '60 – 90 minutes',
@@ -223,7 +223,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'tooth_extraction',
       name: 'Tooth Extraction',
-      imagePath: 'assets/images/treatments/cleaning.jpg',
+      imagePath: 'assets/images/treatments/cleaning.webp',
       shortDescription: 'Safe removal of a severely damaged or impacted tooth.',
       longDescription:
           'Tooth extraction removes a tooth that cannot be saved by other treatments. '
@@ -231,7 +231,7 @@ abstract class TreatmentData {
           'handle teeth broken at the gumline or impacted wisdom teeth.',
       category: TreatmentCategory.general,
       icon: Icons.remove_circle_outline_rounded,
-      iconPath: 'assets/images/treatments/icons/tooth_extraction.png',
+      iconPath: 'assets/images/treatments/icons/tooth_extraction.webp',
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: '20 – 45 minutes',
@@ -309,7 +309,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'teeth_whitening',
       name: 'Teeth Whitening',
-      imagePath: 'assets/images/treatments/glowing.jpg',
+      imagePath: 'assets/images/treatments/glowing.webp',
       shortDescription: 'Brighten your smile with safe professional whitening.',
       longDescription:
           'Professional teeth whitening uses a higher concentration of bleaching agents '
@@ -317,7 +317,7 @@ abstract class TreatmentData {
           'single visit. The procedure is safe, fast, and overseen by a dental professional.',
       category: TreatmentCategory.cosmetic,
       icon: Icons.auto_awesome_rounded,
-      iconPath: 'assets/images/treatments/icons/teeth_whitening.png',
+      iconPath: 'assets/images/treatments/icons/teeth_whitening.webp',
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: '60 – 90 minutes',
@@ -359,7 +359,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'dental_veneers',
       name: 'Dental Veneers',
-      imagePath: 'assets/images/treatments/glowing.jpg',
+      imagePath: 'assets/images/treatments/glowing.webp',
       shortDescription:
           'Ultra-thin shells that transform the look of your smile.',
       longDescription:
@@ -368,7 +368,7 @@ abstract class TreatmentData {
           'minor misalignment in a minimally invasive way.',
       category: TreatmentCategory.cosmetic,
       icon: Icons.star_outline_rounded,
-      iconPath: 'assets/images/treatments/icons/dental_veneers.png',
+      iconPath: 'assets/images/treatments/icons/dental_veneers.webp',
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '2 visits (1–2 hours each)',
@@ -413,7 +413,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'orthodontics',
       name: 'Orthodontics',
-      imagePath: 'assets/images/treatments/braces.jpg',
+      imagePath: 'assets/images/treatments/braces.webp',
       shortDescription: 'Braces and aligners for a straighter, perfect smile.',
       longDescription:
           'Orthodontic treatment straightens teeth and corrects bite issues using '
@@ -421,7 +421,7 @@ abstract class TreatmentData {
           'aesthetics but also makes teeth easier to clean and reduces jaw strain.',
       category: TreatmentCategory.orthodontics,
       icon: Icons.grid_3x3_rounded,
-      iconPath: 'assets/images/treatments/icons/orthodontics.png',
+      iconPath: 'assets/images/treatments/icons/orthodontics.webp',
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '12 – 36 months',
@@ -465,7 +465,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'clear_aligners',
       name: 'Clear Aligners',
-      imagePath: 'assets/images/treatments/braces.jpg',
+      imagePath: 'assets/images/treatments/braces.webp',
       shortDescription:
           'Nearly invisible trays that gradually straighten teeth.',
       longDescription:
@@ -474,7 +474,7 @@ abstract class TreatmentData {
           'teeth toward the target position over several months.',
       category: TreatmentCategory.orthodontics,
       icon: Icons.visibility_off_rounded,
-      iconPath: 'assets/images/treatments/icons/clear_aligners.png',
+      iconPath: 'assets/images/treatments/icons/clear_aligners.webp',
       iconColor: Color(0xFF4DD8C8),
       iconBackground: Color(0xFFEBFAF9),
       duration: '6 – 18 months',
@@ -521,7 +521,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'dental_implants',
       name: 'Dental Implants',
-      imagePath: 'assets/images/treatments/implants.jpg',
+      imagePath: 'assets/images/treatments/implants.webp',
       shortDescription: 'Permanent titanium roots for replacing missing teeth.',
       longDescription:
           'Dental implants are titanium posts surgically placed into the jawbone to '
@@ -529,7 +529,7 @@ abstract class TreatmentData {
           'for replacement teeth that look, feel, and function exactly like natural ones.',
       category: TreatmentCategory.surgical,
       icon: Icons.hardware_rounded,
-      iconPath: 'assets/images/treatments/icons/dental_implants.png',
+      iconPath: 'assets/images/treatments/icons/dental_implants.webp',
       iconColor: Color(0xFF6B7B80),
       iconBackground: Color(0xFFF0F3F4),
       duration: '3 – 6 months (full process)',
@@ -574,7 +574,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'wisdom_tooth_removal',
       name: 'Wisdom Tooth Removal',
-      imagePath: 'assets/images/treatments/implants.jpg',
+      imagePath: 'assets/images/treatments/implants.webp',
       shortDescription:
           'Surgical extraction of impacted or problematic wisdom teeth.',
       longDescription:
@@ -583,7 +583,7 @@ abstract class TreatmentData {
           'Surgical removal prevents these complications and relieves discomfort.',
       category: TreatmentCategory.surgical,
       icon: Icons.cut_rounded,
-      iconPath: 'assets/images/treatments/icons/wisdom_tooth_removal.png',
+      iconPath: 'assets/images/treatments/icons/wisdom_tooth_removal.webp',
       iconColor: Color(0xFFE8896A),
       iconBackground: Color(0xFFFDF0EB),
       duration: '45 – 90 minutes',
@@ -628,7 +628,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'dental_crown',
       name: 'Dental Crown',
-      imagePath: 'assets/images/treatments/cleaning.jpg',
+      imagePath: 'assets/images/treatments/cleaning.webp',
       shortDescription:
           'A cap that fully restores a damaged or weakened tooth.',
       longDescription:
@@ -638,7 +638,7 @@ abstract class TreatmentData {
           'and are custom-fabricated to blend seamlessly with surrounding teeth.',
       category: TreatmentCategory.general,
       icon: Icons.circle_outlined,
-      iconPath: 'assets/images/treatments/icons/dental_crown.png',
+      iconPath: 'assets/images/treatments/icons/dental_crown.webp',
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '2 visits (1 hour each)',
@@ -710,7 +710,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'dental_bridge',
       name: 'Dental Bridge',
-      imagePath: 'assets/images/treatments/cleaning.jpg',
+      imagePath: 'assets/images/treatments/cleaning.webp',
       shortDescription:
           'Replace one or more missing teeth with a fixed bridge.',
       longDescription:
@@ -720,7 +720,7 @@ abstract class TreatmentData {
           'fixed restoration.',
       category: TreatmentCategory.general,
       icon: Icons.linear_scale_rounded,
-      iconPath: 'assets/images/treatments/icons/dental_bridge.png',
+      iconPath: 'assets/images/treatments/icons/dental_bridge.webp',
       iconColor: Color(0xFF4CAF93),
       iconBackground: Color(0xFFE8F5F1),
       duration: '2 visits (1–2 hours each)',
@@ -762,7 +762,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'night_guard',
       name: 'Night Guard',
-      imagePath: 'assets/images/treatments/cleaning.jpg',
+      imagePath: 'assets/images/treatments/cleaning.webp',
       shortDescription: 'Custom mouthguard to protect teeth from grinding.',
       longDescription:
           'Bruxism (teeth grinding) during sleep can wear down enamel, cause jaw pain, '
@@ -771,7 +771,7 @@ abstract class TreatmentData {
           'preventing long-term damage.',
       category: TreatmentCategory.general,
       icon: Icons.shield_outlined,
-      iconPath: 'assets/images/treatments/icons/night_guard.png',
+      iconPath: 'assets/images/treatments/icons/night_guard.webp',
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: '2 visits (30 minutes each)',
@@ -813,7 +813,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'fluoride_treatment',
       name: 'Fluoride Treatment',
-      imagePath: 'assets/images/treatments/cleaning.jpg',
+      imagePath: 'assets/images/treatments/cleaning.webp',
       shortDescription: 'Strengthen enamel and prevent cavities with fluoride.',
       longDescription:
           'Professional fluoride treatments deliver a high concentration of fluoride '
@@ -822,7 +822,7 @@ abstract class TreatmentData {
           'Recommended for children, patients prone to cavities, and those with dry mouth.',
       category: TreatmentCategory.general,
       icon: Icons.water_drop_rounded,
-      iconPath: 'assets/images/treatments/icons/fluoride_treatment.png',
+      iconPath: 'assets/images/treatments/icons/fluoride_treatment.webp',
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '15 – 30 minutes',
@@ -887,7 +887,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'dental_bonding',
       name: 'Dental Bonding',
-      imagePath: 'assets/images/treatments/glowing.jpg',
+      imagePath: 'assets/images/treatments/glowing.webp',
       shortDescription: 'Repair chips and gaps with tooth-coloured resin.',
       longDescription:
           'Dental bonding applies a tooth-coloured composite resin to repair chipped, '
@@ -896,7 +896,7 @@ abstract class TreatmentData {
           'little to no enamel removal.',
       category: TreatmentCategory.cosmetic,
       icon: Icons.brush_rounded,
-      iconPath: 'assets/images/treatments/icons/dental_bonding.png',
+      iconPath: 'assets/images/treatments/icons/dental_bonding.webp',
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: '30 – 60 minutes per tooth',
@@ -937,7 +937,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'gum_contouring',
       name: 'Gum Contouring',
-      imagePath: 'assets/images/treatments/glowing.jpg',
+      imagePath: 'assets/images/treatments/glowing.webp',
       shortDescription: 'Reshape the gumline for a more balanced, even smile.',
       longDescription:
           'Gum contouring (gingivoplasty) removes or reshapes excess gum tissue to '
@@ -946,7 +946,7 @@ abstract class TreatmentData {
           'aesthetically pleasing result.',
       category: TreatmentCategory.cosmetic,
       icon: Icons.format_align_center_rounded,
-      iconPath: 'assets/images/treatments/icons/gum_contouring.png',
+      iconPath: 'assets/images/treatments/icons/gum_contouring.webp',
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '1 – 2 hours',
@@ -987,7 +987,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'smile_makeover',
       name: 'Smile Makeover',
-      imagePath: 'assets/images/treatments/glowing.jpg',
+      imagePath: 'assets/images/treatments/glowing.webp',
       shortDescription: 'A personalised combination of cosmetic treatments.',
       longDescription:
           'A smile makeover combines two or more cosmetic dental procedures — such as '
@@ -996,7 +996,7 @@ abstract class TreatmentData {
           'and deliver a complete smile transformation.',
       category: TreatmentCategory.cosmetic,
       icon: Icons.auto_fix_high_rounded,
-      iconPath: 'assets/images/treatments/icons/smile_makeover.png',
+      iconPath: 'assets/images/treatments/icons/smile_makeover.webp',
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: 'Varies (multiple visits)',
@@ -1041,7 +1041,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'retainers',
       name: 'Retainers',
-      imagePath: 'assets/images/treatments/braces.jpg',
+      imagePath: 'assets/images/treatments/braces.webp',
       shortDescription: 'Keep teeth in position after orthodontic treatment.',
       longDescription:
           'Retainers are custom appliances worn after braces or aligner therapy to '
@@ -1049,7 +1049,7 @@ abstract class TreatmentData {
           'They can be removable (clear or Hawley wire) or fixed (bonded behind the teeth).',
       category: TreatmentCategory.orthodontics,
       icon: Icons.lock_outline_rounded,
-      iconPath: 'assets/images/treatments/icons/retainers.png',
+      iconPath: 'assets/images/treatments/icons/retainers.webp',
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '1 visit (30 minutes)',
@@ -1090,7 +1090,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'space_maintainer',
       name: 'Space Maintainer',
-      imagePath: 'assets/images/treatments/braces.jpg',
+      imagePath: 'assets/images/treatments/braces.webp',
       shortDescription: 'Hold space open after early tooth loss in children.',
       longDescription:
           'When a baby tooth is lost prematurely, neighbouring teeth can drift into '
@@ -1099,7 +1099,7 @@ abstract class TreatmentData {
           'gap open until the permanent tooth is ready to come through.',
       category: TreatmentCategory.orthodontics,
       icon: Icons.space_bar_rounded,
-      iconPath: 'assets/images/treatments/icons/space_maintainer.png',
+      iconPath: 'assets/images/treatments/icons/space_maintainer.webp',
       iconColor: Color(0xFF4DD8C8),
       iconBackground: Color(0xFFEBFAF9),
       duration: '1 visit (45 minutes)',
@@ -1134,7 +1134,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'jaw_expander',
       name: 'Jaw Expander',
-      imagePath: 'assets/images/treatments/braces.jpg',
+      imagePath: 'assets/images/treatments/braces.webp',
       shortDescription:
           'Widen the upper jaw to correct crowding and crossbite.',
       longDescription:
@@ -1144,7 +1144,7 @@ abstract class TreatmentData {
           'and adolescents whose palatal suture has not yet fully fused.',
       category: TreatmentCategory.orthodontics,
       icon: Icons.open_with_rounded,
-      iconPath: 'assets/images/treatments/icons/jaw_expander.png',
+      iconPath: 'assets/images/treatments/icons/jaw_expander.webp',
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '3 – 6 months',
@@ -1188,7 +1188,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'bone_grafting',
       name: 'Bone Grafting',
-      imagePath: 'assets/images/treatments/implants.jpg',
+      imagePath: 'assets/images/treatments/implants.webp',
       shortDescription: 'Rebuild jawbone volume to support dental implants.',
       longDescription:
           'Bone grafting adds bone or bone-like material to areas of the jaw where '
@@ -1197,7 +1197,7 @@ abstract class TreatmentData {
           'bone is present to anchor the implant securely.',
       category: TreatmentCategory.surgical,
       icon: Icons.architecture_rounded,
-      iconPath: 'assets/images/treatments/icons/bone_grafting.png',
+      iconPath: 'assets/images/treatments/icons/bone_grafting.webp',
       iconColor: Color(0xFF6B7B80),
       iconBackground: Color(0xFFF0F3F4),
       duration: '45 – 90 minutes',
@@ -1241,7 +1241,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'sinus_lift',
       name: 'Sinus Lift',
-      imagePath: 'assets/images/treatments/implants.jpg',
+      imagePath: 'assets/images/treatments/implants.webp',
       shortDescription: 'Add bone beneath the sinus to enable upper implants.',
       longDescription:
           'A sinus lift (sinus augmentation) adds bone to the upper jaw in the area '
@@ -1250,7 +1250,7 @@ abstract class TreatmentData {
           'implant without risking sinus perforation.',
       category: TreatmentCategory.surgical,
       icon: Icons.vertical_align_top_rounded,
-      iconPath: 'assets/images/treatments/icons/sinus_lift.png',
+      iconPath: 'assets/images/treatments/icons/sinus_lift.webp',
       iconColor: Color(0xFFE8896A),
       iconBackground: Color(0xFFFDF0EB),
       duration: '1.5 – 2 hours',
@@ -1292,7 +1292,7 @@ abstract class TreatmentData {
     TreatmentModel(
       id: 'frenectomy',
       name: 'Frenectomy',
-      imagePath: 'assets/images/treatments/implants.jpg',
+      imagePath: 'assets/images/treatments/implants.webp',
       shortDescription:
           'Remove restrictive tissue causing tongue-tie or lip-tie.',
       longDescription:
@@ -1303,7 +1303,7 @@ abstract class TreatmentData {
           'quick, precise, and virtually bloodless.',
       category: TreatmentCategory.surgical,
       icon: Icons.content_cut_rounded,
-      iconPath: 'assets/images/treatments/icons/frenectomy.png',
+      iconPath: 'assets/images/treatments/icons/frenectomy.webp',
       iconColor: Color(0xFF6B7B80),
       iconBackground: Color(0xFFF0F3F4),
       duration: '15 – 30 minutes',
