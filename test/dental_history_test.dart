@@ -11,6 +11,7 @@ import 'package:dentra_mobile/features/history/state/history_query.dart';
 import 'package:dentra_mobile/features/home/widgets/screening_activity_card.dart';
 import 'package:dentra_mobile/features/screening/data/models/screening_session.dart';
 import 'package:dentra_mobile/features/screening/providers/screening_sessions_provider.dart';
+import 'package:dentra_mobile/shared/widgets/dentra_glass_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -255,10 +256,58 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Dental History'), findsOneWidget);
-    expect(find.text('Smart Screening'), findsOneWidget);
+    expect(find.text('Dental Screening'), findsOneWidget);
     expect(find.text('Personal Note'), findsOneWidget);
     expect(find.text('Ask about sensitivity'), findsOneWidget);
     expect(find.text('2 items'), findsOneWidget);
+  });
+
+  testWidgets('delete all removes every scan after asking, and keeps notes',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 1400) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    final screenings = FakeScreeningRepository([
+      screening('s1', today.add(const Duration(hours: 7))),
+      screening('s2', today.add(const Duration(hours: 9))),
+    ]);
+    await tester.pumpWidget(_app(
+      const HistoryScreen(),
+      screenings: screenings,
+      records: FakeDentalRecordRepository([
+        recordFrom(
+          DentalRecordInput(
+            source: RecordSource.personalNote,
+            recordDate: today,
+            notes: 'Ask about sensitivity',
+          ),
+          id: 'n1',
+        ),
+      ]),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Dental Screening'), findsNWidgets(2));
+
+    // Cancelling keeps everything.
+    await tester.tap(find.text('Delete all'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete all scans?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(screenings.sessions, hasLength(2));
+
+    await tester.tap(find.text('Delete all'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(DentraPillButton, 'Delete all'));
+    await tester.pumpAndSettle();
+
+    expect(screenings.sessions, isEmpty);
+    expect(find.text('Dental Screening'), findsNothing);
+    expect(find.text('Ask about sensitivity'), findsOneWidget);
+    // Nothing left to delete, so the link goes away.
+    expect(find.text('Delete all'), findsNothing);
+    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('history still shows screenings when records fail',
@@ -270,7 +319,7 @@ void main() {
       records: FakeDentalRecordRepository()..fetchError = Exception('offline'),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('Smart Screening'), findsOneWidget);
+    expect(find.text('Dental Screening'), findsOneWidget);
     expect(find.textContaining("couldn't load"), findsOneWidget);
   });
 

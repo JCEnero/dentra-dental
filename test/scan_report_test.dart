@@ -1016,13 +1016,15 @@ void main() {
     testWidgets(
         'shows the result beside a read scan, and nothing beside others',
         (tester) async {
-      Future<void> card(ScreeningSession s) => tester.pumpWidget(MaterialApp(
-            home: Scaffold(
-              body: ScreeningHistoryCard(
-                session: s,
-                isLatest: true,
-                alternate: false,
-                onTap: () {},
+      Future<void> card(ScreeningSession s) => tester.pumpWidget(ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: ScreeningHistoryCard(
+                  session: s,
+                  isLatest: true,
+                  alternate: false,
+                  onTap: () {},
+                ),
               ),
             ),
           ));

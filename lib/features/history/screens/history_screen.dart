@@ -76,6 +76,33 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     openHistoryEntry(context, entry);
   }
 
+  /// Asks first, then deletes every screening with its photos and results.
+  /// Clinic visits, photos and notes the user added stay.
+  Future<void> _deleteAllScans() async {
+    final count = ref.read(screeningSessionsProvider).valueOrNull?.length ?? 0;
+    final confirmed = await showGlassConfirmDialog(
+      context: context,
+      icon: Icons.delete_outline_rounded,
+      title: 'Delete all scans?',
+      message: 'All $count ${count == 1 ? 'screening' : 'screenings'} will be '
+          'removed, with their photos and results. Visits and notes you '
+          'added stay. This cannot be undone.',
+      confirmLabel: 'Delete all',
+      destructive: true,
+    );
+    if (!confirmed || !mounted) return;
+    final toast = DentraToast.of(context);
+    try {
+      await ref.read(screeningSessionsProvider.notifier).deleteAll();
+      toast.show('All scans deleted.');
+    } catch (_) {
+      toast.show(
+        "Couldn't delete your scans. Try again.",
+        tone: DentraFeedbackTone.error,
+      );
+    }
+  }
+
   Future<void> _refresh() => Future.wait([
         ref.refresh(screeningSessionsProvider.future),
         // A records failure is shown by the banner, not the pull-to-refresh.
@@ -201,6 +228,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             count: results.valueOrNull?.length,
                             onWholeMonth: _controller.clearDay,
                             onReset: _reset,
+                            onDeleteAll: all.any((e) => e is ScreeningEntry)
+                                ? _deleteAllScans
+                                : null,
                           ),
                           _buildResults(results, all, view),
                         ],
@@ -502,12 +532,16 @@ class _ListHeader extends StatelessWidget {
     required this.count,
     required this.onWholeMonth,
     required this.onReset,
+    this.onDeleteAll,
   });
 
   final HistoryViewState view;
   final int? count;
   final VoidCallback onWholeMonth;
   final VoidCallback onReset;
+
+  /// Deletes every scan. Hidden when there are none.
+  final VoidCallback? onDeleteAll;
 
   @override
   Widget build(BuildContext context) {
@@ -560,6 +594,12 @@ class _ListHeader extends StatelessWidget {
             ),
           ),
           if (action != null) action,
+          if (onDeleteAll != null)
+            _HeaderLink(
+              label: 'Delete all',
+              semanticsLabel: 'Delete all scans',
+              onTap: onDeleteAll!,
+            ),
         ],
       ),
     );
@@ -567,10 +607,15 @@ class _ListHeader extends StatelessWidget {
 }
 
 class _HeaderLink extends StatelessWidget {
-  const _HeaderLink({required this.label, required this.onTap});
+  const _HeaderLink({
+    required this.label,
+    required this.onTap,
+    this.semanticsLabel,
+  });
 
   final String label;
   final VoidCallback onTap;
+  final String? semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -582,6 +627,7 @@ class _HeaderLink extends StatelessWidget {
       ),
       child: Text(
         label,
+        semanticsLabel: semanticsLabel,
         style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
       ),
     );

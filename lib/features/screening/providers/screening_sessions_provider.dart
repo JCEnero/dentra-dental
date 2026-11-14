@@ -129,6 +129,21 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
     }
   }
 
+  /// Deletes every screening of the signed-in user, with their stored
+  /// photos and results. The list empties at once; if the server refuses,
+  /// it comes back and the error is rethrown.
+  Future<void> deleteAll() async {
+    final previous = state.valueOrNull ?? const <ScreeningSession>[];
+    state = const AsyncData([]);
+    try {
+      await _repo.deleteAll(_userId);
+      ref.read(screeningImageCacheProvider.notifier).clear();
+    } catch (_) {
+      state = AsyncData(previous);
+      rethrow;
+    }
+  }
+
   /// Upserts by id, keeping newest-first order and no duplicates.
   void _replaceLocal(ScreeningSession session) {
     final current = state.valueOrNull ?? const <ScreeningSession>[];
