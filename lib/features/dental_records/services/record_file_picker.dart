@@ -67,7 +67,12 @@ class RecordFilePicker {
         XTypeGroup(
           label: 'Documents and photos',
           extensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
-          mimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+          mimeTypes: [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/webp'
+          ],
           // Listed one by one: 'public.image' would also allow iPhone HEIC
           // files, which the server rejects.
           uniformTypeIdentifiers: [
@@ -87,7 +92,8 @@ class RecordFilePicker {
   Future<PickedFile> _read(XFile file) async {
     final size = await file.length();
     if (size > maxBytes) {
-      throw const PickFileException('That file is over 10 MB. Choose a smaller one.');
+      throw const PickFileException(
+          'That file is over 10 MB. Choose a smaller one.');
     }
     final bytes = await file.readAsBytes();
     if (bytes.isEmpty) throw const PickFileException('That file is empty.');

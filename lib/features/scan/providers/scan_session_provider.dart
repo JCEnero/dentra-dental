@@ -595,14 +595,13 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     _resumeId = _recorded?.id;
     _upload = null;
     state = ScanSessionState(
-      selectedRegionId: flagged.contains(first.id)
-          ? first.id
-          : secondPhotoId(first.id),
+      selectedRegionId:
+          flagged.contains(first.id) ? first.id : secondPhotoId(first.id),
       started: true,
       checkIn: state.checkIn,
       checkInSeen: true,
-      captures: Map.unmodifiable({...state.captures}
-        ..removeWhere((id, _) => flagged.contains(id))),
+      captures: Map.unmodifiable(
+          {...state.captures}..removeWhere((id, _) => flagged.contains(id))),
     );
   }
 

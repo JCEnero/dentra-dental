@@ -106,8 +106,9 @@ class HomeScreen extends ConsumerWidget {
                                 await Navigator.of(context, rootNavigator: true)
                                     .push(EditProfileScreen.route(profile));
                             if (saved != true || !context.mounted) return;
-                            ref.read(notificationsProvider.notifier).record(
-                                NotificationEvents.profileUpdated());
+                            ref
+                                .read(notificationsProvider.notifier)
+                                .record(NotificationEvents.profileUpdated());
                             showDentraSnack(context, 'Profile updated.');
                           },
                           child: AvatarWidget(

@@ -254,7 +254,8 @@ class _TopBar extends StatelessWidget {
           child: GlassBlur(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: AppGlass.barFill.withValues(alpha: AppGlass.barFill.a * t),
+                color:
+                    AppGlass.barFill.withValues(alpha: AppGlass.barFill.a * t),
                 border: Border(
                   bottom: BorderSide(
                     color: AppGlass.divider.withValues(

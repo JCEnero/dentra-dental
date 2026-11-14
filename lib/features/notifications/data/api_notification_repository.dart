@@ -19,16 +19,17 @@ class ApiNotificationRepository implements NotificationRepository {
     AppNotification? after,
     int limit = 20,
   }) async {
-    final body = await _call(() => _api.send('GET', '/api/notifications', query: {
-          'limit': '$limit',
-          if (query.unreadOnly) 'unread': 'true',
-          if (query.category != null) 'category': query.category!.name,
-          // Keyset cursor: the last notification already loaded.
-          if (after != null) ...{
-            'before_created_at': after.createdAt.toUtc().toIso8601String(),
-            'before_id': after.id,
-          },
-        }));
+    final body =
+        await _call(() => _api.send('GET', '/api/notifications', query: {
+              'limit': '$limit',
+              if (query.unreadOnly) 'unread': 'true',
+              if (query.category != null) 'category': query.category!.name,
+              // Keyset cursor: the last notification already loaded.
+              if (after != null) ...{
+                'before_created_at': after.createdAt.toUtc().toIso8601String(),
+                'before_id': after.id,
+              },
+            }));
     return NotificationPage(
       items: [
         for (final item in body['items'] as List<dynamic>)
@@ -70,7 +71,8 @@ class ApiNotificationRepository implements NotificationRepository {
 
   @override
   Future<void> delete(String userId, String id) => _call(
-        () => _api.send('DELETE', '/api/notifications/${Uri.encodeComponent(id)}'),
+        () => _api.send(
+            'DELETE', '/api/notifications/${Uri.encodeComponent(id)}'),
       );
 
   @override

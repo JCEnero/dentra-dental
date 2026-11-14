@@ -73,8 +73,8 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
                 height: 36,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenH),
                   children: [
                     _CategoryChip(
                       label: 'All',

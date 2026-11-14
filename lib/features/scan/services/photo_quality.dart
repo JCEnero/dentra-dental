@@ -58,7 +58,8 @@ class PhotoQuality {
   /// Whether a photo's real shorter side is under [minSide]. A photo no wider
   /// than [checkSide] was decoded as it is, so [width] and [height] are real. A
   /// wider one was scaled down, so only a thin one needs its real size looked up.
-  static Future<bool> _isTooSmall(Uint8List bytes, int width, int height) async {
+  static Future<bool> _isTooSmall(
+      Uint8List bytes, int width, int height) async {
     if (math.min(width, height) >= minSide) return false;
     if (width < checkSide) return true;
     final codec = await ui.instantiateImageCodec(bytes);

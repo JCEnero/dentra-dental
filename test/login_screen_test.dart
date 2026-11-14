@@ -27,7 +27,8 @@ final _logIn = find.bySemanticsLabel('Log in');
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
-  Future<void> pumpLogin(WidgetTester tester, {Size size = const Size(390, 844)}) async {
+  Future<void> pumpLogin(WidgetTester tester,
+      {Size size = const Size(390, 844)}) async {
     tester.view.physicalSize = size * 3;
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -120,7 +121,8 @@ void main() {
     );
   });
 
-  testWidgets('successful login shows the loader, which lets the user in '
+  testWidgets(
+      'successful login shows the loader, which lets the user in '
       'only once their data has loaded', (tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(390, 844) * 3;

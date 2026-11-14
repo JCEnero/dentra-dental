@@ -81,7 +81,8 @@ class HistoryController extends Notifier<HistoryViewState> {
 }
 
 final historyControllerProvider =
-    NotifierProvider<HistoryController, HistoryViewState>(HistoryController.new);
+    NotifierProvider<HistoryController, HistoryViewState>(
+        HistoryController.new);
 
 /// The items the list shows, recomputed when history or the view changes.
 final historyResultsProvider = Provider<AsyncValue<List<HistoryEntry>>>((ref) {

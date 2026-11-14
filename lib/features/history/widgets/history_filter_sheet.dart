@@ -142,9 +142,8 @@ class _FilterBody extends ConsumerWidget {
           secondary: DentraPillButton(
             label: 'Reset',
             variant: DentraButtonVariant.outline,
-            onPressed: filters.isDefault
-                ? null
-                : () => set(HistoryFilters.defaults),
+            onPressed:
+                filters.isDefault ? null : () => set(HistoryFilters.defaults),
           ),
           primary: DentraPillButton(
             label: count == null

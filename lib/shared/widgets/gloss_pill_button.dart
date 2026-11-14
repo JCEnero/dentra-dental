@@ -210,7 +210,9 @@ class _GlossPillButtonState extends State<GlossPillButton>
                             builder: (context, child) => Transform.translate(
                               offset: Offset(
                                 (_down ? 3 : 0) +
-                                    (busy ? 0 : 3 * _SheenPainter.pass(_sheen.value)),
+                                    (busy
+                                        ? 0
+                                        : 3 * _SheenPainter.pass(_sheen.value)),
                                 0,
                               ),
                               child: child,
@@ -224,7 +226,8 @@ class _GlossPillButtonState extends State<GlossPillButton>
                                 color: AppColors.white,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.navy.withValues(alpha: 0.14),
+                                    color:
+                                        AppColors.navy.withValues(alpha: 0.14),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),

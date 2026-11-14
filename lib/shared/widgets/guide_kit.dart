@@ -168,7 +168,8 @@ class _TypedState extends State<_Typed> with SingleTickerProviderStateMixin {
       if (text.isEmpty) continue;
       final style = lit ? base.copyWith(color: guideAccent) : base;
       final seen = left.clamp(0, text.length);
-      if (seen > 0) spans.add(TextSpan(text: text.substring(0, seen), style: style));
+      if (seen > 0)
+        spans.add(TextSpan(text: text.substring(0, seen), style: style));
       if (seen < text.length) {
         spans.add(TextSpan(
           text: text.substring(seen),
@@ -188,8 +189,8 @@ class _TypedState extends State<_Typed> with SingleTickerProviderStateMixin {
       animation: _type,
       builder: (context, _) {
         final shown = (widget.title.length * _type.value).ceil();
-        final after =
-            Curves.easeOut.transform(((_type.value - 0.6) / 0.4).clamp(0.0, 1.0));
+        final after = Curves.easeOut
+            .transform(((_type.value - 0.6) / 0.4).clamp(0.0, 1.0));
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: widget.center
@@ -277,9 +278,8 @@ class _RailPainter extends CustomPainter {
     final n = icons.length;
     final y = size.height / 2;
     // Steps sit close enough to read as one line, however wide the bar.
-    final gap = n < 2
-        ? 0.0
-        : math.min(46.0, (size.width - 2 * (_disc + 2)) / (n - 1));
+    final gap =
+        n < 2 ? 0.0 : math.min(46.0, (size.width - 2 * (_disc + 2)) / (n - 1));
     const left = _disc + 2;
     double x(double i) => left + gap * i;
 

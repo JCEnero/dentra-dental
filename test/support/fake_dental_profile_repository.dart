@@ -44,13 +44,15 @@ class FakeDentalProfileRepository implements DentalProfileRepository {
   Future<DentalProfile?> fetchProfile(String userId) async => profile;
 
   @override
-  Future<DentalProfile> submitProfile(String userId, DentalAnswers answers) async {
+  Future<DentalProfile> submitProfile(
+      String userId, DentalAnswers answers) async {
     submitted.add(answers);
     return _save(answers);
   }
 
   @override
-  Future<DentalProfile> updateProfile(String userId, DentalAnswers answers) async {
+  Future<DentalProfile> updateProfile(
+      String userId, DentalAnswers answers) async {
     updated.add(answers);
     return _save(answers);
   }

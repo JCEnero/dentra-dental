@@ -115,8 +115,7 @@ class ClinicModel {
 
     final openParts = todayHours.openTime.split(':');
     final closeParts = todayHours.closeTime.split(':');
-    final openMinutes =
-        int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
+    final openMinutes = int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
     final closeMinutes =
         int.parse(closeParts[0]) * 60 + int.parse(closeParts[1]);
     final nowMinutes = dateTime.hour * 60 + dateTime.minute;
@@ -130,5 +129,4 @@ class ClinicModel {
     if (services.isEmpty) return null;
     return services.map((s) => s.price).reduce((a, b) => a < b ? a : b);
   }
-
 }

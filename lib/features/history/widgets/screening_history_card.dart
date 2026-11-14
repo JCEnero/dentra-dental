@@ -14,7 +14,8 @@ import '../../screening/data/models/screening_session.dart';
 /// The scan's result in a few words, once its analysis has really read something.
 String? _resultOf(ScreeningSession session) {
   final analysis = session.analysis;
-  if (analysis == null || analysis.status != AnalysisStatus.complete) return null;
+  if (analysis == null || analysis.status != AnalysisStatus.complete)
+    return null;
   final report = ScreeningReport(analysis, session.capturedRegions);
   if (report.detectorOff || report.photosRead == 0) return null;
   return report.headline;
@@ -49,7 +50,8 @@ class ScreeningHistoryCard extends StatelessWidget {
         .whereType<String>()
         .join(', ');
     final complete = session.isComplete;
-    final statusColor = complete ? AppColors.successGreen : AppColors.warmOrange;
+    final statusColor =
+        complete ? AppColors.successGreen : AppColors.warmOrange;
     final result = _resultOf(session);
 
     return Semantics(
@@ -122,7 +124,8 @@ class ScreeningHistoryCard extends StatelessWidget {
                                     color: AppColors.g2
                                         .withValues(alpha: 0.18 - j * 0.025),
                                     border: Border.all(
-                                      color: AppColors.g2.withValues(alpha: 0.35),
+                                      color:
+                                          AppColors.g2.withValues(alpha: 0.35),
                                       width: 1.5,
                                     ),
                                   ),
@@ -169,7 +172,8 @@ class ScreeningHistoryCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.g2.withValues(alpha: isLatest ? 0.9 : 0.12),
+                    color:
+                        AppColors.g2.withValues(alpha: isLatest ? 0.9 : 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(

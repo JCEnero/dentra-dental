@@ -113,7 +113,8 @@ class _DeviceReachPanelState extends State<DeviceReachPanel>
             height: _diagramHeight,
             child: Semantics(
               image: true,
-              label: 'An animated scan of a dental arch seen from above. A line '
+              label:
+                  'An animated scan of a dental arch seen from above. A line '
                   'of light passes along the outside of the teeth, back along '
                   'the inside, then over the top, covering the front, cheek '
                   'sides, back molars, inner sides and biting surfaces.',

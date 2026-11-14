@@ -19,7 +19,8 @@ enum _Mode {
 /// draggable before/after slider. Each side can pick among its images;
 /// two screenings are matched region by region where they share one.
 class ImageComparison extends StatefulWidget {
-  const ImageComparison({super.key, required this.earlier, required this.later});
+  const ImageComparison(
+      {super.key, required this.earlier, required this.later});
 
   final ComparableItem earlier;
   final ComparableItem later;
@@ -36,7 +37,10 @@ class _ImageComparisonState extends State<ImageComparison> {
 
   /// Regions both screenings captured, when comparing two screenings.
   List<String> get _sharedRegions {
-    final a = widget.earlier.images.map((i) => i.regionId).whereType<String>().toSet();
+    final a = widget.earlier.images
+        .map((i) => i.regionId)
+        .whereType<String>()
+        .toSet();
     return [
       for (final i in widget.later.images)
         if (i.regionId != null && a.contains(i.regionId)) i.regionId!,
@@ -52,7 +56,8 @@ class _ImageComparisonState extends State<ImageComparison> {
   @override
   void didUpdateWidget(ImageComparison old) {
     super.didUpdateWidget(old);
-    if (old.earlier.key != widget.earlier.key || old.later.key != widget.later.key) {
+    if (old.earlier.key != widget.earlier.key ||
+        old.later.key != widget.later.key) {
       _earlierIndex = 0;
       _laterIndex = 0;
       _matchRegion(_sharedRegions.firstOrNull);
@@ -63,11 +68,13 @@ class _ImageComparisonState extends State<ImageComparison> {
 
   void _matchRegion(String? region) {
     if (region == null) return;
-    _earlierIndex = widget.earlier.images.indexWhere((i) => i.regionId == region);
+    _earlierIndex =
+        widget.earlier.images.indexWhere((i) => i.regionId == region);
     _laterIndex = widget.later.images.indexWhere((i) => i.regionId == region);
   }
 
-  String _caption(ComparisonSlot slot, ComparableItem item, ComparableImage image) =>
+  String _caption(
+          ComparisonSlot slot, ComparableItem item, ComparableImage image) =>
       '${slot.label} · ${item.source.label} · ${DentraDates.medium(item.at)} · '
       '${image.label}';
 
@@ -104,7 +111,8 @@ class _ImageComparisonState extends State<ImageComparison> {
                       child: _Tile(
                         image: earlier.image,
                         badge: ComparisonSlot.earlier.label,
-                        caption: _caption(ComparisonSlot.earlier, widget.earlier, earlier),
+                        caption: _caption(
+                            ComparisonSlot.earlier, widget.earlier, earlier),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -112,7 +120,8 @@ class _ImageComparisonState extends State<ImageComparison> {
                       child: _Tile(
                         image: later.image,
                         badge: ComparisonSlot.later.label,
-                        caption: _caption(ComparisonSlot.later, widget.later, later),
+                        caption:
+                            _caption(ComparisonSlot.later, widget.later, later),
                       ),
                     ),
                   ],
@@ -129,7 +138,10 @@ class _ImageComparisonState extends State<ImageComparison> {
         if (linked && shared.length > 1)
           _Picker(
             label: 'Region',
-            options: [for (final r in shared) widget.earlier.images.firstWhere((i) => i.regionId == r).label],
+            options: [
+              for (final r in shared)
+                widget.earlier.images.firstWhere((i) => i.regionId == r).label
+            ],
             selected: shared.indexOf(earlier.regionId!),
             onSelected: (i) => setState(() => _matchRegion(shared[i])),
           )
@@ -153,7 +165,8 @@ class _ImageComparisonState extends State<ImageComparison> {
           linked
               ? 'Both show the ${earlier.label.toLowerCase()} region. Tap an image to enlarge it.'
               : 'Tap an image to enlarge it.',
-          style: GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText),
+          style:
+              GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText),
         ),
       ],
     );
@@ -164,7 +177,8 @@ class _ImageComparisonState extends State<ImageComparison> {
 const _aspect = 3 / 4;
 
 class _Tile extends StatelessWidget {
-  const _Tile({required this.image, required this.badge, required this.caption});
+  const _Tile(
+      {required this.image, required this.badge, required this.caption});
 
   final ImageProvider image;
   final String badge;
@@ -177,7 +191,8 @@ class _Tile extends StatelessWidget {
       label: '$caption. Opens full size.',
       excludeSemantics: true,
       child: GestureDetector(
-        onTap: () => showDentraImageViewer(context, image: image, caption: caption),
+        onTap: () =>
+            showDentraImageViewer(context, image: image, caption: caption),
         child: AspectRatio(
           aspectRatio: _aspect,
           child: ClipRRect(
@@ -227,8 +242,10 @@ class _Slider extends StatelessWidget {
               slider: true,
               label: 'Earlier and later image slider',
               value: '${(split * 100).round()}% earlier',
-              increasedValue: '${((split + 0.1).clamp(0, 1) * 100).round()}% earlier',
-              decreasedValue: '${((split - 0.1).clamp(0, 1) * 100).round()}% earlier',
+              increasedValue:
+                  '${((split + 0.1).clamp(0, 1) * 100).round()}% earlier',
+              decreasedValue:
+                  '${((split - 0.1).clamp(0, 1) * 100).round()}% earlier',
               onIncrease: () => onChanged((split + 0.1).clamp(0.0, 1.0)),
               onDecrease: () => onChanged((split - 0.1).clamp(0.0, 1.0)),
               child: GestureDetector(
@@ -251,7 +268,8 @@ class _Slider extends StatelessWidget {
                         child: Container(width: 2, color: AppColors.white),
                       ),
                       Positioned(
-                        left: (c.maxWidth * split - 16).clamp(0, c.maxWidth - 32),
+                        left:
+                            (c.maxWidth * split - 16).clamp(0, c.maxWidth - 32),
                         top: c.maxHeight / 2 - 16,
                         child: Container(
                           width: 32,
@@ -270,8 +288,14 @@ class _Slider extends StatelessWidget {
                               size: 18, color: AppColors.g2),
                         ),
                       ),
-                      Positioned(left: 8, top: 8, child: _Badge(ComparisonSlot.earlier.label)),
-                      Positioned(right: 8, top: 8, child: _Badge(ComparisonSlot.later.label)),
+                      Positioned(
+                          left: 8,
+                          top: 8,
+                          child: _Badge(ComparisonSlot.earlier.label)),
+                      Positioned(
+                          right: 8,
+                          top: 8,
+                          child: _Badge(ComparisonSlot.later.label)),
                     ],
                   ),
                 ),
@@ -290,7 +314,8 @@ class _LeftClipper extends CustomClipper<Rect> {
   final double fraction;
 
   @override
-  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * fraction, size.height);
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, 0, size.width * fraction, size.height);
 
   @override
   bool shouldReclip(_LeftClipper old) => old.fraction != fraction;

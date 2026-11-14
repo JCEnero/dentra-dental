@@ -1063,7 +1063,8 @@ class _Report {
           color: _tint,
           borderRadius: pw.BorderRadius.circular(6),
         ),
-        child: _t('Photo not in this report', _small, align: pw.TextAlign.center),
+        child:
+            _t('Photo not in this report', _small, align: pw.TextAlign.center),
       );
     }
     // A window around the box with the frame's shape, inside the photo.

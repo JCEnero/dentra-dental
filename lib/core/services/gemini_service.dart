@@ -120,8 +120,7 @@ Guidelines:
       final request = http.Request('POST', url)
         ..headers['Content-Type'] = 'application/json'
         ..body = body;
-      final response =
-          await _client.send(request).timeout(_firstChunkTimeout);
+      final response = await _client.send(request).timeout(_firstChunkTimeout);
 
       if (response.statusCode != 200) {
         // Raw API messages can mention keys and quotas; keep them out of
@@ -129,7 +128,9 @@ Guidelines:
         throw GeminiException(switch (response.statusCode) {
           429 => 'Rabi is getting a lot of questions right now. '
               'Please try again in a minute.',
-          400 || 401 || 403 =>
+          400 ||
+          401 ||
+          403 =>
             "Rabi isn't available right now. Please try again later.",
           _ => 'Rabi had trouble answering. Please try again.',
         });

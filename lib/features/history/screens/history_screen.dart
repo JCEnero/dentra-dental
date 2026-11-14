@@ -87,8 +87,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final entriesAsync = ref.watch(historyEntriesProvider);
-    final recordsFailed = ref.watch(
-        dentalRecordsProvider.select((r) => r.hasError && !r.isLoading));
+    final recordsFailed = ref
+        .watch(dentalRecordsProvider.select((r) => r.hasError && !r.isLoading));
     final view = ref.watch(historyControllerProvider);
     final results = ref.watch(historyResultsProvider);
     final all = entriesAsync.valueOrNull ?? const <HistoryEntry>[];
@@ -118,7 +118,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 ),
                 const SizedBox(width: 8),
                 _HeaderButton(
-                  icon: _searchOpen ? Icons.search_off_rounded : Icons.search_rounded,
+                  icon: _searchOpen
+                      ? Icons.search_off_rounded
+                      : Icons.search_rounded,
                   tooltip: _searchOpen ? 'Close search' : 'Search history',
                   active: _searchOpen,
                   onPressed: _toggleSearch,
@@ -157,9 +159,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: EdgeInsets.fromLTRB(AppSpacing.screenH, 16,
-                    AppSpacing.screenH, 24 + MediaQuery.paddingOf(context).bottom),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.fromLTRB(
+                    AppSpacing.screenH,
+                    16,
+                    AppSpacing.screenH,
+                    24 + MediaQuery.paddingOf(context).bottom),
                 children: [
                   Center(
                     child: ConstrainedBox(
@@ -187,7 +193,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           ),
                           if (recordsFailed)
                             _RecordsErrorBanner(
-                              onRetry: () => ref.invalidate(dentalRecordsProvider),
+                              onRetry: () =>
+                                  ref.invalidate(dentalRecordsProvider),
                             ),
                           _ListHeader(
                             view: view,
@@ -330,7 +337,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         message: 'Days with a dot have history items.',
         actions: [
           DentraPillButton(
-            label: 'Show all of ${DentraDates.monthNames[view.month.month - 1]}',
+            label:
+                'Show all of ${DentraDates.monthNames[view.month.month - 1]}',
             variant: DentraButtonVariant.outline,
             onPressed: _controller.clearDay,
           ),
@@ -342,7 +350,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       key: const ValueKey('empty-month'),
       icon: Icons.event_note_outlined,
       title: 'Nothing in ${DentraDates.monthYear(view.month)}',
-      message: 'Your latest history item is from ${DentraDates.medium(latest)}.',
+      message:
+          'Your latest history item is from ${DentraDates.medium(latest)}.',
       actions: [
         DentraPillButton(
           label: 'Go to latest',
@@ -390,8 +399,9 @@ class _HeaderButton extends StatelessWidget {
           tooltip: badge > 0 ? '$tooltip, $badge active' : tooltip,
           isSelected: active,
           style: IconButton.styleFrom(
-            backgroundColor:
-                active ? AppColors.g2.withValues(alpha: 0.14) : AppColors.lightLavender,
+            backgroundColor: active
+                ? AppColors.g2.withValues(alpha: 0.14)
+                : AppColors.lightLavender,
             foregroundColor: active ? AppColors.g2 : AppColors.navy,
             fixedSize: const Size(44, 44),
             minimumSize: const Size(44, 44),
@@ -662,7 +672,8 @@ class _RecordsErrorBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.danger),
+            const Icon(Icons.error_outline_rounded,
+                size: 18, color: AppColors.danger),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -682,7 +693,8 @@ class _RecordsErrorBanner extends StatelessWidget {
               ),
               child: Text(
                 'Retry',
-                style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                style: GoogleFonts.outfit(
+                    fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
           ],

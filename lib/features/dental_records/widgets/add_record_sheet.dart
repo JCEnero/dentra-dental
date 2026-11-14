@@ -10,7 +10,8 @@ import 'record_source_label.dart';
 /// Lets the user pick what to add: a clinic visit, a photo or a note.
 /// AI screenings come only from the Scan tab, so they aren't offered.
 /// [teeth] pre-fills the tooth numbers (e.g. from a tooth's history).
-Future<void> showAddRecordSheet(BuildContext context, {List<String>? teeth}) async {
+Future<void> showAddRecordSheet(BuildContext context,
+    {List<String>? teeth}) async {
   final source = await showGlassSheet<RecordSource>(
     context: context,
     title: 'Add to your history',
@@ -43,7 +44,10 @@ class _Option extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (title, icon) = switch (source) {
-      RecordSource.clinicRecord => ('Clinic visit', Icons.local_hospital_outlined),
+      RecordSource.clinicRecord => (
+          'Clinic visit',
+          Icons.local_hospital_outlined
+        ),
       RecordSource.personalPhoto => ('Personal photo', Icons.photo_outlined),
       _ => ('Personal note', Icons.edit_note_rounded),
     };
@@ -87,7 +91,8 @@ class _Option extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.secondaryText),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.secondaryText),
             ],
           ),
         ),

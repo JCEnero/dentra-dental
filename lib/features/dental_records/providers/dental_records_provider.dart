@@ -86,7 +86,8 @@ class DentalRecordsNotifier extends AsyncNotifier<List<DentalRecord>> {
   void _replaceLocal(DentalRecord record) {
     final current = state.valueOrNull ?? const <DentalRecord>[];
     state = AsyncData(
-      [record, ...current.where((r) => r.id != record.id)]..sort(compareRecords),
+      [record, ...current.where((r) => r.id != record.id)]
+        ..sort(compareRecords),
     );
   }
 

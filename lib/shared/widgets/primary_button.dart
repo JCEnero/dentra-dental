@@ -21,7 +21,7 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSecondary = variant == ButtonVariant.secondary;
-    final isWhite     = variant == ButtonVariant.white;
+    final isWhite = variant == ButtonVariant.white;
 
     return SizedBox(
       width: double.infinity,
@@ -32,7 +32,8 @@ class PrimaryButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           child: Ink(
             decoration: BoxDecoration(
-              gradient: isSecondary || isWhite ? null : AppColors.primaryGradient,
+              gradient:
+                  isSecondary || isWhite ? null : AppColors.primaryGradient,
               color: isWhite
                   ? AppColors.white
                   : isSecondary

@@ -51,7 +51,6 @@ class ToothDimensions {
   final double buccolingual;
   final double buccolingualCervical;
   final double rootLength;
-
 }
 
 class ToothInfo {

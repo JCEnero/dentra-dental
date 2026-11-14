@@ -52,7 +52,8 @@ abstract class ProfileValidators {
     if (value.isEmpty) return 'Create a new password.';
     if (value.length < 8) return 'Use at least 8 characters.';
     if (!RegExp(r'\d').hasMatch(value)) return 'Include at least one number.';
-    if (!RegExp(r'[A-Z]').hasMatch(value) || !RegExp(r'[a-z]').hasMatch(value)) {
+    if (!RegExp(r'[A-Z]').hasMatch(value) ||
+        !RegExp(r'[a-z]').hasMatch(value)) {
       return 'Mix uppercase and lowercase letters.';
     }
     if (current.isNotEmpty && value == current) {

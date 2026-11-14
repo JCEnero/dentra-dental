@@ -153,9 +153,10 @@ class ScreeningSession {
       id: json['id'] as String,
       userId: pick<String>('user_id', 'userId'),
       completedAt: date('completed_at', 'completedAt')!,
-      capturedRegions: (pick<List<dynamic>>('captured_regions', 'capturedRegions') ??
-              const [])
-          .cast<String>(),
+      capturedRegions:
+          (pick<List<dynamic>>('captured_regions', 'capturedRegions') ??
+                  const [])
+              .cast<String>(),
       totalRegions: pick<int>('total_regions', 'totalRegions') ?? 0,
       captures: ((json['captures'] as List<dynamic>?) ?? const [])
           .map((e) => ScreeningCapture.fromJson(e as Map<String, dynamic>))

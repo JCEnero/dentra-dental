@@ -306,7 +306,9 @@ class _ResultCard extends StatelessWidget {
       final lead = counted.length == 1
           ? '${toothPlace(counted.single, capital: true)} may have tooth decay.'
           : 'Areas to have checked: '
-              '${describeAreas({for (final s in counted) ...s.areas}).toLowerCase()}.';
+              '${describeAreas({
+                  for (final s in counted) ...s.areas
+                }).toLowerCase()}.';
       return '$lead This is a screening, not a diagnosis. Only a dentist can '
           'say what these marks are.';
     }

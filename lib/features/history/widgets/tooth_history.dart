@@ -62,13 +62,15 @@ class ToothHistoryList extends ConsumerWidget {
     final Widget body;
     if (async.hasError && !async.hasValue) {
       body = const _Message(
-        text: "Your history couldn't load. Check your connection and try again.",
+        text:
+            "Your history couldn't load. Check your connection and try again.",
       );
     } else if (!async.hasValue) {
       body = const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(
-          child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.4),
+          child: CircularProgressIndicator(
+              color: AppColors.primary, strokeWidth: 2.4),
         ),
       );
     } else if (async.requireValue.isEmpty) {
@@ -103,7 +105,8 @@ class ToothHistoryList extends ConsumerWidget {
             style: TextButton.styleFrom(
               foregroundColor: AppColors.primary,
               minimumSize: const Size(44, 44),
-              textStyle: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+              textStyle:
+                  GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
             ),
             icon: const Icon(Icons.add_rounded, size: 18),
             label: Text('Add for tooth $fdi'),
@@ -184,7 +187,8 @@ class _Row extends StatelessWidget {
               ),
               const Padding(
                 padding: EdgeInsets.only(top: 18),
-                child: Icon(Icons.chevron_right_rounded, color: AppColors.secondaryText),
+                child: Icon(Icons.chevron_right_rounded,
+                    color: AppColors.secondaryText),
               ),
             ],
           ),

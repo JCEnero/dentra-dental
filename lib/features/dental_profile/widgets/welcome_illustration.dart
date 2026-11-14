@@ -52,7 +52,8 @@ class _WelcomePainter extends CustomPainter {
 
     // The tooth.
     final tooth = ToothGlyph.rectAt(center.translate(0, 2), r * 0.82);
-    canvas.drawPath(ToothGlyph.outline(tooth), Paint()..color = AppColors.white);
+    canvas.drawPath(
+        ToothGlyph.outline(tooth), Paint()..color = AppColors.white);
     final line = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.6

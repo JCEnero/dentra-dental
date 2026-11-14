@@ -288,14 +288,16 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('the results page', () {
-    testWidgets('with nothing reported has no section about it', (tester) async {
+    testWidgets('with nothing reported has no section about it',
+        (tester) async {
       await _pumpPage(tester, _session(findings: const [_sign]));
       expect(find.text('You and this scan'), findsNothing);
       expect(find.text('You told us'), findsNothing);
       expect(find.text('1 possible sign of decay'), findsOneWidget);
     });
 
-    testWidgets('keeps a symptom apart from what the check saw', (tester) async {
+    testWidgets('keeps a symptom apart from what the check saw',
+        (tester) async {
       await _pumpPage(
         tester,
         _session(
@@ -407,7 +409,9 @@ void main() {
               severity: DiscomfortLevel.severe,
             ),
           ),
-          records: [_record(procedure: 'Composite filling', teeth: const ['46'])],
+          records: [
+            _record(procedure: 'Composite filling', teeth: const ['46'])
+          ],
           size: size,
           textScale: scale,
         );
@@ -765,7 +769,9 @@ void main() {
       expect(fonts.safe('Dr. Peña, line\nnext'), 'Dr. Peña, line\nnext');
       expectPdf(await build(
         _session(),
-        records: [_record(procedure: '根管治療 😣', teeth: const ['46'])],
+        records: [
+          _record(procedure: '根管治療 😣', teeth: const ['46'])
+        ],
       ));
     });
 

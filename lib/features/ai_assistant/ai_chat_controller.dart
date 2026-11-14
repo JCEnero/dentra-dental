@@ -447,7 +447,8 @@ class AiChatController extends ChangeNotifier {
 
   void deleteSession(String id) {
     _sessions.removeWhere((s) => s.id == id);
-    if (_rabi.savesHistory) unawaited(_rabi.deleteSession(id).catchError((_) {}));
+    if (_rabi.savesHistory)
+      unawaited(_rabi.deleteSession(id).catchError((_) {}));
     if (selectedSession?.id == id) {
       selectedSession = null;
       view = ChatView.history;

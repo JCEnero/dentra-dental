@@ -76,10 +76,12 @@ class ChamberTimeline {
       ((p - (0.225 + 0.1 * rank)) / 0.03).clamp(0.0, 1.0);
 
   /// How far an area's reveal has run; 0 before it starts.
-  static double revealed(MouthArea area, double p) =>
-      ((p - (readEnd + 0.008 + 0.085 * area.index / (MouthArea.values.length - 1))) /
-              0.03)
-          .clamp(0.0, 1.0);
+  static double revealed(MouthArea area, double p) => ((p -
+              (readEnd +
+                  0.008 +
+                  0.085 * area.index / (MouthArea.values.length - 1))) /
+          0.03)
+      .clamp(0.0, 1.0);
 }
 
 /// Model data the scan effects need, derived once per model.
@@ -191,9 +193,9 @@ class ChamberGeometry {
     // need projecting too.
     final wireVerts = {...crownVerts, ...edges}.toList()..sort();
 
-    final byX = [...ToothCatalog.all]..sort((a, b) =>
-        model.anchors[a.index].crownCenter.x
-            .compareTo(model.anchors[b.index].crownCenter.x));
+    final byX = [...ToothCatalog.all]..sort((a, b) => model
+        .anchors[a.index].crownCenter.x
+        .compareTo(model.anchors[b.index].crownCenter.x));
     final rank = Int32List(32);
     for (var r = 0; r < byX.length; r++) {
       rank[byX[r].index] = r;
@@ -292,8 +294,7 @@ class ChamberScene {
   static const double _orbitPerSecond = 2 * math.pi / 26;
   static const double _lightPassSeconds = 3.2;
 
-  double get _fit =>
-      model.radius / math.sin(DentitionRenderer.fov / 2) * 0.84;
+  double get _fit => model.radius / math.sin(DentitionRenderer.fov / 2) * 0.84;
 
   /// The camera: orbiting on the clock, then easing round to the home view as
   /// the results come in, pulling in a little.
@@ -401,8 +402,11 @@ class ChamberScene {
           AppColors.white.withValues(alpha: 0.75 * appear),
           AppColors.white.withValues(alpha: 0.25 * appear),
           AppColors.white.withValues(alpha: 0),
-        ], stops: const [0, 0.55, 1])
-            .createShader(Rect.fromCircle(center: c, radius: radius * 1.9)),
+        ], stops: const [
+          0,
+          0.55,
+          1
+        ]).createShader(Rect.fromCircle(center: c, radius: radius * 1.9)),
     );
 
     final pad = Rect.fromCenter(
@@ -417,8 +421,11 @@ class ChamberScene {
           AppColors.g2.withValues(alpha: 0.2 * appear),
           AppColors.g1.withValues(alpha: 0.06 * appear),
           AppColors.g1.withValues(alpha: 0),
-        ], stops: const [0, 0.6, 1])
-            .createShader(pad),
+        ], stops: const [
+          0,
+          0.6,
+          1
+        ]).createShader(pad),
     );
 
     final settle = timeline.within(5, p);
@@ -653,8 +660,8 @@ class ChamberScene {
       }
       if (n == 0) continue;
       paint.color = AppColors.g2.withValues(alpha: 0.5 * alpha);
-      canvas.drawRawPoints(ui.PointMode.lines,
-          Float32List.sublistView(_lines, 0, n * 4), paint);
+      canvas.drawRawPoints(
+          ui.PointMode.lines, Float32List.sublistView(_lines, 0, n * 4), paint);
     }
   }
 
@@ -684,8 +691,8 @@ class ChamberScene {
             ..strokeWidth = 2
             ..color = AppColors.g2.withValues(alpha: 0.7 * (1 - q)),
         );
-        canvas.drawCircle(target, 3,
-            Paint()..color = AppColors.g2.withValues(alpha: 1 - q));
+        canvas.drawCircle(
+            target, 3, Paint()..color = AppColors.g2.withValues(alpha: 1 - q));
       }
     }
   }
@@ -752,8 +759,8 @@ class ChamberScene {
           ..color = AppColors.white.withValues(alpha: alpha),
       );
     } else {
-      canvas.drawRect(rect,
-          Paint()..color = AppColors.lavender.withValues(alpha: alpha));
+      canvas.drawRect(
+          rect, Paint()..color = AppColors.lavender.withValues(alpha: alpha));
     }
 
     // The reading light passes over the photo for as long as it's being read.
@@ -856,16 +863,16 @@ class ChamberScene {
       );
       canvas.drawCircle(at, 7 * scale,
           Paint()..color = AppColors.white.withValues(alpha: 0.95 * alpha));
-      canvas.drawCircle(at, 3.6 * scale,
-          Paint()..color = color.withValues(alpha: alpha));
+      canvas.drawCircle(
+          at, 3.6 * scale, Paint()..color = color.withValues(alpha: alpha));
     }
   }
 
   /// The scanning light: a soft teal line sweeping top to bottom with a
   /// glow trailing behind. It runs on the clock, so it keeps moving while the
   /// server is working.
-  void _paintScanLight(Canvas canvas, Offset c, double radius, double p,
-      double t, double y) {
+  void _paintScanLight(
+      Canvas canvas, Offset c, double radius, double p, double t, double y) {
     final settle = timeline.within(4, p);
     final fade = (p / 0.05).clamp(0.0, 1.0) * (1 - settle);
     if (fade <= 0) return;

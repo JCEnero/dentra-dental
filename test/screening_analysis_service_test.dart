@@ -86,7 +86,8 @@ http.Response json(int status, Object body) => http.Response(
 void main() {
   test('starts analysis, polls until done, and returns the saved session',
       () async {
-    final service = serviceWith(json(202, {'session': session(analysis('pending'))}), [
+    final service =
+        serviceWith(json(202, {'session': session(analysis('pending'))}), [
       json(200, {'session': session(analysis('pending'))}),
       json(200, {'session': session(analysis('complete'))}),
     ]);
@@ -104,8 +105,7 @@ void main() {
   });
 
   test('reports how far the server has got while it polls', () async {
-    final pending = analysis('pending')
-      ..['progress'] = {'done': 1, 'total': 2};
+    final pending = analysis('pending')..['progress'] = {'done': 1, 'total': 2};
     final service = serviceWith(
       json(202, {'session': session(pending)}),
       [
@@ -121,7 +121,8 @@ void main() {
   });
 
   test('a failed server analysis is a service failure', () async {
-    final service = serviceWith(json(202, {'session': session(analysis('pending'))}), [
+    final service =
+        serviceWith(json(202, {'session': session(analysis('pending'))}), [
       json(200, {'session': session(analysis('failed'))}),
     ]);
     await expectLater(

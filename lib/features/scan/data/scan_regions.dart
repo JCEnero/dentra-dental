@@ -222,7 +222,8 @@ const List<ScanRegion> scanRegions = [
     pitch: 0.06,
     label: 'Left Side',
     description: 'The outside of your left teeth',
-    instruction: 'Pull your left cheek back with a clean finger and bite together',
+    instruction:
+        'Pull your left cheek back with a clean finger and bite together',
     tips: [
       'Hold the device beside your teeth, level with them',
       'Get the last tooth you can see into the frame',
@@ -239,7 +240,8 @@ const List<ScanRegion> scanRegions = [
     pitch: 0.06,
     label: 'Right Side',
     description: 'The outside of your right teeth',
-    instruction: 'Pull your right cheek back with a clean finger and bite together',
+    instruction:
+        'Pull your right cheek back with a clean finger and bite together',
     tips: [
       'Hold the device beside your teeth, level with them',
       'Get the last tooth you can see into the frame',
@@ -256,7 +258,8 @@ const List<ScanRegion> scanRegions = [
     pitch: -0.62,
     label: 'Back of Upper Teeth',
     description: 'The roof-of-mouth side of your upper teeth',
-    instruction: 'Open wide and angle the device up toward the roof of your mouth',
+    instruction:
+        'Open wide and angle the device up toward the roof of your mouth',
     tips: [
       'Hold it just below your lower front teeth',
       'The slim head reaches this angle, so no mirror is needed',
@@ -293,7 +296,8 @@ const List<ScanRegion> scanRegions = [
     zoom: 1.4,
     label: 'Back Molars, Left',
     description: 'Your rearmost teeth on the left',
-    instruction: 'Open wide and move the device to the left corner of your mouth',
+    instruction:
+        'Open wide and move the device to the left corner of your mouth',
     tips: [
       'Fill the frame with your last two or three teeth',
       'Include the wisdom tooth area if you have one',
@@ -311,7 +315,8 @@ const List<ScanRegion> scanRegions = [
     zoom: 1.4,
     label: 'Back Molars, Right',
     description: 'Your rearmost teeth on the right',
-    instruction: 'Open wide and move the device to the right corner of your mouth',
+    instruction:
+        'Open wide and move the device to the right corner of your mouth',
     tips: [
       'Fill the frame with your last two or three teeth',
       'Include the wisdom tooth area if you have one',

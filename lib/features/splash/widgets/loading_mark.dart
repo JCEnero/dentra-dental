@@ -213,7 +213,8 @@ class _TracePainter extends CustomPainter {
         ..strokeWidth = 7
         ..strokeCap = StrokeCap.round
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5)
-        ..color = AppColors.g1.withValues(alpha: (0.22 + 0.3 * pulse) * opacity),
+        ..color =
+            AppColors.g1.withValues(alpha: (0.22 + 0.3 * pulse) * opacity),
     );
 
     // Mint at the tail deepening to teal at the head.

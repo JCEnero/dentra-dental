@@ -140,8 +140,7 @@ class _ClinicMapState extends State<ClinicMap> {
       })
         for (final selected in const [false, true])
           if (!_icons.containsKey(_pinKey(initials, selected)))
-            _pinKey(initials, selected):
-                _renderPin(initials, selected, ratio),
+            _pinKey(initials, selected): _renderPin(initials, selected, ratio),
     };
     if (pending.isEmpty) return;
 
@@ -300,7 +299,8 @@ class _MapUnavailable extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.map_outlined, size: 18, color: AppColors.secondaryText),
+          const Icon(Icons.map_outlined,
+              size: 18, color: AppColors.secondaryText),
           const SizedBox(width: 8),
           Text(
             'Map unavailable',

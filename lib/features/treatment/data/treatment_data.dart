@@ -360,7 +360,8 @@ abstract class TreatmentData {
       id: 'dental_veneers',
       name: 'Dental Veneers',
       imagePath: 'assets/images/treatments/glowing.jpg',
-      shortDescription: 'Ultra-thin shells that transform the look of your smile.',
+      shortDescription:
+          'Ultra-thin shells that transform the look of your smile.',
       longDescription:
           'Porcelain or composite veneers are wafer-thin shells custom-made to cover '
           'the front surface of teeth, correcting discolouration, chips, gaps, and '
@@ -465,7 +466,8 @@ abstract class TreatmentData {
       id: 'clear_aligners',
       name: 'Clear Aligners',
       imagePath: 'assets/images/treatments/braces.jpg',
-      shortDescription: 'Nearly invisible trays that gradually straighten teeth.',
+      shortDescription:
+          'Nearly invisible trays that gradually straighten teeth.',
       longDescription:
           'Clear aligner therapy uses a series of custom, removable plastic trays to '
           'move teeth incrementally. Each tray is slightly different, gently guiding '
@@ -573,7 +575,8 @@ abstract class TreatmentData {
       id: 'wisdom_tooth_removal',
       name: 'Wisdom Tooth Removal',
       imagePath: 'assets/images/treatments/implants.jpg',
-      shortDescription: 'Surgical extraction of impacted or problematic wisdom teeth.',
+      shortDescription:
+          'Surgical extraction of impacted or problematic wisdom teeth.',
       longDescription:
           'Wisdom teeth (third molars) often emerge at an angle or become trapped '
           '(impacted) in the jawbone, causing pain, crowding, and infection risk. '
@@ -626,7 +629,8 @@ abstract class TreatmentData {
       id: 'dental_crown',
       name: 'Dental Crown',
       imagePath: 'assets/images/treatments/cleaning.jpg',
-      shortDescription: 'A cap that fully restores a damaged or weakened tooth.',
+      shortDescription:
+          'A cap that fully restores a damaged or weakened tooth.',
       longDescription:
           'A dental crown is a tooth-shaped cap placed over a damaged, decayed, or '
           'weakened tooth to restore its shape, size, strength, and appearance. '
@@ -707,7 +711,8 @@ abstract class TreatmentData {
       id: 'dental_bridge',
       name: 'Dental Bridge',
       imagePath: 'assets/images/treatments/cleaning.jpg',
-      shortDescription: 'Replace one or more missing teeth with a fixed bridge.',
+      shortDescription:
+          'Replace one or more missing teeth with a fixed bridge.',
       longDescription:
           'A dental bridge literally bridges the gap left by one or more missing teeth. '
           'It consists of two or more crowns on the teeth either side of the gap (abutment '
@@ -1130,7 +1135,8 @@ abstract class TreatmentData {
       id: 'jaw_expander',
       name: 'Jaw Expander',
       imagePath: 'assets/images/treatments/braces.jpg',
-      shortDescription: 'Widen the upper jaw to correct crowding and crossbite.',
+      shortDescription:
+          'Widen the upper jaw to correct crowding and crossbite.',
       longDescription:
           'A palatal expander applies gentle outward pressure to the two halves of '
           'the upper jaw (palate), gradually widening it to create more space for '
@@ -1287,7 +1293,8 @@ abstract class TreatmentData {
       id: 'frenectomy',
       name: 'Frenectomy',
       imagePath: 'assets/images/treatments/implants.jpg',
-      shortDescription: 'Remove restrictive tissue causing tongue-tie or lip-tie.',
+      shortDescription:
+          'Remove restrictive tissue causing tongue-tie or lip-tie.',
       longDescription:
           'A frenectomy removes or modifies the frenum — a small fold of tissue that '
           'connects the lip or tongue to the gum or floor of the mouth. When this '

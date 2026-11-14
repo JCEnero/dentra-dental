@@ -30,8 +30,11 @@ class FakeSocket implements CamSocket {
 
   void json(Map<String, Object?> message) => incoming.add(jsonEncode(message));
 
-  void ready({bool online = true}) =>
-      json({'type': 'ready', 'online': online, 'status': {'rssi': -50}});
+  void ready({bool online = true}) => json({
+        'type': 'ready',
+        'online': online,
+        'status': {'rssi': -50}
+      });
 
   /// The last command of [cmd] the client sent.
   Map<String, Object?> lastSent(String cmd) =>
@@ -40,7 +43,12 @@ class FakeSocket implements CamSocket {
 
 Uint8List framed(int kind, List<int> body, {int? id}) => Uint8List.fromList([
       kind,
-      if (id != null) ...[id >> 24 & 0xFF, id >> 16 & 0xFF, id >> 8 & 0xFF, id & 0xFF],
+      if (id != null) ...[
+        id >> 24 & 0xFF,
+        id >> 16 & 0xFF,
+        id >> 8 & 0xFF,
+        id & 0xFF
+      ],
       ...body,
     ]);
 
@@ -213,7 +221,8 @@ void main() {
     await pumpEventQueue();
     socket.ready();
     await pumpEventQueue();
-    socket.json({'type': 'result', 'id': socket.lastSent('status')['id'], 'ok': true});
+    socket.json(
+        {'type': 'result', 'id': socket.lastSent('status')['id'], 'ok': true});
     await second;
     expect(opened, hasLength(2));
   });

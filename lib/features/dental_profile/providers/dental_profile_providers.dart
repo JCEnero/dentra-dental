@@ -10,7 +10,8 @@ import '../data/questionnaire_draft_store.dart';
 
 /// Backend for the dental profile: the DENTRA API when configured, the
 /// on-device demo store otherwise. Override in tests.
-final dentalProfileRepositoryProvider = Provider<DentalProfileRepository>((ref) {
+final dentalProfileRepositoryProvider =
+    Provider<DentalProfileRepository>((ref) {
   final api = ref.watch(apiClientProvider);
   return api == null
       ? LocalDentalProfileRepository()
@@ -84,7 +85,8 @@ class DentalProfileNotifier extends AsyncNotifier<DentalProfile?> {
   /// State changes only after the server confirms the save, so a failure
   /// (thrown as [DentalProfileException]) never marks onboarding as
   /// completed and leaves the stored profile as it was.
-  Future<DentalProfile> save(DentalAnswers answers, {bool update = false}) async {
+  Future<DentalProfile> save(DentalAnswers answers,
+      {bool update = false}) async {
     final userId = ref.read(authServiceProvider).currentUserId;
     if (userId == null) {
       throw const DentalProfileException(

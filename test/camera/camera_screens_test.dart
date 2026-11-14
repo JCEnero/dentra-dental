@@ -151,8 +151,8 @@ void main() {
       expect(find.text(CamText.stageJoining), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      link.session!.emit(
-          const JoinEvent(JoinState.connected, ip: '192.168.1.40'));
+      link.session!
+          .emit(const JoinEvent(JoinState.connected, ip: '192.168.1.40'));
       await settle(tester, steps: 40);
       expect(find.text(CamText.successTitle), findsOneWidget);
       // The live preview test streams from the new camera.
@@ -351,7 +351,7 @@ void main() {
       await tester.tap(find.byTooltip(CamText.closeCamera));
       await settle(tester);
     });
-  
+
     testWidgets('choosing your own camera skips the Dentra Cam, even set up',
         (tester) async {
       SharedPreferences.setMockInitialValues({
@@ -439,5 +439,5 @@ void main() {
       expect(find.text('Take photo'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
-});
+  });
 }

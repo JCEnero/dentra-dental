@@ -144,7 +144,8 @@ void main() {
     expect(guide.shotFor('front'), isNull);
   });
 
-  test('photos already in the scan show as done, and it starts at the first '
+  test(
+      'photos already in the scan show as done, and it starts at the first '
       'area still to do', () {
     make(already: {'front': _photo(1)});
     expect(guide.shotFor('front')!.check, ShotCheck.passed);

@@ -36,7 +36,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   static const _connectionError =
       "We couldn't reach DENTRA. Check your connection and try again.";
 
-  final _controllers = {for (final f in _Field.values) f: TextEditingController()};
+  final _controllers = {
+    for (final f in _Field.values) f: TextEditingController()
+  };
   final _focusNodes = {for (final f in _Field.values) f: FocusNode()};
   final _errors = <_Field, String?>{};
   AuthService get _authService => ref.read(authServiceProvider);

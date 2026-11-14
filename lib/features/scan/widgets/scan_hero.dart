@@ -387,9 +387,10 @@ class _HeroCopy extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (sourceIcon, sourceLabel) = switch (source) {
-      CaptureSource.device ||
-      CaptureSource.phoneCamera =>
-        (Icons.wifi_rounded, 'Wireless NIR device'),
+      CaptureSource.device || CaptureSource.phoneCamera => (
+          Icons.wifi_rounded,
+          'Wireless NIR device'
+        ),
       CaptureSource.photoLibrary => (
           Icons.photo_library_outlined,
           'Your photos'

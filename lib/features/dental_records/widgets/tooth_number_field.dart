@@ -123,8 +123,8 @@ class _ToothPickerState extends State<_ToothPicker> {
       if (int.tryParse(t) case final n?) n,
   };
 
-  void _toggle(int fdi) => setState(
-      () => _selected.contains(fdi) ? _selected.remove(fdi) : _selected.add(fdi));
+  void _toggle(int fdi) => setState(() =>
+      _selected.contains(fdi) ? _selected.remove(fdi) : _selected.add(fdi));
 
   Widget _row(List<ToothInfo> teeth, String arch) {
     return Row(

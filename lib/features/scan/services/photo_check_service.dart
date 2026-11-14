@@ -144,5 +144,7 @@ class LocalPhotoCheckService implements PhotoCheckService {
 /// one in demo mode, where scans aren't analyzed.
 final photoCheckServiceProvider = Provider<PhotoCheckService>((ref) {
   final api = ref.watch(apiClientProvider);
-  return api == null ? const LocalPhotoCheckService() : ApiPhotoCheckService(api);
+  return api == null
+      ? const LocalPhotoCheckService()
+      : ApiPhotoCheckService(api);
 });

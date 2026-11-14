@@ -90,7 +90,9 @@ class _ToothInfoPanelState extends State<ToothInfoPanel> {
                 child: _TabBar(
                   tabs: [
                     for (final t in _InfoTab.values)
-                      if (t != _InfoTab.history || widget.historyBuilder != null) t,
+                      if (t != _InfoTab.history ||
+                          widget.historyBuilder != null)
+                        t,
                   ],
                   value: _tab,
                   onChanged: (t) => setState(() => _tab = t),
@@ -281,7 +283,8 @@ class _Header extends StatelessWidget {
 /// Text tabs over a hairline: the active tab is navy with a short teal
 /// underline, the rest stay muted.
 class _TabBar extends StatelessWidget {
-  const _TabBar({required this.tabs, required this.value, required this.onChanged});
+  const _TabBar(
+      {required this.tabs, required this.value, required this.onChanged});
 
   final List<_InfoTab> tabs;
   final _InfoTab value;
@@ -316,8 +319,9 @@ class _TabBar extends StatelessWidget {
                           duration: motion,
                           style: GoogleFonts.outfit(
                             fontSize: 13,
-                            fontWeight:
-                                tab == value ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: tab == value
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: tab == value
                                 ? AppColors.navy
                                 : AppColors.secondaryText,

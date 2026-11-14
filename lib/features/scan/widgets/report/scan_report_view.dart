@@ -126,7 +126,8 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
 
   /// Saves what the user said about one marked tooth. The page shows it at
   /// once, and puts it back with a note if it couldn't be saved.
-  Future<void> _answer(String sessionId, String findingId, ToothPain? pain) async {
+  Future<void> _answer(
+      String sessionId, String findingId, ToothPain? pain) async {
     final toast = DentraToast.of(context);
     try {
       await ref

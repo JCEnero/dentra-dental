@@ -124,7 +124,8 @@ class _TourIntroBackdropState extends State<TourIntroBackdrop>
 /// fraction of the shorter side), its two colours and strength, and its own
 /// beat so no two move together.
 class _Pane {
-  const _Pane(this.x, this.y, this.r, this.from, this.to, this.alpha, this.seed);
+  const _Pane(
+      this.x, this.y, this.r, this.from, this.to, this.alpha, this.seed);
 
   final double x, y, r;
   final Color from, to;
@@ -144,8 +145,8 @@ class _BackdropPainter extends CustomPainter {
     // Top right, the largest, mostly off screen.
     _Pane(1.02, 0.05, 0.5, AppColors.g1, AppColors.g2, 0.24, 0.0),
     // Bottom left.
-    _Pane(-0.04, 0.95, 0.42, AppColors.mintGreen, AppColors.cardSolid, 0.26,
-        1.9),
+    _Pane(
+        -0.04, 0.95, 0.42, AppColors.mintGreen, AppColors.cardSolid, 0.26, 1.9),
     // A small one low on the right.
     _Pane(0.97, 0.8, 0.11, AppColors.lavender, AppColors.g1, 0.42, 3.4),
   ];
@@ -455,7 +456,8 @@ class ConfettiPainter extends CustomPainter {
       if (s <= 0) continue;
       final slowed = (1 - math.exp(-drag * s)) / drag;
       final v = p.direction * (p.speed * 1000 * k);
-      final origin = Offset(p.fromLeft ? -8 : size.width + 8, size.height * 0.84);
+      final origin =
+          Offset(p.fromLeft ? -8 : size.width + 8, size.height * 0.84);
       final sway =
           math.sin(s * 3.6 + p.sway) * 20 * k * (1 - math.exp(-1.4 * s));
       final pos = origin +
@@ -475,9 +477,7 @@ class ConfettiPainter extends CustomPainter {
           canvas.drawRRect(
             RRect.fromRectAndRadius(
               Rect.fromCenter(
-                  center: Offset.zero,
-                  width: p.size * 2,
-                  height: p.size * 0.8),
+                  center: Offset.zero, width: p.size * 2, height: p.size * 0.8),
               const Radius.circular(1.5),
             ),
             paint,

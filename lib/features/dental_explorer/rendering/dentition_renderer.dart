@@ -322,5 +322,4 @@ class DentitionRenderer {
     }
     return null;
   }
-
 }

@@ -156,8 +156,10 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
     final clinics = places.map((place) => _toClinic(place, lat, lng)).toList();
 
     clinics.sort((a, b) {
-      final distanceA = Geolocator.distanceBetween(lat, lng, a.latitude, a.longitude);
-      final distanceB = Geolocator.distanceBetween(lat, lng, b.latitude, b.longitude);
+      final distanceA =
+          Geolocator.distanceBetween(lat, lng, a.latitude, a.longitude);
+      final distanceB =
+          Geolocator.distanceBetween(lat, lng, b.latitude, b.longitude);
       return distanceA.compareTo(distanceB);
     });
 
@@ -172,7 +174,8 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
   }) async {
     // Same key as the web map; its project enables Places API (New) too.
     final placesApiKey = dotenv.env['MAPS_API_KEY']!;
-    final uri = Uri.parse('https://places.googleapis.com/v1/places:searchNearby');
+    final uri =
+        Uri.parse('https://places.googleapis.com/v1/places:searchNearby');
     final response = await http.post(
       uri,
       headers: {
@@ -180,8 +183,8 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
         'X-Goog-Api-Key': placesApiKey,
         'X-Goog-FieldMask':
             'places.id,places.displayName,places.formattedAddress,'
-            'places.location,places.rating,places.userRatingCount,'
-            'places.nationalPhoneNumber',
+                'places.location,places.rating,places.userRatingCount,'
+                'places.nationalPhoneNumber',
       },
       body: jsonEncode({
         'includedTypes': ['dentist'],
@@ -197,7 +200,8 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Places API error: ${response.statusCode} ${response.body}');
+      throw Exception(
+          'Places API error: ${response.statusCode} ${response.body}');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -209,7 +213,7 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
 
   ClinicModel _toClinic(Map<String, dynamic> place, double lat, double lng) {
     final placeId = place['id'] as String;
-    
+
     // Generate deterministic random subset of services based on place ID
     final random = Random(placeId.hashCode);
     final shuffled = [..._servicePool]..shuffle(random);
@@ -225,7 +229,7 @@ class ClinicListNotifier extends AsyncNotifier<List<ClinicModel>> {
           price: ((s.price * priceLevel) / 50).round() * 50.0,
         ),
     ];
-    
+
     return ClinicModel(
       id: placeId,
       name: (place['displayName']?['text'] as String?) ?? 'Unknown Clinic',

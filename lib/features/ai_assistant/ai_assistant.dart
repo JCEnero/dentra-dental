@@ -150,8 +150,7 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
   static ChatSuggestion? _screeningSuggestion(ScreeningSession? s) {
     if (s == null) return null;
     final regions = [
-      for (final id in s.capturedRegions)
-        findScanRegion(id)?.label ?? id,
+      for (final id in s.capturedRegions) findScanRegion(id)?.label ?? id,
     ];
     final analysis = s.analysis;
     final prompt = StringBuffer()
@@ -557,7 +556,8 @@ class _RenameChatDialogState extends State<_RenameChatDialog> {
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.g2.withValues(alpha: 0.2)),
+              borderSide:
+                  BorderSide(color: AppColors.g2.withValues(alpha: 0.2)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
@@ -973,13 +973,13 @@ class _MessageTile extends StatelessWidget {
                 // Wraps instead of overflowing at very large text sizes.
                 if (!streaming)
                   Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 4,
-                  children: [
-                    _Meta(text: DentraDates.time(message.sentAt)),
-                    if (!message.isError) _CopyButton(text: message.text),
-                  ],
-                ),
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 4,
+                    children: [
+                      _Meta(text: DentraDates.time(message.sentAt)),
+                      if (!message.isError) _CopyButton(text: message.text),
+                    ],
+                  ),
               ],
             ),
           ),

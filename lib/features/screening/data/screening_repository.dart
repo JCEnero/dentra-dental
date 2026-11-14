@@ -15,7 +15,8 @@ abstract class ScreeningRepository {
   Future<List<ScreeningSession>> fetchSessions(String userId);
 
   /// Inserts or replaces by id, so retries never create duplicates.
-  Future<ScreeningSession> upsertSession(String userId, ScreeningSession session);
+  Future<ScreeningSession> upsertSession(
+      String userId, ScreeningSession session);
 
   Future<void> deleteSession(String userId, String sessionId);
 

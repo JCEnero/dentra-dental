@@ -67,8 +67,8 @@ class _Dot extends StatelessWidget {
         borderRadius: BorderRadius.circular(dot / 2),
         gradient: LinearGradient(
           colors: [
-            Color.lerp(AppColors.g2.withValues(alpha: 0.2), AppColors.g1,
-                weight)!,
+            Color.lerp(
+                AppColors.g2.withValues(alpha: 0.2), AppColors.g1, weight)!,
             Color.lerp(
                 AppColors.g2.withValues(alpha: 0.2), AppColors.g2, weight)!,
           ],

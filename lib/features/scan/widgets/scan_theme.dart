@@ -24,7 +24,8 @@ abstract class ScanColors {
 
 /// An icon in the button color on a white disc.
 class ScanIconDisc extends StatelessWidget {
-  const ScanIconDisc(this.icon, {super.key, this.size = 34, this.iconSize = 18});
+  const ScanIconDisc(this.icon,
+      {super.key, this.size = 34, this.iconSize = 18});
 
   final IconData icon;
   final double size;
@@ -398,7 +399,8 @@ class _CheckPainter extends CustomPainter {
     final drawn = Path();
     for (final m in metrics) {
       if (remaining <= 0) break;
-      drawn.addPath(m.extractPath(0, math.min(remaining, m.length)), Offset.zero);
+      drawn.addPath(
+          m.extractPath(0, math.min(remaining, m.length)), Offset.zero);
       remaining -= m.length;
     }
     canvas.drawPath(

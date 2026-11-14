@@ -44,7 +44,9 @@ class FakeCamApi {
     if (req.method == 'POST' && path == '/api/cam/pairings') {
       if (failCreate) {
         return http.Response(
-          jsonEncode({'error': {'code': 'internal', 'message': 'No'}}),
+          jsonEncode({
+            'error': {'code': 'internal', 'message': 'No'}
+          }),
           500,
         );
       }
@@ -75,7 +77,11 @@ class FakeCamApi {
       );
     }
     if (req.method == 'GET' && path == '/api/cam/devices') {
-      return http.Response(jsonEncode({'devices': [device]}), 200);
+      return http.Response(
+          jsonEncode({
+            'devices': [device]
+          }),
+          200);
     }
     return http.Response('{}', 404);
   }
@@ -241,7 +247,8 @@ void main() {
             builder: (context) => Scaffold(
               body: Center(
                 child: TextButton(
-                  onPressed: () async => outcome = await openCameraSetup(context),
+                  onPressed: () async =>
+                      outcome = await openCameraSetup(context),
                   child: const Text('open'),
                 ),
               ),

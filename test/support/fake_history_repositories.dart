@@ -8,12 +8,76 @@ import 'package:dentra_mobile/features/screening/data/screening_repository.dart'
 
 /// A valid 1×1 PNG, so image widgets decode something real.
 final Uint8List tinyPng = Uint8List.fromList(const [
-  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
-  0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0xF8, 0xCF, 0xC0, 0xF0,
-  0x1F, 0x00, 0x05, 0x00, 0x01, 0xFF, 0x89, 0x99, 0x3D, 0x1D, 0x00, 0x00,
-  0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1F,
+  0x15,
+  0xC4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x63,
+  0xF8,
+  0xCF,
+  0xC0,
+  0xF0,
+  0x1F,
+  0x00,
+  0x05,
+  0x00,
+  0x01,
+  0xFF,
+  0x89,
+  0x99,
+  0x3D,
+  0x1D,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
+  0x82,
 ]);
 
 /// Screening history held in memory.
@@ -28,7 +92,8 @@ class FakeScreeningRepository implements ScreeningRepository {
       [...sessions]..sort((a, b) => b.completedAt.compareTo(a.completedAt));
 
   @override
-  Future<ScreeningSession> upsertSession(String userId, ScreeningSession s) async {
+  Future<ScreeningSession> upsertSession(
+      String userId, ScreeningSession s) async {
     sessions
       ..removeWhere((x) => x.id == s.id)
       ..add(s);
@@ -97,9 +162,11 @@ class FakeDentalRecordRepository implements DentalRecordRepository {
   }
 
   @override
-  Future<DentalRecord> update(String userId, String id, DentalRecordInput input) async {
+  Future<DentalRecord> update(
+      String userId, String id, DentalRecordInput input) async {
     final current = await fetch(userId, id);
-    final r = recordFrom(input, id: id).copyWith(attachments: current.attachments);
+    final r =
+        recordFrom(input, id: id).copyWith(attachments: current.attachments);
     records[records.indexOf(current)] = r;
     return r;
   }
@@ -121,10 +188,12 @@ class FakeDentalRecordRepository implements DentalRecordRepository {
   }
 
   @override
-  Future<DentalRecord> removeAttachment(String userId, String id, String attachmentId) async {
+  Future<DentalRecord> removeAttachment(
+      String userId, String id, String attachmentId) async {
     final current = await fetch(userId, id);
     final r = current.copyWith(
-        attachments: current.attachments.where((a) => a.id != attachmentId).toList());
+        attachments:
+            current.attachments.where((a) => a.id != attachmentId).toList());
     records[records.indexOf(current)] = r;
     return r;
   }
@@ -152,7 +221,8 @@ DentalRecord recordFrom(DentalRecordInput input, {required String id}) {
 }
 
 /// A personal photo record with one image.
-DentalRecord photoRecord(String id, DateTime day, {List<String> teeth = const []}) =>
+DentalRecord photoRecord(String id, DateTime day,
+        {List<String> teeth = const []}) =>
     recordFrom(
       DentalRecordInput(
         source: RecordSource.personalPhoto,

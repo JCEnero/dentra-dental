@@ -147,7 +147,8 @@ class ApiClient {
 
   /// Downloads raw bytes, e.g. a signed image URL from the API.
   Future<Uint8List> download(String url) async {
-    final response = await _client.get(Uri.parse(resolve(url))).timeout(_timeout);
+    final response =
+        await _client.get(Uri.parse(resolve(url))).timeout(_timeout);
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, 'download_failed', _genericError);
     }

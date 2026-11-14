@@ -43,7 +43,8 @@ class ScreeningEntry extends HistoryEntry {
 
   @override
   Set<int> get teeth => {
-        for (final f in session.analysis?.findings ?? const <ScreeningFinding>[])
+        for (final f
+            in session.analysis?.findings ?? const <ScreeningFinding>[])
           if (int.tryParse(f.tooth?.trim() ?? '') case final n?
               when ToothCatalog.byFdi(n) != null)
             n,
@@ -92,7 +93,8 @@ final historyEntriesProvider = Provider<AsyncValue<List<HistoryEntry>>>((ref) {
   }
   return AsyncData([
     for (final s in screenings.requireValue) ScreeningEntry(s),
-    for (final r in records.valueOrNull ?? const <DentalRecord>[]) RecordEntry(r),
+    for (final r in records.valueOrNull ?? const <DentalRecord>[])
+      RecordEntry(r),
   ]..sort(compareEntries));
 });
 

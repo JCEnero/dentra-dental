@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -86,9 +85,8 @@ Future<AvatarChoice?> chooseAvatar(
     return confirmed ? const AvatarRemoved() : null;
   }
 
-  final source = action == _AvatarAction.camera
-      ? ImageSource.camera
-      : ImageSource.gallery;
+  final source =
+      action == _AvatarAction.camera ? ImageSource.camera : ImageSource.gallery;
   Uint8List bytes;
   try {
     final picked = await (picker ?? ImagePicker()).pickImage(

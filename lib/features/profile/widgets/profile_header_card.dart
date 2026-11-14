@@ -142,7 +142,8 @@ class _EditableAvatar extends StatelessWidget {
                   child: AnimatedSwitcher(
                     duration: dentraMotion(context, 260),
                     child: AvatarWidget(
-                      key: ValueKey(profile.avatarBytes?.length ?? profile.initials),
+                      key: ValueKey(
+                          profile.avatarBytes?.length ?? profile.initials),
                       size: _size - 2,
                       initials: profile.initials,
                       imageBytes: profile.avatarBytes,

@@ -157,8 +157,11 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
       return;
     }
 
-    final event = (session.uploadedCount, session.uploadsDone,
-        session.analysisProgress?.done);
+    final event = (
+      session.uploadedCount,
+      session.uploadsDone,
+      session.analysisProgress?.done
+    );
     if (event != _lastEvent) {
       _lastEvent = event;
       _lastEventAt = _t;
@@ -218,7 +221,8 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
     }
     // Every photo read is as far as it goes: the reveal waits for the answer.
     if (progress.done >= n) return ChamberTimeline.readEnd;
-    return build + read * (progress.done + ChamberTimeline.readingHold * wait) / n;
+    return build +
+        read * (progress.done + ChamberTimeline.readingHold * wait) / n;
   }
 
   double _rateAt(double p) {
@@ -506,7 +510,8 @@ class _StepBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(2),
                   gradient: i <= step ? AppColors.primaryGradient : null,
-                  color: i <= step ? null : AppColors.navy.withValues(alpha: 0.08),
+                  color:
+                      i <= step ? null : AppColors.navy.withValues(alpha: 0.08),
                 ),
               ),
             ),

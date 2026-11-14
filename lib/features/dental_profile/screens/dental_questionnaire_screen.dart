@@ -218,9 +218,7 @@ class _DentalQuestionnaireScreenState
   /// Leaving the screen from where "back" has nowhere else to go.
   bool get _atStart {
     final controller = _controller!;
-    return _onboarding
-        ? _welcome
-        : controller.onReview || controller.step == 0;
+    return _onboarding ? _welcome : controller.onReview || controller.step == 0;
   }
 
   /// System back: previous slide, or close when editing from review.

@@ -37,7 +37,8 @@ class _PrivacyConsentBodyState extends ConsumerState<_PrivacyConsentBody> {
   Future<void> _openSettings() async {
     final opened = await openDeviceSettings(context, notify: false);
     if (mounted) {
-      setState(() => _settingsError = opened ? null : deviceSettingsUnavailable);
+      setState(
+          () => _settingsError = opened ? null : deviceSettingsUnavailable);
     }
   }
 
@@ -56,7 +57,8 @@ class _PrivacyConsentBodyState extends ConsumerState<_PrivacyConsentBody> {
       // The notifier has already rolled the switch back.
       if (mounted) {
         setState(() {
-          _error = "We couldn't save that change. Your previous setting is kept.";
+          _error =
+              "We couldn't save that change. Your previous setting is kept.";
           _failed = consent;
           _failedValue = value;
         });

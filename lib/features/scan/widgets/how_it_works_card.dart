@@ -35,7 +35,8 @@ abstract class HowItWorksFlow {
       ((s - startOf(step) - dwell) / travel).clamp(0.0, 1.0);
 
   /// Everything fading back before the next loop: 1 is fully charged, 0 clear.
-  static double charge(double s) => 1 - ((s - (loop - fade)) / fade).clamp(0.0, 1.0);
+  static double charge(double s) =>
+      1 - ((s - (loop - fade)) / fade).clamp(0.0, 1.0);
 
   /// The step in play, or null once all of them have finished.
   static int? activeAt(double s) {
@@ -282,8 +283,7 @@ class _LinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_LinePainter old) =>
-      old.flow != flow || old.step != step;
+  bool shouldRepaint(_LinePainter old) => old.flow != flow || old.step != step;
 }
 
 /// A step's white disc and button-colored icon. The disc charges when the light
@@ -446,7 +446,8 @@ class _NodePainter extends CustomPainter {
         continue;
       }
       canvas.drawLine(Offset(from, y), Offset(to, y), _ink(0.22));
-      final f = Curves.easeOut.transform(((p - k * 0.2) / 0.45).clamp(0.0, 1.0));
+      final f =
+          Curves.easeOut.transform(((p - k * 0.2) / 0.45).clamp(0.0, 1.0));
       if (f > 0) {
         canvas.drawLine(
           Offset(from, y),

@@ -141,8 +141,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
               ),
               focusedBorder: const OutlineInputBorder(
                 borderRadius: AppRadius.mdAll,
-                borderSide:
-                    BorderSide(color: AppColors.danger, width: 1.5),
+                borderSide: BorderSide(color: AppColors.danger, width: 1.5),
               ),
             ),
           ),

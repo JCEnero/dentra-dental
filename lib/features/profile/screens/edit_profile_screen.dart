@@ -234,8 +234,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   /// Keeps every input as typed so the user can fix it and retry.
   void _onSaveFailed(String message, {ProfileField? field}) {
     if (!mounted) return;
-    final partial = !_detailsChanged && _avatarChanged &&
-        _saved != widget.initial;
+    final partial =
+        !_detailsChanged && _avatarChanged && _saved != widget.initial;
     final fieldKey = switch (field) {
       ProfileField.fullName => _Field.name,
       ProfileField.email => _Field.email,
@@ -576,7 +576,8 @@ class _AvatarEditor extends StatelessWidget {
           icon: const Icon(Icons.photo_camera_outlined, size: 18),
           label: Text(
             bytes == null ? 'Add photo' : 'Change photo',
-            style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
+            style:
+                GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ),
         AnimatedSwitcher(
@@ -631,7 +632,8 @@ class _DateField extends StatelessWidget {
         const SizedBox(height: 7),
         Semantics(
           button: true,
-          label: '$label, ${value == null ? 'not set' : DentraDates.medium(value!)}',
+          label:
+              '$label, ${value == null ? 'not set' : DentraDates.medium(value!)}',
           excludeSemantics: true,
           child: Material(
             color: hasError ? const Color(0xFFFFF5F3) : AppColors.lightLavender,

@@ -595,8 +595,7 @@ class _MascotSpotState extends State<MascotSpot> {
     _scene = scene == null
         ? null
         : context.getElementForInheritedWidgetOfExactType<MascotScene>();
-    final stage =
-        context.getInheritedWidgetOfExactType<_StageScope>()?.stage;
+    final stage = context.getInheritedWidgetOfExactType<_StageScope>()?.stage;
     if (stage != _stage) {
       _current = current;
       _stage?._remove(this);

@@ -50,7 +50,6 @@ enum CareLevel {
 
   /// Its stop on the scale.
   final String short;
-
 }
 
 /// One thing to do.
@@ -192,14 +191,10 @@ class CarePlan {
     if (hurting.isNotEmpty) {
       final one = hurting.length == 1;
       final first = hurting.first;
-      final felt = first.pain == ToothPain.yes
-          ? 'has hurt'
-          : 'is sometimes sensitive';
+      final felt =
+          first.pain == ToothPain.yes ? 'has hurt' : 'is sometimes sensitive';
       steps.add(CareStep(
-        level: hurting
-            .map((g) => g.urgency)
-            .reduce(ToothUrgency.max)
-            .careLevel,
+        level: hurting.map((g) => g.urgency).reduce(ToothUrgency.max).careLevel,
         title: one
             ? 'Have the tooth that hurts examined'
             : 'Have the teeth that hurt examined',

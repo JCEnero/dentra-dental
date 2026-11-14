@@ -245,7 +245,6 @@ class ConditionRow {
 
   /// Of [count], how many were strong signs.
   final int strong;
-
 }
 
 /// One finished analysis, for the results page.
@@ -366,8 +365,8 @@ class ScreeningReport {
 
   /// Areas with a sign the advice is based on.
   int get areasToCheck => areas.values
-      .where((a) =>
-          a.state == AreaState.possible || a.state == AreaState.strong)
+      .where(
+          (a) => a.state == AreaState.possible || a.state == AreaState.strong)
       .length;
 
   /// Areas with only a faint sign.

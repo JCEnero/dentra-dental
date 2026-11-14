@@ -143,9 +143,8 @@ class AuthService extends ChangeNotifier {
       await _startSession(await api.refresh(stored));
       return SessionRestore.restored;
     } on ApiException catch (e) {
-      final serverTrouble = e.statusCode >= 500 ||
-          e.statusCode == 408 ||
-          e.statusCode == 429;
+      final serverTrouble =
+          e.statusCode >= 500 || e.statusCode == 408 || e.statusCode == 429;
       // Server trouble: keep the token so a retry can use it.
       if (serverTrouble) return SessionRestore.unreachable;
       // Rejected (expired, revoked, malformed): it can never work again.
@@ -168,7 +167,8 @@ class AuthService extends ChangeNotifier {
     // 30 s margin so a token never expires mid-request.
     if (token != null &&
         expiresAt != null &&
-        DateTime.now().isBefore(expiresAt.subtract(const Duration(seconds: 30)))) {
+        DateTime.now()
+            .isBefore(expiresAt.subtract(const Duration(seconds: 30)))) {
       return token;
     }
     return _refreshing ??= _refreshAccessToken().whenComplete(() {
@@ -342,7 +342,8 @@ class AuthService extends ChangeNotifier {
     }
     try {
       final resendIn = await api.forgotPassword(email);
-      return AuthResult(success: true, email: email, resendAvailableIn: resendIn);
+      return AuthResult(
+          success: true, email: email, resendAvailableIn: resendIn);
     } on ApiException catch (e) {
       return AuthResult(success: false, error: e.message);
     }

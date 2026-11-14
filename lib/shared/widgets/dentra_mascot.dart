@@ -369,7 +369,11 @@ class _DentraMascotState extends State<DentraMascot>
     switch (widget.mood) {
       case MascotMood.think:
         // Three dots drifting up from his head, lighting in turn.
-        const spots = [(0.86, 0.31, 0.022), (0.93, 0.22, 0.03), (1.0, 0.11, 0.04)];
+        const spots = [
+          (0.86, 0.31, 0.022),
+          (0.93, 0.22, 0.03),
+          (1.0, 0.11, 0.04)
+        ];
         for (var i = 0; i < spots.length; i++) {
           final (x, y, r) = spots[i];
           final phase = (t / 1.6 - i * 0.18) % 1;
@@ -385,8 +389,8 @@ class _DentraMascotState extends State<DentraMascot>
       case MascotMood.cheer:
         final twinkle =
             moving ? 0.6 + 0.4 * math.sin(t / 0.8 * math.pi).abs() : 0.8;
-        _sparkle(canvas, at(0.07, 0.30), s * 0.075 * twinkle * shown,
-            AppColors.g1);
+        _sparkle(
+            canvas, at(0.07, 0.30), s * 0.075 * twinkle * shown, AppColors.g1);
         _sparkle(canvas, at(0.95, 0.24), s * 0.06 * (1.6 - twinkle) * shown,
             AppColors.g2);
         _sparkle(canvas, at(0.90, 0.74), s * 0.045 * twinkle * shown,
@@ -410,8 +414,8 @@ class _DentraMascotState extends State<DentraMascot>
       final a = -math.pi / 2 + i * math.pi / 2;
       final mid = a - math.pi / 4;
       path
-        ..lineTo(c.dx + math.cos(mid) * r * pinch,
-            c.dy + math.sin(mid) * r * pinch)
+        ..lineTo(
+            c.dx + math.cos(mid) * r * pinch, c.dy + math.sin(mid) * r * pinch)
         ..lineTo(c.dx + math.cos(a) * r, c.dy + math.sin(a) * r);
     }
     canvas.drawPath(path..close(), Paint()..color = color);
@@ -712,8 +716,8 @@ class _Idle {
         // A finger tapping the chin, eyes wandering off and back.
         final (gaze, dip) = _glance(t, 5.2, 2.6, 4.2, 1);
         return _Idle(
-          chinTurn: 2.6 * _window(t, 2.6, 0.5, 0.9) +
-              2.6 * _window(t, 2.6, 0.9, 1.3),
+          chinTurn:
+              2.6 * _window(t, 2.6, 0.5, 0.9) + 2.6 * _window(t, 2.6, 0.9, 1.3),
           earL: 3 * _wave(clock, 3.6),
           lean: 0.016 * _wave(clock, 3.6),
           gaze: gaze,
@@ -1099,7 +1103,8 @@ class _Figure {
           break;
         case _Mouth.calm:
           _line(
-            _arc(const Offset(-25, -3), const Offset(0, 19), const Offset(25, -3)),
+            _arc(const Offset(-25, -3), const Offset(0, 19),
+                const Offset(25, -3)),
             8.5,
             _lip,
             _lipShade,
@@ -1107,7 +1112,8 @@ class _Figure {
           );
         case _Mouth.hmm:
           _line(
-            _arc(const Offset(-6, 4), const Offset(14, 12), const Offset(34, -2)),
+            _arc(const Offset(-6, 4), const Offset(14, 12),
+                const Offset(34, -2)),
             8.5,
             _lip,
             _lipShade,

@@ -57,7 +57,8 @@ class _ScreeningDetailScreenState extends ConsumerState<ScreeningDetailScreen> {
     }
     final session = _session;
     final previous = _previous;
-    final images = ref.watch(screeningImageCacheProvider)[sessionId] ?? const {};
+    final images =
+        ref.watch(screeningImageCacheProvider)[sessionId] ?? const {};
 
     return Scaffold(
       backgroundColor: AppColors.lightLavender,
@@ -457,8 +458,7 @@ class _Regions extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < regions.length; i++) ...[
-            if (i > 0)
-              Divider(height: 1, indent: 96, color: AppGlass.divider),
+            if (i > 0) Divider(height: 1, indent: 96, color: AppGlass.divider),
             _RegionRow(region: regions[i], session: session),
           ],
         ],
@@ -612,8 +612,7 @@ class _FindingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final where = [
-      if (finding.regionId != null)
-        findScanRegion(finding.regionId!)?.label,
+      if (finding.regionId != null) findScanRegion(finding.regionId!)?.label,
       if (finding.tooth != null) 'Tooth ${finding.tooth}',
     ].whereType<String>().join(' · ');
 
@@ -634,7 +633,8 @@ class _FindingRow extends StatelessWidget {
               ),
               if (where.isNotEmpty || finding.detail != null)
                 Text(
-                  [where, finding.detail].whereType<String>()
+                  [where, finding.detail]
+                      .whereType<String>()
                       .where((t) => t.isNotEmpty)
                       .join(' — '),
                   style: GoogleFonts.outfit(

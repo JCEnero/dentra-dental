@@ -85,7 +85,6 @@ class _AppTourState extends ConsumerState<AppTour> {
   }
 }
 
-
 class _TourLayer extends StatefulWidget {
   const _TourLayer({
     super.key,
@@ -320,8 +319,7 @@ class _TourLayerState extends State<_TourLayer>
                 final slack = math.max(0.0, size.width - 40 - width);
                 final bubbleLeft = target == null
                     ? 20 + slack / 2
-                    : (target.center.dx - width / 2)
-                        .clamp(20.0, 20.0 + slack);
+                    : (target.center.dx - width / 2).clamp(20.0, 20.0 + slack);
                 final alongX =
                     slack == 0 ? 0.0 : (bubbleLeft - 20) / slack * 2 - 1;
 
@@ -367,9 +365,8 @@ class _TourLayerState extends State<_TourLayer>
                           child: _TourGuide(
                             step: step,
                             visit: _visit,
-                            chapterLabel: step.chapter == null
-                                ? ''
-                                : _chapterLabel(),
+                            chapterLabel:
+                                step.chapter == null ? '' : _chapterLabel(),
                             canGoBack: _step > 1 && step.spot != null,
                             tail: target == null
                                 ? BubbleTail.none
@@ -442,8 +439,7 @@ class _TourLayerState extends State<_TourLayer>
                         ),
                         // The intro recedes a little as it fades, handing
                         // over to the lens.
-                        transitionBuilder: (child, animation) =>
-                            FadeTransition(
+                        transitionBuilder: (child, animation) => FadeTransition(
                           opacity: animation,
                           child: child.key == const ValueKey('intro')
                               ? ScaleTransition(
@@ -1223,8 +1219,7 @@ class _FinaleState extends State<_Finale> with TickerProviderStateMixin {
             child: CustomPaint(painter: ConfettiPainter(progress: _confetti)),
           ),
         Padding(
-          padding:
-              EdgeInsets.fromLTRB(28, safe.top + 24, 28, safe.bottom + 24),
+          padding: EdgeInsets.fromLTRB(28, safe.top + 24, 28, safe.bottom + 24),
           child: Center(
             child: SingleChildScrollView(
               child: ConstrainedBox(
@@ -1306,8 +1301,7 @@ class _FinaleState extends State<_Finale> with TickerProviderStateMixin {
                             child: Text(
                               step.body,
                               textAlign: TextAlign.center,
-                              style:
-                                  guideBodyStyle().copyWith(fontSize: 15.5),
+                              style: guideBodyStyle().copyWith(fontSize: 15.5),
                             ),
                           ),
                         ],

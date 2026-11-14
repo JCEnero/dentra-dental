@@ -250,8 +250,7 @@ class _SessionLoaderState extends ConsumerState<SessionLoader>
         // Decode the photo now, so the avatar never pops in on Home.
         final photo = profile.avatarBytes;
         if (photo != null && mounted) {
-          await precacheImage(MemoryImage(photo), context,
-              onError: (_, __) {});
+          await precacheImage(MemoryImage(photo), context, onError: (_, __) {});
         }
       }),
       _step(2, () async {
@@ -456,7 +455,8 @@ class _SessionLoaderState extends ConsumerState<SessionLoader>
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: AnimatedBuilder(
-                      animation: Listenable.merge([_intro, _finish, _exit, _trace]),
+                      animation:
+                          Listenable.merge([_intro, _finish, _exit, _trace]),
                       builder: (context, _) => Transform.translate(
                         offset: Offset(0, -_exit.value * 14),
                         child: Column(

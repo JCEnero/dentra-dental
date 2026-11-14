@@ -6,8 +6,7 @@ import '../data/models/app_notification.dart';
 import '../data/notification_repository.dart';
 
 /// Backend for notifications. Override in tests.
-final notificationRepositoryProvider =
-    Provider<NotificationRepository>((ref) {
+final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   // The DENTRA API when configured, the on-device store otherwise.
   final api = ref.watch(apiClientProvider);
   return api == null
