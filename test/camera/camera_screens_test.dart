@@ -151,8 +151,8 @@ void main() {
       expect(find.text(CamText.stageJoining), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      link.session!.emit(
-          const JoinEvent(JoinState.connected, ip: '192.168.1.40'));
+      link.session!
+          .emit(const JoinEvent(JoinState.connected, ip: '192.168.1.40'));
       await settle(tester, steps: 40);
       expect(find.text(CamText.successTitle), findsOneWidget);
       // The live preview test streams from the new camera.
@@ -351,7 +351,7 @@ void main() {
       await tester.tap(find.byTooltip(CamText.closeCamera));
       await settle(tester);
     });
-  
+
     testWidgets('choosing your own camera skips the Dentra Cam, even set up',
         (tester) async {
       SharedPreferences.setMockInitialValues({
@@ -429,9 +429,9 @@ void main() {
       expect(find.text(CamText.welcomeTitle), findsOneWidget);
       await tapText(tester, CamText.welcomeStart);
       await tapText(tester, CamText.powerReady);
-      expect(find.text('K7P 2QX'), findsOneWidget,
+      expect(find.byKey(const ValueKey('pairing-code K7P2QX')), findsOneWidget,
           reason: 'a code, not a Bluetooth search');
-      expect(find.text(CamText.findTitle), findsNothing);
+      expect(find.text(CamText.findSearching), findsNothing);
 
       await tester.tap(find.byTooltip(CamText.closeSetup));
       await settle(tester);
@@ -439,5 +439,5 @@ void main() {
       expect(find.text('Take photo'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
-});
+  });
 }

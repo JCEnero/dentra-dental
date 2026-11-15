@@ -4,26 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/dentra_glass_ui.dart';
 import '../../../shared/widgets/dentra_mascot.dart';
+import '../../../shared/widgets/guide_bubble.dart';
 import '../../scan/widgets/scan_motion.dart';
 import '../../scan/widgets/scan_theme.dart';
 import '../camera_strings.dart';
-import '../data/camera_config.dart';
 
 // Small pieces shared by the setup guide and the live camera.
-
-TextStyle camTitleStyle() => GoogleFonts.outfit(
-      fontSize: 22,
-      fontWeight: FontWeight.w800,
-      color: AppColors.navy,
-      letterSpacing: -0.4,
-      height: 1.2,
-    );
-
-TextStyle camBodyStyle() => GoogleFonts.outfit(
-      fontSize: 14.5,
-      color: AppColors.secondaryText,
-      height: 1.5,
-    );
 
 /// Wi-Fi signal as four rising bars.
 class SignalBars extends StatelessWidget {
@@ -91,8 +77,8 @@ class StatusDot extends StatelessWidget {
   }
 }
 
-/// Rabi, the app's mascot, saying a short tip. His [mood] follows what is
-/// happening on the page: pointing at what to do, thinking while it works,
+/// Rabi saying a short tip in his glass speech bubble. His [mood] follows
+/// what is happening: pointing at what to do, thinking while it works,
 /// cheering when it's done, worried when it needs another try.
 class RabiTip extends StatelessWidget {
   const RabiTip(
@@ -119,33 +105,27 @@ class RabiTip extends StatelessWidget {
       child: Row(
         children: [
           // Turned so his free arm is on the bubble's side.
-          DentraMascot(mood: mood, size: size, mirrored: true, busy: busy),
-          const SizedBox(width: 6),
+          DentraMascot(
+            mood: mood,
+            size: size,
+            mirrored: true,
+            busy: busy,
+            awake: true,
+          ),
           Expanded(
-            child: AnimatedSwitcher(
-              duration: ScanMotion.of(context, ScanMotion.medium),
-              transitionBuilder: ScanMotion.fadeRise,
-              layoutBuilder: (current, previous) => Stack(
-                alignment: Alignment.centerLeft,
-                children: [...previous, if (current != null) current],
-              ),
-              child: Container(
-                key: ValueKey(text),
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 11),
-                decoration: BoxDecoration(
-                  color: AppColors.white.withValues(alpha: 0.82),
-                  // The corner nearest Rabi is the bubble's tail.
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(18),
-                    topRight: Radius.circular(18),
-                    bottomRight: Radius.circular(18),
-                    bottomLeft: Radius.circular(4),
-                  ),
-                  border:
-                      Border.all(color: AppColors.g2.withValues(alpha: 0.16)),
+            child: GuideBubble(
+              tail: BubbleTail.left,
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 11),
+              child: AnimatedSwitcher(
+                duration: ScanMotion.of(context, ScanMotion.medium),
+                transitionBuilder: ScanMotion.fadeRise,
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [...previous, if (current != null) current],
                 ),
                 child: Text(
                   text,
+                  key: ValueKey(text),
                   style: GoogleFonts.outfit(
                     fontSize: 13.5,
                     height: 1.4,
@@ -157,36 +137,6 @@ class RabiTip extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// A setup step's own picture, when one is set in [CameraConfig.setupArt].
-/// Steps without one show nothing here: Rabi leads the page instead.
-class SetupArt extends StatelessWidget {
-  const SetupArt({super.key, required this.step, this.height = 150});
-
-  /// Index into [CameraConfig.setupArt].
-  final int step;
-  final double height;
-
-  /// Whether [step] has a picture.
-  static bool has(int step) =>
-      step < CameraConfig.setupArt.length &&
-      CameraConfig.setupArt[step] != null;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!has(step)) return const SizedBox.shrink();
-    return ExcludeSemantics(
-      child: SizedBox(
-        height: height,
-        child: Image.asset(
-          CameraConfig.setupArt[step]!,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-        ),
       ),
     );
   }

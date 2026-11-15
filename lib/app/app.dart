@@ -19,7 +19,7 @@ import '../features/auth/providers/auth_provider.dart';
 import '../features/dental_profile/widgets/dental_onboarding_gate.dart';
 import '../features/onboarding/screens/onboarding_screen.dart';
 import '../features/onboarding/services/onboarding_storage.dart';
-import '../features/splash/screens/splash_screen.dart';
+import '../features/splash/screens/session_loader.dart';
 
 class DentraApp extends ConsumerStatefulWidget {
   const DentraApp({super.key, this.onboardingCompleted = false});
@@ -34,7 +34,7 @@ class DentraApp extends ConsumerStatefulWidget {
 class _DentraAppState extends ConsumerState<DentraApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
 
-  /// Debug only: every hot reload replays the launch animation, once the
+  /// Debug only: every hot reload replays the launch loader, once the
   /// welcome introduction is done. It lands back on home when signed in,
   /// sign-in otherwise.
   @override
@@ -47,19 +47,19 @@ class _DentraAppState extends ConsumerState<DentraApp> {
       navigator.pushAndRemoveUntil(
         PageRouteBuilder<void>(
           transitionDuration: Duration.zero,
-          pageBuilder: (_, __, ___) =>
-              SplashScreen(next: (_) => const SignedInGate()),
+          pageBuilder: (_, __, ___) => const SessionLoader(restore: true),
         ),
         (_) => false,
       );
     });
   }
 
-  /// ── Auth gate: onboarding on first launch. Returning users see the
-  /// launch animation, then home when `main()` restored a session,
-  /// sign-in otherwise. '/home' lands on the same gate ──
+  /// ── Auth gate: onboarding on first launch. Returning users get the
+  /// launch loader, which restores their session and loads their data
+  /// before home, or shows sign-in when there is no session. '/home'
+  /// (every sign-in) goes through the same loader ──
   Widget get _start => widget.onboardingCompleted
-      ? SplashScreen(next: (_) => const SignedInGate())
+      ? const SessionLoader(restore: true)
       : const OnboardingScreen();
 
   @override
@@ -76,24 +76,18 @@ class _DentraAppState extends ConsumerState<DentraApp> {
       onGenerateInitialRoutes: (_) => [
         MaterialPageRoute<void>(builder: (_) => _start),
       ],
-      // '/home' fades in (with a slight settle) so the hand-off from the
-      // sign-in loading screen stays seamless.
+      // '/home' is how every sign-in enters the app: the loader fades in
+      // over the sign-in screen and lets the user in once their data is
+      // loaded.
       onGenerateRoute: (settings) => settings.name == '/home'
           ? PageRouteBuilder<void>(
               settings: settings,
-              pageBuilder: (_, __, ___) => const SignedInGate(),
-              transitionsBuilder: (_, anim, __, child) {
-                final curved =
-                    CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
-                return FadeTransition(
-                  opacity: curved,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 1.03, end: 1).animate(curved),
-                    child: child,
-                  ),
-                );
-              },
-              transitionDuration: const Duration(milliseconds: 420),
+              pageBuilder: (_, __, ___) => const SessionLoader(),
+              transitionsBuilder: (_, anim, __, child) => FadeTransition(
+                opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+                child: child,
+              ),
+              transitionDuration: const Duration(milliseconds: 320),
             )
           : null,
     );
@@ -141,16 +135,18 @@ class _AppShellState extends State<AppShell> {
     setState(() => _tab = index);
   }
 
+  /// Built once: their arguments never change, so switching tabs only
+  /// rebuilds what depends on the selected index, not every tab.
+  late final List<Widget> _screens = [
+    HomeScreen(onNavigate: _navigate, tourTargets: _tour),
+    ScanScreen(onNavigate: _navigate),
+    HistoryScreen(onNavigate: _navigate),
+    const ClinicsScreen(),
+    ProfileScreen(onNavigate: _navigate),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final screens = <Widget>[
-      HomeScreen(onNavigate: _navigate, tourTargets: _tour),
-      ScanScreen(onNavigate: _navigate),
-      HistoryScreen(onNavigate: _navigate),
-      const ClinicsScreen(),
-      ProfileScreen(onNavigate: _navigate),
-    ];
-
     return AiChatScope(
       controller: _aiChat,
       child: Scaffold(
@@ -159,21 +155,36 @@ class _AppShellState extends State<AppShell> {
           child: Stack(
             children: [
               // ── Main app UI ─────────────────────────────────
-              Column(
-                children: [
-                  Expanded(
-                    child: IndexedStack(
-                      index: _tab,
-                      sizing: StackFit.expand,
-                      children: screens,
+              // Animations pause while the chat panel covers the app,
+              // as they do on hidden tabs below.
+              ListenableBuilder(
+                listenable: _aiChat,
+                builder: (context, child) => TickerMode(
+                  enabled: !(_aiChat.isOpen && !_aiChat.isMinimized),
+                  child: child!,
+                ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: IndexedStack(
+                        index: _tab,
+                        sizing: StackFit.expand,
+                        children: [
+                          // IndexedStack doesn't stop a hidden tab's
+                          // animations, so its tickers would keep the app
+                          // drawing frames the user never sees.
+                          for (var i = 0; i < _screens.length; i++)
+                            TickerMode(enabled: i == _tab, child: _screens[i]),
+                        ],
+                      ),
                     ),
-                  ),
-                  AppBottomNav(
-                    activeIndex: _tab,
-                    onTap: _navigate,
-                    itemKeys: _tour.tabs,
-                  ),
-                ],
+                    AppBottomNav(
+                      activeIndex: _tab,
+                      onTap: _navigate,
+                      itemKeys: _tour.tabs,
+                    ),
+                  ],
+                ),
               ),
 
               // ── AI chat overlay (floats above everything) ───

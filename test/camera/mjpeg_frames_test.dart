@@ -35,14 +35,18 @@ void main() {
     final splitter = MjpegFrameSplitter();
     final frames = <Uint8List>[];
     for (var i = 0; i < bytes.length; i += 7) {
-      frames.addAll(splitter.add(bytes.sublist(i, (i + 7).clamp(0, bytes.length))));
+      frames.addAll(
+          splitter.add(bytes.sublist(i, (i + 7).clamp(0, bytes.length))));
     }
     expect(frames, [a, b]);
   });
 
   test('without a Content-Length, a frame ends at the JPEG end marker', () {
     final a = jpeg(64), b = jpeg(80, fill: 0x44);
-    final bytes = [...part(a, withLength: false), ...part(b, withLength: false)];
+    final bytes = [
+      ...part(a, withLength: false),
+      ...part(b, withLength: false)
+    ];
     final splitter = MjpegFrameSplitter();
     final frames = <Uint8List>[];
     // One byte at a time, so markers split across chunks too.

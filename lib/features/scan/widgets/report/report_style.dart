@@ -89,9 +89,13 @@ class ReportFold extends StatefulWidget {
     required this.title,
     required this.child,
     this.count,
+    this.subtitle,
   });
 
   final String title;
+
+  /// The short answer, under the title, so the row says something closed too.
+  final String? subtitle;
 
   /// How many things are inside, shown beside the title.
   final int? count;
@@ -113,9 +117,11 @@ class _ReportFoldState extends State<ReportFold> {
         Semantics(
           button: true,
           expanded: _open,
-          label: widget.count == null
-              ? widget.title
-              : '${widget.title}, ${widget.count}',
+          label: [
+            widget.title,
+            if (widget.count != null) '${widget.count}',
+            if (widget.subtitle != null) widget.subtitle!,
+          ].join(', '),
           excludeSemantics: true,
           child: InkWell(
             onTap: () => setState(() => _open = !_open),
@@ -124,7 +130,21 @@ class _ReportFoldState extends State<ReportFold> {
               constraints: const BoxConstraints(minHeight: 44),
               child: Row(
                 children: [
-                  Expanded(child: Text(widget.title, style: reportCardTitle)),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.title, style: reportCardTitle),
+                          if (widget.subtitle case final subtitle?) ...[
+                            const SizedBox(height: 1),
+                            Text(subtitle, style: reportNote),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                   if (widget.count case final n?) ...[
                     Text('$n', style: reportNote),
                     const SizedBox(width: 6),
@@ -176,54 +196,6 @@ class ReportHeading extends StatelessWidget {
           const SizedBox(height: 2),
           Text(subtitle!, style: reportBody),
         ],
-      ],
-    );
-  }
-}
-
-/// A small swatch and its meaning.
-class ReportLegendItem extends StatelessWidget {
-  const ReportLegendItem(this.state, {super.key});
-
-  final AreaState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ReportSwatch(state),
-        const SizedBox(width: 5),
-        Flexible(child: Text(areaStateLabel(state), style: reportNote)),
-      ],
-    );
-  }
-}
-
-/// The states shown, darkest first, and one key for all that aren't read.
-class ReportLegend extends StatelessWidget {
-  const ReportLegend(this.states,
-      {super.key, this.alignment = WrapAlignment.start});
-
-  final Set<AreaState> states;
-  final WrapAlignment alignment;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: alignment,
-      spacing: 12,
-      runSpacing: 4,
-      children: [
-        for (final s in const [
-          AreaState.strong,
-          AreaState.possible,
-          AreaState.faint,
-          AreaState.clear,
-        ])
-          if (states.contains(s)) ReportLegendItem(s),
-        if (states.any((s) => !s.read))
-          const ReportLegendItem(AreaState.notRead),
       ],
     );
   }

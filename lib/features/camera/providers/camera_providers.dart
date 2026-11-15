@@ -56,7 +56,8 @@ final camClientFactoryProvider = Provider<DentraCamClient Function(String)>(
 );
 
 /// Makes a client for a camera linked to the account, through the API.
-final cloudCamClientFactoryProvider = Provider<CamClient Function(String)>((ref) {
+final cloudCamClientFactoryProvider =
+    Provider<CamClient Function(String)>((ref) {
   final baseUrl = ApiConfig.baseUrl;
   return (deviceId) => CloudCamClient(
         deviceId: deviceId,
@@ -70,9 +71,8 @@ final cloudCamClientFactoryProvider = Provider<CamClient Function(String)>((ref)
 final cameraClientProvider = Provider<CamClient Function(SavedCamera)>((ref) {
   final local = ref.watch(camClientFactoryProvider);
   final cloud = ref.watch(cloudCamClientFactoryProvider);
-  return (camera) => camera.cloudId != null
-      ? cloud(camera.cloudId!)
-      : local(camera.host!);
+  return (camera) =>
+      camera.cloudId != null ? cloud(camera.cloudId!) : local(camera.host!);
 });
 
 /// The camera this phone was set up with, or on the website the one linked

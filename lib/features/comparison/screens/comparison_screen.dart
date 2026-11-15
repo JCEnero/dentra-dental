@@ -69,19 +69,28 @@ class ComparisonScreen extends ConsumerWidget {
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: EdgeInsets.fromLTRB(AppSpacing.screenH, 18,
-                        AppSpacing.screenH, 32 + MediaQuery.paddingOf(context).bottom),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 600),
-                        child: AnimatedSwitcher(
-                          duration: dentraMotion(context, 220),
-                          switchInCurve: Curves.easeOut,
-                          layoutBuilder: (current, previous) => Stack(
-                            alignment: Alignment.topCenter,
-                            children: [...previous, if (current != null) current],
+                    padding: EdgeInsets.fromLTRB(
+                        AppSpacing.screenH,
+                        18,
+                        AppSpacing.screenH,
+                        32 + MediaQuery.paddingOf(context).bottom),
+                    // Scrolling moves this layer instead of re-recording the page.
+                    child: RepaintBoundary(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 600),
+                          child: AnimatedSwitcher(
+                            duration: dentraMotion(context, 220),
+                            switchInCurve: Curves.easeOut,
+                            layoutBuilder: (current, previous) => Stack(
+                              alignment: Alignment.topCenter,
+                              children: [
+                                ...previous,
+                                if (current != null) current
+                              ],
+                            ),
+                            child: _body(context, ref, items, sel),
                           ),
-                          child: _body(context, ref, items, sel),
                         ),
                       ),
                     ),
@@ -124,7 +133,8 @@ class ComparisonScreen extends ConsumerWidget {
       return const Padding(
         key: ValueKey('loading'),
         padding: EdgeInsets.only(top: 60),
-        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        child:
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
     final all = items.requireValue;
@@ -133,7 +143,8 @@ class ComparisonScreen extends ConsumerWidget {
         key: const ValueKey('empty'),
         icon: Icons.compare_outlined,
         mascot: MascotMood.think,
-        title: all.isEmpty ? 'Nothing to compare yet' : 'One more record needed',
+        title:
+            all.isEmpty ? 'Nothing to compare yet' : 'One more record needed',
         message: 'Comparison needs at least two saved screenings or photos. '
             '${all.isEmpty ? 'You have none yet.' : 'You have one so far.'}',
         actions: [
@@ -157,7 +168,11 @@ class ComparisonScreen extends ConsumerWidget {
     final earlier = _find(all, sel.earlierKey);
     final later = _find(all, sel.laterKey);
     if (sel.showingResult && earlier != null && later != null) {
-      return _Result(key: const ValueKey('result'), all: all, earlier: earlier, later: later);
+      return _Result(
+          key: const ValueKey('result'),
+          all: all,
+          earlier: earlier,
+          later: later);
     }
     return _Selection(key: const ValueKey('selection'), all: all, sel: sel);
   }
@@ -231,7 +246,8 @@ class _Selection extends ConsumerWidget {
                 ? 'Choose a record for both dates to compare.'
                 : 'Choose two different records.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText),
+            style: GoogleFonts.outfit(
+                fontSize: 12, color: AppColors.secondaryText),
           ),
         ],
       ],
@@ -282,7 +298,9 @@ class _SlotCard extends ConsumerWidget {
                       style: GoogleFonts.outfit(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: day == null ? AppColors.secondaryText : AppColors.navy,
+                        color: day == null
+                            ? AppColors.secondaryText
+                            : AppColors.navy,
                       ),
                     ),
                   ],
@@ -299,7 +317,8 @@ class _SlotCard extends ConsumerWidget {
                   semanticsLabel: day == null
                       ? 'Choose the ${slot.label.toLowerCase()} date'
                       : 'Change the ${slot.label.toLowerCase()} date',
-                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.outfit(
+                      fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -310,7 +329,8 @@ class _SlotCard extends ConsumerWidget {
               Text(
                 'No screenings or photos are saved on this date anymore. '
                 'Choose another date.',
-                style: GoogleFonts.outfit(fontSize: 13, color: AppColors.secondaryText),
+                style: GoogleFonts.outfit(
+                    fontSize: 13, color: AppColors.secondaryText),
               )
             else
               for (final item in items)
@@ -453,7 +473,8 @@ class _DayList extends StatelessWidget {
       return Text(
         'No dates fit here. The earlier date has to come before the later '
         'one; choose a different date on the other side first.',
-        style: GoogleFonts.outfit(fontSize: 14, color: AppColors.secondaryText, height: 1.5),
+        style: GoogleFonts.outfit(
+            fontSize: 14, color: AppColors.secondaryText, height: 1.5),
       );
     }
     final rows = <Widget>[];
@@ -483,7 +504,8 @@ class _DayList extends StatelessWidget {
           onTap: () => onPick(d),
           selected: isSelected,
           contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           selectedTileColor: AppColors.g2.withValues(alpha: 0.08),
           title: Text(
             DentraDates.full(d),
@@ -503,7 +525,8 @@ class _DayList extends StatelessWidget {
           ),
           trailing: Text(
             '${items.length}',
-            semanticsLabel: '${items.length} ${items.length == 1 ? 'record' : 'records'}',
+            semanticsLabel:
+                '${items.length} ${items.length == 1 ? 'record' : 'records'}',
             style: GoogleFonts.outfit(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -513,7 +536,8 @@ class _DayList extends StatelessWidget {
         ),
       ));
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
   }
 }
 
@@ -628,7 +652,8 @@ class _Result extends ConsumerWidget {
     );
   }
 
-  Future<void> _change(BuildContext context, WidgetRef ref, ComparisonSlot slot) async {
+  Future<void> _change(
+      BuildContext context, WidgetRef ref, ComparisonSlot slot) async {
     await _chooseDay(context, ref, all, slot);
     // No single record on the new date: finish choosing on the selection.
     if (!ref.read(comparisonControllerProvider).canCompare) {
@@ -645,7 +670,8 @@ class _Result extends ConsumerWidget {
 }
 
 class _SideHeader extends StatelessWidget {
-  const _SideHeader({required this.slot, required this.item, required this.onChange});
+  const _SideHeader(
+      {required this.slot, required this.item, required this.onChange});
 
   final ComparisonSlot slot;
   final ComparableItem item;
@@ -686,7 +712,8 @@ class _SideHeader extends StatelessWidget {
               item.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText),
+              style: GoogleFonts.outfit(
+                  fontSize: 12, color: AppColors.secondaryText),
             ),
           ),
           TextButton(
@@ -699,7 +726,8 @@ class _SideHeader extends StatelessWidget {
             child: Text(
               'Change date',
               semanticsLabel: 'Change the ${slot.label.toLowerCase()} date',
-              style: GoogleFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.w600),
+              style: GoogleFonts.outfit(
+                  fontSize: 12.5, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -720,13 +748,15 @@ class _ScreeningComparison extends StatelessWidget {
   Widget build(BuildContext context) {
     String regions(ScreeningSession? s) =>
         s == null ? '—' : '${s.capturedViewCount} of ${s.totalRegions}';
-    String analysis(ScreeningSession? s) =>
-        s == null ? 'Not a screening' : (s.analysis == null ? 'Not run' : 'Saved');
+    String analysis(ScreeningSession? s) => s == null
+        ? 'Not a screening'
+        : (s.analysis == null ? 'Not run' : 'Saved');
 
     final a1 = earlier?.analysis, a2 = later?.analysis;
     final String note;
     if (earlier == null || later == null) {
-      note = 'Only one side is a smart screening, so screening results are shown '
+      note =
+          'Only one side is a smart screening, so screening results are shown '
           'for that side only.';
     } else if (a1 == null && a2 == null) {
       note = 'Neither screening has an analysis saved, so there are no '
@@ -735,7 +765,8 @@ class _ScreeningComparison extends StatelessWidget {
       note = 'Only the ${a1 == null ? 'later' : 'earlier'} screening has an '
           "analysis, so findings can't be compared.";
     } else {
-      note = 'Findings are listed as the screening reported them for each screening. '
+      note =
+          'Findings are listed as the screening reported them for each screening. '
           "A finding that appears in one and not the other doesn't show that a "
           'condition improved or worsened.';
     }
@@ -750,25 +781,31 @@ class _ScreeningComparison extends StatelessWidget {
           if (earlier != null && later != null)
             _PairRow(
               'Regions in both',
-              _names(earlier!.capturedRegions.toSet().intersection(later!.capturedRegions.toSet())),
+              _names(earlier!.capturedRegions
+                  .toSet()
+                  .intersection(later!.capturedRegions.toSet())),
               null,
             ),
-          _PairRow('Analysis', analysis(earlier), analysis(later), last: a1 == null && a2 == null),
+          _PairRow('Analysis', analysis(earlier), analysis(later),
+              last: a1 == null && a2 == null),
           if (a1 != null || a2 != null) ...[
             const SizedBox(height: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _Findings(analysis: a1, present: earlier != null)),
+                Expanded(
+                    child: _Findings(analysis: a1, present: earlier != null)),
                 const SizedBox(width: 12),
-                Expanded(child: _Findings(analysis: a2, present: later != null)),
+                Expanded(
+                    child: _Findings(analysis: a2, present: later != null)),
               ],
             ),
           ],
           const SizedBox(height: 12),
           Text(
             note,
-            style: GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText, height: 1.45),
+            style: GoogleFonts.outfit(
+                fontSize: 12, color: AppColors.secondaryText, height: 1.45),
           ),
         ],
       ),
@@ -777,7 +814,10 @@ class _ScreeningComparison extends StatelessWidget {
 
   static String _names(Set<String> ids) => ids.isEmpty
       ? 'None'
-      : [for (final id in ids) if (findScanRegion(id) case final r?) r.label].join(', ');
+      : [
+          for (final id in ids)
+            if (findScanRegion(id) case final r?) r.label
+        ].join(', ');
 }
 
 class _Findings extends StatelessWidget {
@@ -789,7 +829,8 @@ class _Findings extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = analysis;
-    final style = GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText);
+    final style =
+        GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText);
     if (!present) return Text('—', style: style);
     if (a == null) return Text('No findings saved', style: style);
     if (a.findings.isEmpty) {
@@ -815,8 +856,7 @@ class _Findings extends StatelessWidget {
                 Text(
                   [
                     if (f.tooth != null) 'Tooth ${f.tooth}',
-                    if (f.regionId != null)
-                      findScanRegion(f.regionId!)?.label,
+                    if (f.regionId != null) findScanRegion(f.regionId!)?.label,
                     // Only a confidence the service reported.
                     if (f.confidence != null)
                       '${(f.confidence! * 100).round()}% reported confidence',
@@ -840,7 +880,8 @@ class _RecordDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget side(DentalRecord? r) {
-      final style = GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText, height: 1.4);
+      final style = GoogleFonts.outfit(
+          fontSize: 12, color: AppColors.secondaryText, height: 1.4);
       if (r == null) return Text('Smart screening', style: style);
       final lines = [
         recordDateLabel(r),
@@ -856,7 +897,8 @@ class _RecordDetails extends StatelessWidget {
           for (final l in lines)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: Text(l, maxLines: 4, overflow: TextOverflow.ellipsis, style: style),
+              child: Text(l,
+                  maxLines: 4, overflow: TextOverflow.ellipsis, style: style),
             ),
           if (r.teeth.isNotEmpty)
             Wrap(
@@ -871,7 +913,8 @@ class _RecordDetails extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                     ),
                     child: Text('Tooth $t',
-                        style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600)),
+                        style: GoogleFonts.outfit(
+                            fontSize: 12, fontWeight: FontWeight.w600)),
                   ),
               ],
             ),
@@ -896,7 +939,8 @@ class _RecordDetails extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Entered by you. Not verified by DENTRA or a dentist.',
-            style: GoogleFonts.outfit(fontSize: 11.5, color: AppColors.secondaryText),
+            style: GoogleFonts.outfit(
+                fontSize: 11.5, color: AppColors.secondaryText),
           ),
         ],
       ),
@@ -927,21 +971,28 @@ class _PairRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
-          border: last ? null : Border(bottom: BorderSide(color: AppGlass.divider)),
+          border:
+              last ? null : Border(bottom: BorderSide(color: AppGlass.divider)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText)),
+            Text(label,
+                style: GoogleFonts.outfit(
+                    fontSize: 12, color: AppColors.secondaryText)),
             const SizedBox(height: 3),
             if (later == null)
               Text(earlier, style: value)
             else
               Row(
                 children: [
-                  Expanded(child: Text(earlier, semanticsLabel: 'Earlier: $earlier', style: value)),
+                  Expanded(
+                      child: Text(earlier,
+                          semanticsLabel: 'Earlier: $earlier', style: value)),
                   const SizedBox(width: 12),
-                  Expanded(child: Text(later!, semanticsLabel: 'Later: $later', style: value)),
+                  Expanded(
+                      child: Text(later!,
+                          semanticsLabel: 'Later: $later', style: value)),
                 ],
               ),
           ],
@@ -968,12 +1019,14 @@ class _Note extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: AppColors.primary.withValues(alpha: 0.85)),
+          Icon(icon,
+              size: 16, color: AppColors.primary.withValues(alpha: 0.85)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.outfit(fontSize: 12.5, color: AppColors.navy, height: 1.5),
+              style: GoogleFonts.outfit(
+                  fontSize: 12.5, color: AppColors.navy, height: 1.5),
             ),
           ),
         ],

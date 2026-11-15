@@ -82,7 +82,8 @@ class CheckInPlan {
     } else if (answers != null && within(answeredAt, _sameDay)) {
       if (answers.currentConcerns.any((c) => c.isActive)) {
         prefill = ScanCheckIn(
-          symptoms: answers.currentConcerns.where(checkInSymptoms.contains).toSet(),
+          symptoms:
+              answers.currentConcerns.where(checkInSymptoms.contains).toSet(),
           started: symptomStarts.contains(answers.concernDuration)
               ? answers.concernDuration
               : null,

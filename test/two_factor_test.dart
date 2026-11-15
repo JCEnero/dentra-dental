@@ -55,8 +55,7 @@ const _user = {'id': 'user-1', 'email': 'ana@example.com', 'full_name': 'Ana'};
 }
 
 void main() {
-  test('a two-factor account is not signed in by the password alone',
-      () async {
+  test('a two-factor account is not signed in by the password alone', () async {
     final (auth, _) = _service();
     final result = await auth.signInWithEmail(
       email: 'ana@example.com',
@@ -81,11 +80,11 @@ void main() {
     expect(result.success, isTrue);
     expect(auth.isAuthenticated, isTrue);
     expect(auth.currentUserId, 'user-1');
-    expect(requests.single.$2, {'challenge_token': 'challenge-1', 'code': '123456'});
+    expect(requests.single.$2,
+        {'challenge_token': 'challenge-1', 'code': '123456'});
   });
 
-  test('a wrong code shows the server message and stays signed out',
-      () async {
+  test('a wrong code shows the server message and stays signed out', () async {
     final (auth, _) = _service();
     final result = await auth.verifyTwoFactorSignIn(
       challengeToken: 'challenge-1',

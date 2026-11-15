@@ -33,8 +33,8 @@ List<ChatMessage> _pairs(int count) => [
 }) {
   final bodies = <Map<String, dynamic>>[];
   final client = MockClient.streaming((request, bodyStream) async {
-    bodies.add(jsonDecode(await bodyStream.bytesToString())
-        as Map<String, dynamic>);
+    bodies.add(
+        jsonDecode(await bodyStream.bytesToString()) as Map<String, dynamic>);
     return handler();
   });
   final api = ApiClient(

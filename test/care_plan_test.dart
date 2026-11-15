@@ -179,7 +179,8 @@ void main() {
     test('is not dismissed', () {
       final p = plan(report(), checkIn: pain);
       expect(p.level.index, greaterThan(CareLevel.routine.index));
-      final link = p.links.singleWhere((l) => l.title == 'Nothing marked there');
+      final link =
+          p.links.singleWhere((l) => l.title == 'Nothing marked there');
       expect(link.text, contains("can't rule out"));
       expect(link.text, contains('still counts'));
     });
@@ -485,7 +486,8 @@ void main() {
           record(procedure: 'Composite filling', teeth: const ['46']),
         ],
       );
-      final link = p.links.singleWhere((l) => l.title == 'In your clinic record');
+      final link =
+          p.links.singleWhere((l) => l.title == 'In your clinic record');
       expect(link.sources, {CareSource.check, CareSource.records});
       expect(link.text, contains('Mar 12, 2026'));
       expect(link.text, contains('Composite filling'));
@@ -495,7 +497,8 @@ void main() {
     });
 
     test('a note or photo proves nothing and raises nothing', () {
-      final base = plan(report(findings: [lowerBack()], recs: const [routineRec]));
+      final base =
+          plan(report(findings: [lowerBack()], recs: const [routineRec]));
       final withNote = plan(
         report(findings: [lowerBack()], recs: const [routineRec]),
         records: [
@@ -526,7 +529,9 @@ void main() {
     test('nothing is called recurring from one entry', () {
       final one = plan(
         report(),
-        records: [record(procedure: 'Filling', teeth: const ['26'])],
+        records: [
+          record(procedure: 'Filling', teeth: const ['26'])
+        ],
       );
       expect(one.links, isEmpty);
 
@@ -761,13 +766,11 @@ void main() {
 
   group('the check-in itself', () {
     test('drops follow-ups when their answer goes away', () {
-      final c = pain
-          .copyWith(
-            symptoms: {CurrentConcern.none},
-            severity: DiscomfortLevel.severe,
-            started: ConcernDuration.today,
-          )
-          .normalized();
+      final c = pain.copyWith(
+        symptoms: {CurrentConcern.none},
+        severity: DiscomfortLevel.severe,
+        started: ConcernDuration.today,
+      ).normalized();
       expect(c.symptomArea, isNull);
       expect(c.severity, isNull);
       expect(c.started, isNull);
@@ -940,7 +943,9 @@ void main() {
     test('scanning again today starts from what they said', () {
       final p = CheckInPlan.of(
         now: at,
-        sessions: [session('1', at.subtract(const Duration(hours: 2)), checkIn: pain)],
+        sessions: [
+          session('1', at.subtract(const Duration(hours: 2)), checkIn: pain)
+        ],
       );
       expect(p.asksSymptoms, isTrue);
       expect(p.prefill.symptomArea, AreaAnswer.lowerRight);

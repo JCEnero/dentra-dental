@@ -23,7 +23,8 @@ Future<void> showHelpSupportSheet(BuildContext hostContext) {
     builder: (sheetContext) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final (q, a) in ProfileContent.faqs) _FaqItem(question: q, answer: a),
+        for (final (q, a) in ProfileContent.faqs)
+          _FaqItem(question: q, answer: a),
         const SizedBox(height: 14),
         Text(
           'STILL NEED HELP?',
@@ -40,7 +41,8 @@ Future<void> showHelpSupportSheet(BuildContext hostContext) {
             ProfileSettingsTile(
               icon: Icons.mail_outline_rounded,
               title: 'Email support',
-              subtitle: '${ProfileContent.supportEmail} · Replies within 24 hours',
+              subtitle:
+                  '${ProfileContent.supportEmail} · Replies within 24 hours',
               onTap: () async {
                 // Close first so any fallback message is visible.
                 Navigator.of(sheetContext).pop();

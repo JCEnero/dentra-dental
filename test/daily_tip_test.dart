@@ -8,7 +8,8 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// An API that answers /api/tips/today, counting calls.
-(ApiClient, List<String>) _api({bool fail = false, String source = 'ai_generated'}) {
+(ApiClient, List<String>) _api(
+    {bool fail = false, String source = 'ai_generated'}) {
   final calls = <String>[];
   final client = MockClient((req) async {
     final date = req.url.queryParameters['date']!;
@@ -28,7 +29,10 @@ import 'package:shared_preferences/shared_preferences.dart';
     );
   });
   return (
-    ApiClient(baseUrl: 'http://api.test', accessToken: () async => 't', client: client),
+    ApiClient(
+        baseUrl: 'http://api.test',
+        accessToken: () async => 't',
+        client: client),
     calls,
   );
 }

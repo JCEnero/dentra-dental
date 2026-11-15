@@ -483,14 +483,6 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     await capture(source);
   }
 
-  void dismissFailure() {
-    if (state.capturePhase != CapturePhase.failed) return;
-    state = state.copyWith(
-      capturePhase: CapturePhase.idle,
-      captureFailure: null,
-    );
-  }
-
   /// Ends scanning with the regions captured so far.
   Future<void> finish() async {
     if (!state.canFinish) return;
@@ -603,14 +595,13 @@ class ScanSessionNotifier extends Notifier<ScanSessionState> {
     _resumeId = _recorded?.id;
     _upload = null;
     state = ScanSessionState(
-      selectedRegionId: flagged.contains(first.id)
-          ? first.id
-          : secondPhotoId(first.id),
+      selectedRegionId:
+          flagged.contains(first.id) ? first.id : secondPhotoId(first.id),
       started: true,
       checkIn: state.checkIn,
       checkInSeen: true,
-      captures: Map.unmodifiable({...state.captures}
-        ..removeWhere((id, _) => flagged.contains(id))),
+      captures: Map.unmodifiable(
+          {...state.captures}..removeWhere((id, _) => flagged.contains(id))),
     );
   }
 

@@ -52,8 +52,7 @@ class HotspotSetupController extends ChangeNotifier {
   /// The camera, once linked.
   SavedCamera? get saved => _saved;
 
-  bool get canGoBack =>
-      _step == HotspotStep.power || _step == HotspotStep.join;
+  bool get canGoBack => _step == HotspotStep.power || _step == HotspotStep.join;
 
   Timer? _check;
   Timer? _slowTimer;
@@ -97,6 +96,9 @@ class HotspotSetupController extends ChangeNotifier {
       if (_disposed || _step != HotspotStep.join) return;
       _pairing = pairing;
       _codeState = CodeState.ready;
+      // Two overlapping requests both land here; drop the first one's timers
+      // so they can't keep polling after this controller is gone.
+      _stopWaiting();
       _check = Timer.periodic(_checkEvery, (_) => unawaited(_checkPairing()));
       _slowTimer = Timer(_slowAfter, () {
         _slow = true;

@@ -70,7 +70,8 @@ class DentalQuestionnaireController extends ChangeNotifier {
     final step = currentStep;
     if (step == null || !step.optional) return false;
     return step.questions.every((q) =>
-        _answers.selectedFor(q).isEmpty && _answers.detailFor(q).trim().isEmpty);
+        _answers.selectedFor(q).isEmpty &&
+        _answers.detailFor(q).trim().isEmpty);
   }
 
   // ── Answers ───────────────────────────────────────────────────
@@ -144,9 +145,8 @@ class DentalQuestionnaireController extends ChangeNotifier {
   Future<bool> submit(Future<void> Function(DentalAnswers answers) save) async {
     if (_submitting || !onReview) return false;
 
-    final incomplete =
-        dentalSteps.indexWhere((s) => _answers.missingIn(s).isNotEmpty ||
-            _answers.tooLongIn(s).isNotEmpty);
+    final incomplete = dentalSteps.indexWhere((s) =>
+        _answers.missingIn(s).isNotEmpty || _answers.tooLongIn(s).isNotEmpty);
     if (incomplete != -1) {
       // Shouldn't happen through the UI; send the user to fix it.
       _returnToReview = true;

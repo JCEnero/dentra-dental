@@ -35,7 +35,8 @@ class CurrentDayNotifier extends Notifier<DateTime> {
     _timer?.cancel();
     final next = DateTime(day.year, day.month, day.day + 1);
     // A second past midnight, so the new day has surely begun.
-    _timer = Timer(next.difference(DateTime.now()) + const Duration(seconds: 1), _sync);
+    _timer = Timer(
+        next.difference(DateTime.now()) + const Duration(seconds: 1), _sync);
   }
 }
 

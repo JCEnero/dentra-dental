@@ -65,7 +65,8 @@ class ComparableItem {
 
 /// Everything the user can compare, newest first. Screening photos come
 /// from storage links, or from this app run's memory before upload.
-final comparableItemsProvider = Provider<AsyncValue<List<ComparableItem>>>((ref) {
+final comparableItemsProvider =
+    Provider<AsyncValue<List<ComparableItem>>>((ref) {
   final cache = ref.watch(screeningImageCacheProvider);
   return ref.watch(historyEntriesProvider).whenData((entries) => [
         for (final e in entries)
@@ -118,8 +119,9 @@ enum ComparisonSlot {
   const ComparisonSlot(this.label);
   final String label;
 
-  ComparisonSlot get other =>
-      this == ComparisonSlot.earlier ? ComparisonSlot.later : ComparisonSlot.earlier;
+  ComparisonSlot get other => this == ComparisonSlot.earlier
+      ? ComparisonSlot.later
+      : ComparisonSlot.earlier;
 }
 
 /// The two dates and records the user chose, and whether the result is
@@ -199,7 +201,9 @@ List<DateTime> selectableDays(
   return counts.keys.where((d) {
     if (other == null) return true;
     if (DentraDates.sameDay(d, other)) return counts[d]! >= 2;
-    return slot == ComparisonSlot.earlier ? d.isBefore(other) : d.isAfter(other);
+    return slot == ComparisonSlot.earlier
+        ? d.isBefore(other)
+        : d.isAfter(other);
   }).toList()
     ..sort((a, b) => b.compareTo(a));
 }
@@ -239,7 +243,9 @@ class ComparisonController extends AutoDisposeNotifier<ComparisonSelection> {
     for (final slot in ComparisonSlot.values) {
       final key = next.keyOf(slot);
       if (key != null && !keys.contains(key)) {
-        next = next.copyWithSlot(slot, day: next.dayOf(slot), key: null).withResult(false);
+        next = next
+            .copyWithSlot(slot, day: next.dayOf(slot), key: null)
+            .withResult(false);
       }
     }
     if (!identical(next, state)) state = next;

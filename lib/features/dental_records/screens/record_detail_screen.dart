@@ -73,21 +73,17 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
     if (!confirmed || !mounted) return;
     setState(() => _busy = true);
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     try {
       await _notifier.delete(r.id);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar('Removed from your history.'));
+      toast.show('Removed from your history.');
       navigator.pop();
     } catch (e) {
       if (mounted) setState(() => _busy = false);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar(
-          dentalRecordErrorMessage(e, "Couldn't delete this record."),
-          tone: DentraFeedbackTone.error,
-        ));
+      toast.show(
+        dentalRecordErrorMessage(e, "Couldn't delete this record."),
+        tone: DentraFeedbackTone.error,
+      );
     }
   }
 
@@ -101,7 +97,9 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
       await _notifier.addAttachment(r.id, file.bytes, fileName: file.name);
       if (mounted) showDentraSnack(context, 'File added.');
     } on PickFileException catch (e) {
-      if (mounted) showDentraSnack(context, e.message, tone: DentraFeedbackTone.error);
+      if (mounted) {
+        showDentraSnack(context, e.message, tone: DentraFeedbackTone.error);
+      }
     } catch (e) {
       if (mounted) {
         showDentraSnack(
@@ -160,7 +158,8 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(dentalRecordsProvider);
-    final found = async.valueOrNull?.where((r) => r.id == widget.recordId).firstOrNull;
+    final found =
+        async.valueOrNull?.where((r) => r.id == widget.recordId).firstOrNull;
     if (found != null) _record = found;
     final r = _record;
 
@@ -186,7 +185,8 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                         onPressed: _busy
                             ? null
                             : () => Navigator.of(context).push(
-                                RecordEditorScreen.route(r.source, existing: r)),
+                                RecordEditorScreen.route(r.source,
+                                    existing: r)),
                         tooltip: 'Edit',
                         style: IconButton.styleFrom(
                           backgroundColor: AppColors.lightLavender,
@@ -198,9 +198,8 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
               ),
               Divider(height: 1, thickness: 1, color: AppGlass.divider),
               Expanded(
-                child: r == null
-                    ? _Missing(loading: !async.hasValue)
-                    : _body(r),
+                child:
+                    r == null ? _Missing(loading: !async.hasValue) : _body(r),
               ),
             ],
           ),
@@ -244,8 +243,9 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                 _TextCard(text: r.notes!),
               ],
               if (r.source != RecordSource.personalNote) ...[
-                _SectionTitle(
-                    r.source == RecordSource.personalPhoto ? 'Photo' : 'Attachments'),
+                _SectionTitle(r.source == RecordSource.personalPhoto
+                    ? 'Photo'
+                    : 'Attachments'),
                 _Attachments(
                   record: r,
                   busy: _busy,
@@ -261,13 +261,15 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                       _AddButton(
                         icon: Icons.photo_library_outlined,
                         label: 'Add photo',
-                        onTap: _busy ? null : () => _addFile(r, document: false),
+                        onTap:
+                            _busy ? null : () => _addFile(r, document: false),
                       ),
                       if (r.source == RecordSource.clinicRecord)
                         _AddButton(
                           icon: Icons.description_outlined,
                           label: 'Add PDF or file',
-                          onTap: _busy ? null : () => _addFile(r, document: true),
+                          onTap:
+                              _busy ? null : () => _addFile(r, document: true),
                         ),
                     ],
                   ),
@@ -320,9 +322,13 @@ class _Summary extends StatelessWidget {
         if (r.clinicName != null) ('Clinic', r.clinicName!),
         if (r.procedure != null) ('Procedure', r.procedure!),
         if (r.dentistName != null) ('Dentist', r.dentistName!),
-        if (r.followUpDate != null) ('Follow-up', DentraDates.long(r.followUpDate!)),
+        if (r.followUpDate != null)
+          ('Follow-up', DentraDates.long(r.followUpDate!)),
       ],
-      ('Teeth', r.toothNumbers.isEmpty ? 'No specific tooth' : r.toothNumbers.join(', ')),
+      (
+        'Teeth',
+        r.toothNumbers.isEmpty ? 'No specific tooth' : r.toothNumbers.join(', ')
+      ),
     ];
 
     return GlassCard(
@@ -349,7 +355,8 @@ class _Summary extends StatelessWidget {
             r.source == RecordSource.clinicRecord
                 ? 'Visited ${recordDateLabel(r)}'
                 : recordDateLabel(r),
-            style: GoogleFonts.outfit(fontSize: 13, color: AppColors.secondaryText),
+            style: GoogleFonts.outfit(
+                fontSize: 13, color: AppColors.secondaryText),
           ),
           const SizedBox(height: 10),
           for (var i = 0; i < facts.length; i++)
@@ -373,7 +380,8 @@ class _FactRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
-          border: last ? null : Border(bottom: BorderSide(color: AppGlass.divider)),
+          border:
+              last ? null : Border(bottom: BorderSide(color: AppGlass.divider)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,7 +390,8 @@ class _FactRow extends StatelessWidget {
               width: 92,
               child: Text(
                 label,
-                style: GoogleFonts.outfit(fontSize: 13, color: AppColors.secondaryText),
+                style: GoogleFonts.outfit(
+                    fontSize: 13, color: AppColors.secondaryText),
               ),
             ),
             Expanded(
@@ -420,13 +429,15 @@ class _TextCard extends StatelessWidget {
         children: [
           SelectableText(
             text,
-            style: GoogleFonts.outfit(fontSize: 14, color: AppColors.navy, height: 1.55),
+            style: GoogleFonts.outfit(
+                fontSize: 14, color: AppColors.navy, height: 1.55),
           ),
           if (caption != null) ...[
             const SizedBox(height: 8),
             Text(
               caption!,
-              style: GoogleFonts.outfit(fontSize: 11.5, color: AppColors.secondaryText),
+              style: GoogleFonts.outfit(
+                  fontSize: 11.5, color: AppColors.secondaryText),
             ),
           ],
         ],
@@ -500,7 +511,8 @@ class _Attachments extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'Provided by you. DENTRA does not verify uploaded documents.',
-          style: GoogleFonts.outfit(fontSize: 11.5, color: AppColors.secondaryText),
+          style: GoogleFonts.outfit(
+              fontSize: 11.5, color: AppColors.secondaryText),
         ),
       ],
     );
@@ -540,7 +552,8 @@ class _ImageTile extends StatelessWidget {
               child: GestureDetector(
                 onTap: img == null
                     ? null
-                    : () => showDentraImageViewer(context, image: img, caption: caption),
+                    : () => showDentraImageViewer(context,
+                        image: img, caption: caption),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: img == null
@@ -612,7 +625,8 @@ class _DocumentRow extends StatelessWidget {
                 ),
                 Text(
                   'PDF · $size · added ${DentraDates.medium(attachment.uploadedAt)}',
-                  style: GoogleFonts.outfit(fontSize: 12, color: AppColors.secondaryText),
+                  style: GoogleFonts.outfit(
+                      fontSize: 12, color: AppColors.secondaryText),
                 ),
               ],
             ),
@@ -648,7 +662,8 @@ class _ToothLinks extends StatelessWidget {
             backgroundColor: AppColors.white.withValues(alpha: 0.75),
             side: BorderSide(color: AppColors.g2.withValues(alpha: 0.2)),
             shape: const StadiumBorder(),
-            avatar: const Icon(Icons.history_rounded, size: 16, color: AppColors.g2),
+            avatar: const Icon(Icons.history_rounded,
+                size: 16, color: AppColors.g2),
             label: Text(
               'Tooth $fdi',
               style: GoogleFonts.outfit(
@@ -664,7 +679,8 @@ class _ToothLinks extends StatelessWidget {
 }
 
 class _AddButton extends StatelessWidget {
-  const _AddButton({required this.icon, required this.label, required this.onTap});
+  const _AddButton(
+      {required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;
@@ -679,7 +695,8 @@ class _AddButton extends StatelessWidget {
         minimumSize: const Size(44, 44),
         side: BorderSide(color: AppColors.g2.withValues(alpha: 0.3)),
         shape: const StadiumBorder(),
-        textStyle: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+        textStyle:
+            GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
       ),
       icon: Icon(icon, size: 18),
       label: Text(label),
@@ -700,7 +717,8 @@ class _ProvenanceNote extends StatelessWidget {
             'connected to clinic records. Ask your clinic for official records.',
       RecordSource.personalPhoto =>
         "Your own photo. It isn't a smart screening result or clinical evidence.",
-      _ => 'Your own note. It is kept apart from smart screenings and clinic records.',
+      _ =>
+        'Your own note. It is kept apart from smart screenings and clinic records.',
     };
     return _Note(text: text);
   }
@@ -774,7 +792,8 @@ class _Missing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+          child: CircularProgressIndicator(color: AppColors.primary));
     }
     return Center(
       child: Padding(
@@ -782,7 +801,8 @@ class _Missing extends StatelessWidget {
         child: Text(
           'This record is no longer in your history.',
           textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(fontSize: 15, color: AppColors.secondaryText),
+          style:
+              GoogleFonts.outfit(fontSize: 15, color: AppColors.secondaryText),
         ),
       ),
     );

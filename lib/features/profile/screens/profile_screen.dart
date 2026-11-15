@@ -234,12 +234,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// the root's [SignedInGate] already shows sign-in there: one login
   /// screen, with nothing from the old session reachable behind it.
   void _goToSignIn(String message) {
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     Navigator.of(context, rootNavigator: true)
         .popUntil((route) => route.isFirst);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(dentraSnackBar(message, tone: DentraFeedbackTone.info));
+    toast.show(message, tone: DentraFeedbackTone.info);
   }
 
   // ── Dentra Cam ────────────────────────────────────────────────
@@ -315,144 +313,147 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.screenH, 20, AppSpacing.screenH, 32),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ProfileHeaderCard(
-                profile: profile,
-                avatarBusy: _avatarBusy,
-                screeningCount: list?.length,
-                lastScreening: list?.firstOrNull?.completedAt,
-                onAvatarTap: () => _changeAvatar(profile),
-                onEdit: () => _editProfile(profile),
-                onViewHistory: () =>
-                    widget.onNavigate?.call(ProfileScreen.historyTab),
-              ),
-              const SizedBox(height: 28),
-              ProfileSettingsGroup(
-                title: 'Account',
-                children: [
-                  ProfileSettingsTile(
-                    icon: Icons.badge_outlined,
-                    title: 'Personal information',
-                    subtitle: 'Name, email, phone and birthday',
-                    onTap: () => _editProfile(profile),
-                  ),
-                  ProfileSettingsTile(
-                    icon: Icons.lock_outline_rounded,
-                    title: 'Change password',
-                    subtitle: 'Update the password you sign in with',
-                    onTap: () => _changePassword(profile),
-                  ),
-                  ProfileSwitchTile(
-                    icon: Icons.verified_user_outlined,
-                    title: 'Two-factor authentication',
-                    subtitle: profile.twoFactorEnabled
-                        ? 'On · Codes sent to your email'
-                        : 'Off · Add a code step at sign-in',
-                    value: profile.twoFactorEnabled,
-                    busy: _twoFactorBusy,
-                    onChanged: (v) => _toggleTwoFactor(profile, v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              ProfileSettingsGroup(
-                title: 'Data & privacy',
-                children: [
-                  ProfileSettingsTile(
-                    icon: Icons.medical_information_outlined,
-                    title: 'Dental profile',
-                    subtitle: 'Dental history, concerns and screening goals',
-                    trailing: _dentalProfileBusy
-                        ? const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primary,
-                            ),
-                          )
-                        : null,
-                    onTap: _editDentalProfile,
-                  ),
-                  ProfileSettingsTile(
-                    icon: Icons.history_rounded,
-                    title: 'Screening history',
-                    subtitle: 'Review your past screenings',
-                    onTap: () =>
-                        widget.onNavigate?.call(ProfileScreen.historyTab),
-                  ),
-                  ProfileSettingsTile(
-                    icon: Icons.privacy_tip_outlined,
-                    title: 'Privacy & consent',
-                    subtitle: 'Analytics, emails and device permissions',
-                    onTap: () => showPrivacyConsentSheet(context),
-                  ),
-                  ProfileSettingsTile(
-                    icon: Icons.description_outlined,
-                    title: 'Privacy policy',
-                    onTap: () => showPrivacyPolicySheet(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              if (ref.watch(dentraCamAvailableProvider)) ...[
-                _cameraSettings(),
+      // Scrolling moves this layer instead of re-recording the page.
+      child: RepaintBoundary(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ProfileHeaderCard(
+                  profile: profile,
+                  avatarBusy: _avatarBusy,
+                  screeningCount: list?.length,
+                  lastScreening: list?.firstOrNull?.completedAt,
+                  onAvatarTap: () => _changeAvatar(profile),
+                  onEdit: () => _editProfile(profile),
+                  onViewHistory: () =>
+                      widget.onNavigate?.call(ProfileScreen.historyTab),
+                ),
+                const SizedBox(height: 28),
+                ProfileSettingsGroup(
+                  title: 'Account',
+                  children: [
+                    ProfileSettingsTile(
+                      icon: Icons.badge_outlined,
+                      title: 'Personal information',
+                      subtitle: 'Name, email, phone and birthday',
+                      onTap: () => _editProfile(profile),
+                    ),
+                    ProfileSettingsTile(
+                      icon: Icons.lock_outline_rounded,
+                      title: 'Change password',
+                      subtitle: 'Update the password you sign in with',
+                      onTap: () => _changePassword(profile),
+                    ),
+                    ProfileSwitchTile(
+                      icon: Icons.verified_user_outlined,
+                      title: 'Two-factor authentication',
+                      subtitle: profile.twoFactorEnabled
+                          ? 'On · Codes sent to your email'
+                          : 'Off · Add a code step at sign-in',
+                      value: profile.twoFactorEnabled,
+                      busy: _twoFactorBusy,
+                      onChanged: (v) => _toggleTwoFactor(profile, v),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
-              ],
-              ProfileSettingsGroup(
-                title: 'Support',
-                children: [
-                  ProfileSettingsTile(
-                    icon: Icons.support_agent_rounded,
-                    title: 'Help & support',
-                    subtitle: 'FAQs, contact us, report a problem',
-                    onTap: () => showHelpSupportSheet(context),
-                  ),
-                  ProfileSettingsTile(
-                    icon: Icons.play_circle_outline_rounded,
-                    title: 'View introduction',
-                    subtitle: 'Replay the welcome tour',
-                    onTap: () => Navigator.of(context, rootNavigator: true)
-                        .push(OnboardingScreen.replayRoute()),
-                  ),
-                  ProfileSettingsTile(
-                    icon: Icons.explore_outlined,
-                    title: 'Take the app tour',
-                    subtitle: 'A quick look at where everything lives',
-                    onTap: () => ref.read(appTourProvider.notifier).replay(),
-                  ),
-                  ProfileSettingsTile(
-                    icon: Icons.info_outline_rounded,
-                    title: 'About DENTRA',
-                    subtitle: 'Version ${ProfileContent.appVersion}',
-                    onTap: () => showAboutSheet(context),
-                  ),
+                ProfileSettingsGroup(
+                  title: 'Data & privacy',
+                  children: [
+                    ProfileSettingsTile(
+                      icon: Icons.medical_information_outlined,
+                      title: 'Dental profile',
+                      subtitle: 'Dental history, concerns and screening goals',
+                      trailing: _dentalProfileBusy
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            )
+                          : null,
+                      onTap: _editDentalProfile,
+                    ),
+                    ProfileSettingsTile(
+                      icon: Icons.history_rounded,
+                      title: 'Screening history',
+                      subtitle: 'Review your past screenings',
+                      onTap: () =>
+                          widget.onNavigate?.call(ProfileScreen.historyTab),
+                    ),
+                    ProfileSettingsTile(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Privacy & consent',
+                      subtitle: 'Analytics, emails and device permissions',
+                      onTap: () => showPrivacyConsentSheet(context),
+                    ),
+                    ProfileSettingsTile(
+                      icon: Icons.description_outlined,
+                      title: 'Privacy policy',
+                      onTap: () => showPrivacyPolicySheet(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                if (ref.watch(dentraCamAvailableProvider)) ...[
+                  _cameraSettings(),
+                  const SizedBox(height: 24),
                 ],
-              ),
-              const SizedBox(height: 28),
-              _LogOutButton(loading: _signingOut, onPressed: _logOut),
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton(
-                  onPressed: _signingOut ? null : _deleteAccount,
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.danger,
-                    minimumSize: const Size(44, 44),
-                  ),
-                  child: Text(
-                    'Delete account',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                ProfileSettingsGroup(
+                  title: 'Support',
+                  children: [
+                    ProfileSettingsTile(
+                      icon: Icons.support_agent_rounded,
+                      title: 'Help & support',
+                      subtitle: 'FAQs, contact us, report a problem',
+                      onTap: () => showHelpSupportSheet(context),
+                    ),
+                    ProfileSettingsTile(
+                      icon: Icons.play_circle_outline_rounded,
+                      title: 'View introduction',
+                      subtitle: 'Replay the welcome tour',
+                      onTap: () => Navigator.of(context, rootNavigator: true)
+                          .push(OnboardingScreen.replayRoute()),
+                    ),
+                    ProfileSettingsTile(
+                      icon: Icons.explore_outlined,
+                      title: 'Take the app tour',
+                      subtitle: 'A quick look at where everything lives',
+                      onTap: () => ref.read(appTourProvider.notifier).replay(),
+                    ),
+                    ProfileSettingsTile(
+                      icon: Icons.info_outline_rounded,
+                      title: 'About DENTRA',
+                      subtitle: 'Version ${ProfileContent.appVersion}',
+                      onTap: () => showAboutSheet(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                _LogOutButton(loading: _signingOut, onPressed: _logOut),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: _signingOut ? null : _deleteAccount,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      minimumSize: const Size(44, 44),
+                    ),
+                    child: Text(
+                      'Delete account',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

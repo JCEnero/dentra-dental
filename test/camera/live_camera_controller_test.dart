@@ -172,8 +172,7 @@ void main() {
     live.dispose();
   });
 
-  testWidgets('stop closes the stream and turns the light off',
-      (tester) async {
+  testWidgets('stop closes the stream and turns the light off', (tester) async {
     setUpLive();
     await goLive(tester);
     final stream = cam.stream;

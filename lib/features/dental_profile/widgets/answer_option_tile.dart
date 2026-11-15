@@ -146,7 +146,8 @@ class _Mark extends StatelessWidget {
         duration: duration,
         curve: Curves.easeOutBack,
         scale: selected ? 1 : 0,
-        child: const Icon(Icons.check_rounded, size: 16, color: AppColors.white),
+        child:
+            const Icon(Icons.check_rounded, size: 16, color: AppColors.white),
       ),
     );
   }

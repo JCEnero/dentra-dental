@@ -14,7 +14,6 @@ import 'scan_motion.dart';
 /// (clear) through deep teal (worth checking) to navy (see someone soon), so
 /// the more serious a result, the deeper its colour.
 abstract class ScanColors {
-  static const Color clear = AppColors.g1;
   static const Color check = Color(0xFF267C7D); // g2 toward navy
   static const Color urgent = AppColors.navy;
   static const Color muted = Color(0xFFB7C3C5); // border toward grey
@@ -25,7 +24,8 @@ abstract class ScanColors {
 
 /// An icon in the button color on a white disc.
 class ScanIconDisc extends StatelessWidget {
-  const ScanIconDisc(this.icon, {super.key, this.size = 34, this.iconSize = 18});
+  const ScanIconDisc(this.icon,
+      {super.key, this.size = 34, this.iconSize = 18});
 
   final IconData icon;
   final double size;
@@ -399,7 +399,8 @@ class _CheckPainter extends CustomPainter {
     final drawn = Path();
     for (final m in metrics) {
       if (remaining <= 0) break;
-      drawn.addPath(m.extractPath(0, math.min(remaining, m.length)), Offset.zero);
+      drawn.addPath(
+          m.extractPath(0, math.min(remaining, m.length)), Offset.zero);
       remaining -= m.length;
     }
     canvas.drawPath(

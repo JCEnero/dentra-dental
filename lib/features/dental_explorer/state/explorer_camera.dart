@@ -41,7 +41,6 @@ class ExplorerCamera extends ChangeNotifier {
   static const double dragSpeed = 0.009;
 
   CameraPose get pose => _pose;
-  bool get isAttached => _model != null;
 
   /// True while the pose is still moving toward its goal or spinning.
   bool get isAnimating =>

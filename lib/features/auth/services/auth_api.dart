@@ -201,7 +201,10 @@ class AuthApi {
       AuthSession.fromJson(await _api.send(
         'POST',
         '/api/auth/change-password',
-        json: {'current_password': currentPassword, 'new_password': newPassword},
+        json: {
+          'current_password': currentPassword,
+          'new_password': newPassword
+        },
         bearer: accessToken,
       ));
 

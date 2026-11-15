@@ -27,15 +27,13 @@ class NextSteps extends StatelessWidget {
   final String date;
 
   void _copy(BuildContext context) {
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     final text = plan.report.summaryForDentist(
       date,
       reported: [...context_.reportedLines, ...plan.toothAnswerLines],
     );
     Clipboard.setData(ClipboardData(text: text)).then(
-      (_) => messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar('Copied. Paste it into a message.')),
+      (_) => toast.show('Copied. Paste it into a message.'),
     );
   }
 
@@ -310,7 +308,7 @@ class ReportActions extends StatelessWidget {
             SizedBox.square(
               dimension: 34,
               child: Image.asset(
-                'assets/images/rabi_avatar.png',
+                'assets/images/rabi_avatar.webp',
                 fit: BoxFit.contain,
                 excludeFromSemantics: true,
                 errorBuilder: (_, __, ___) =>

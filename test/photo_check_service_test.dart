@@ -8,7 +8,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:image/image.dart' as img;
 
-final _png = Uint8List.fromList([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2]);
+final _png =
+    Uint8List.fromList([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2]);
 
 http.Response _json(int status, Object body) => http.Response(
       jsonEncode(body),
@@ -89,17 +90,17 @@ void main() {
 
     test('a server with no analysis falls back to the on-device check',
         () async {
-      final verdict = await service(
-              () async => _error(503, 'analysis_unavailable'))
-          .check(_png);
+      final verdict =
+          await service(() async => _error(503, 'analysis_unavailable'))
+              .check(_png);
       expect(unavailable.calls, 1);
       expect(verdict.teethChecked, isFalse);
     });
 
     test('a file the server won\'t take as a photo is rejected with its reason',
         () async {
-      final verdict = await service(() async =>
-              _error(415, 'unsupported_image', 'Use a JPEG, PNG or WebP photo.'))
+      final verdict = await service(() async => _error(
+              415, 'unsupported_image', 'Use a JPEG, PNG or WebP photo.'))
           .check(_png);
       expect(verdict.problem, PhotoProblem.other);
       expect(verdict.message, 'Use a JPEG, PNG or WebP photo.');
@@ -156,8 +157,8 @@ void main() {
             PhotoProblem.tooDark);
         expect(await problem(png(400, 300, (x, y) => 255)),
             PhotoProblem.tooBright);
-        expect(await problem(png(400, 300, (x, y) => 128)),
-            PhotoProblem.blurry);
+        expect(
+            await problem(png(400, 300, (x, y) => 128)), PhotoProblem.blurry);
         expect(await problem(png(200, 150, checker)), PhotoProblem.tooSmall);
         expect(await problem(Uint8List.fromList([1, 2, 3, 4])),
             PhotoProblem.unreadable);

@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart' show ByteData;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:video_player/video_player.dart';
+import 'package:vector_graphics/vector_graphics.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/widgets/avatar_widget.dart';
@@ -44,308 +44,312 @@ class HomeScreen extends ConsumerWidget {
       bottom: false,
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── HEADER ──────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 36, AppSpacing.screenH, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // One quiet line, so it doesn't compete with
-                        // the device card's headline below.
-                        Text.rich(
-                          TextSpan(
-                            text: 'Good morning, ',
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.secondaryText,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: firstName.isEmpty ? 'there' : firstName,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.navy,
-                                ),
+        // Scrolling moves this layer instead of re-recording the page.
+        child: RepaintBoundary(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── HEADER ──────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenH, 36, AppSpacing.screenH, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // One quiet line, so it doesn't compete with
+                          // the device card's headline below.
+                          Text.rich(
+                            TextSpan(
+                              text: 'Good morning, ',
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.secondaryText,
                               ),
-                            ],
+                              children: [
+                                TextSpan(
+                                  text: firstName.isEmpty ? 'there' : firstName,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.navy,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  NotificationBell(
-                    key: tourTargets?.notifications,
-                    onOpenProfile: () => onNavigate(4),
-                  ),
-                  const SizedBox(width: 10),
-                  // Opens Edit Profile; the Profile tab until it has loaded.
-                  Semantics(
-                    button: true,
-                    label: 'Edit profile',
-                    excludeSemantics: true,
-                    child: Tooltip(
-                      message: 'Edit profile',
-                      child: Material(
-                        type: MaterialType.transparency,
-                        shape: const CircleBorder(),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () async {
-                            if (profile == null) return onNavigate(4);
-                            final saved =
-                                await Navigator.of(context, rootNavigator: true)
-                                    .push(EditProfileScreen.route(profile));
-                            if (saved != true || !context.mounted) return;
-                            ref.read(notificationsProvider.notifier).record(
-                                NotificationEvents.profileUpdated());
-                            showDentraSnack(context, 'Profile updated.');
-                          },
-                          child: AvatarWidget(
-                            size: 44,
-                            initials: profile?.initials ?? '',
-                            imageBytes: profile?.avatarBytes,
+                    NotificationBell(
+                      key: tourTargets?.notifications,
+                      onOpenProfile: () => onNavigate(4),
+                    ),
+                    const SizedBox(width: 10),
+                    // Opens Edit Profile; the Profile tab until it has loaded.
+                    Semantics(
+                      button: true,
+                      label: 'Edit profile',
+                      excludeSemantics: true,
+                      child: Tooltip(
+                        message: 'Edit profile',
+                        child: Material(
+                          type: MaterialType.transparency,
+                          shape: const CircleBorder(),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () async {
+                              if (profile == null) return onNavigate(4);
+                              final saved = await Navigator.of(context,
+                                      rootNavigator: true)
+                                  .push(EditProfileScreen.route(profile));
+                              if (saved != true || !context.mounted) return;
+                              ref
+                                  .read(notificationsProvider.notifier)
+                                  .record(NotificationEvents.profileUpdated());
+                              showDentraSnack(context, 'Profile updated.');
+                            },
+                            child: AvatarWidget(
+                              size: 44,
+                              initials: profile?.initials ?? '',
+                              imageBytes: profile?.avatarBytes,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // ── DEVICE HERO CARD ──────────────────────────────
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: _DeviceHeroCard(onScan: () => onNavigate(1)),
-            ),
+              // ── DEVICE HERO CARD ──────────────────────────────
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: _DeviceHeroCard(onScan: () => onNavigate(1)),
+              ),
 
-            const SizedBox(height: 28),
+              const SizedBox(height: 28),
 
-            // ── SERVICES ─────────────────────────────────────
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Services',
-                    style: GoogleFonts.outfit(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
+              // ── SERVICES ─────────────────────────────────────
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Services',
+                      style: GoogleFonts.outfit(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 14),
+              const SizedBox(height: 14),
 
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: Row(
-                children: [
-                  _ServiceButton(
-                    key: tourTargets?.teeth,
-                    glyph: _ServiceGlyph.tooth,
-                    label: 'Teeth',
-                    semanticLabel: 'Dental Explorer',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const ToothHistoryExplorer(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _ServiceButton(
-                    key: tourTargets?.treatment,
-                    glyph: _ServiceGlyph.clipboard,
-                    label: 'Treatment',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => TreatmentScreen(
-                            onNavigateToTab: onNavigate,
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: Row(
+                  children: [
+                    _ServiceButton(
+                      key: tourTargets?.teeth,
+                      icon: ServiceIcons.teeth,
+                      label: 'Teeth',
+                      semanticLabel: 'Dental Explorer',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ToothHistoryExplorer(),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _ServiceButton(
-                    key: tourTargets?.comparison,
-                    glyph: _ServiceGlyph.compare,
-                    label: 'Comparison',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (routeContext) => ComparisonScreen(
-                            onStartScreening: () {
-                              Navigator.of(routeContext).pop();
-                              onNavigate(1);
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _ServiceButton(
-                    key: tourTargets?.rabi,
-                    glyph: _ServiceGlyph.chat,
-                    label: 'Rabi AI',
-                    onTap: () => AiChatScope.read(context).open(),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 28),
-
-            // ── DAILY TIP ─────────────────────────────────────
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: _DailyTipCard(tip: tip),
-            ),
-
-            const SizedBox(height: 28),
-            const GradientDivider(),
-
-            // ── SCREENING HISTORY GRAPH ───────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const LatestScanCard(),
-                  const ScreeningActivityCard(),
-                  const SizedBox(height: 2),
-                  // Full history and reports live on the History tab.
-                  _LinkButton(
-                    label: 'View Full History',
-                    onTap: () => onNavigate(2),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-            const GradientDivider(),
-
-            // ── RABI AI ───────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
-                  AppSpacing.sectionGap, AppSpacing.screenH, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.g1,
-                              ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _ServiceButton(
+                      key: tourTargets?.treatment,
+                      icon: ServiceIcons.treatment,
+                      label: 'Treatment',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => TreatmentScreen(
+                              onNavigateToTab: onNavigate,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'RABI AI',
-                              style: GoogleFonts.outfit(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.1,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Need help understanding your\nscreening results?',
-                          style: GoogleFonts.outfit(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
-                            height: 1.4,
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  _AskAiButton(),
-                ],
+                    const SizedBox(width: 8),
+                    _ServiceButton(
+                      key: tourTargets?.comparison,
+                      icon: ServiceIcons.comparison,
+                      label: 'Comparison',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (routeContext) => ComparisonScreen(
+                              onStartScreening: () {
+                                Navigator.of(routeContext).pop();
+                                onNavigate(1);
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _ServiceButton(
+                      key: tourTargets?.rabi,
+                      icon: ServiceIcons.rabi,
+                      label: 'Rabi AI',
+                      onTap: () => AiChatScope.read(context).open(),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: AppSpacing.sectionGap),
+              const SizedBox(height: 28),
 
-            // ── PROFESSIONAL CARE ─────────────────────────────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-              child: GradientDivider(),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenH, 24, AppSpacing.screenH, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'PROFESSIONAL CARE',
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Screening information is not a diagnosis. If you have concerns about your oral health, consider speaking with a licensed dentist.',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: AppColors.secondaryText,
-                      height: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _LinkButton(
-                    label: 'Find a nearby clinic',
-                    onTap: () => onNavigate(3),
-                  ),
-                ],
+              // ── DAILY TIP ─────────────────────────────────────
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: _DailyTipCard(tip: tip),
               ),
-            ),
 
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 28),
+              const GradientDivider(),
+
+              // ── SCREENING HISTORY GRAPH ───────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const LatestScanCard(),
+                    const ScreeningActivityCard(),
+                    const SizedBox(height: 2),
+                    // Full history and reports live on the History tab.
+                    _LinkButton(
+                      label: 'View Full History',
+                      onTap: () => onNavigate(2),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: AppSpacing.sectionGap),
+              const GradientDivider(),
+
+              // ── RABI AI ───────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenH,
+                    AppSpacing.sectionGap, AppSpacing.screenH, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.g1,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'RABI AI',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.1,
+                                  color: AppColors.secondaryText,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            'Need help understanding your\nscreening results?',
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.navy,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    _AskAiButton(),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: AppSpacing.sectionGap),
+
+              // ── PROFESSIONAL CARE ─────────────────────────────
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                child: GradientDivider(),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenH, 24, AppSpacing.screenH, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PROFESSIONAL CARE',
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Screening information is not a diagnosis. If you have concerns about your oral health, consider speaking with a licensed dentist.',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: AppColors.secondaryText,
+                        height: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _LinkButton(
+                      label: 'Find a nearby clinic',
+                      onTap: () => onNavigate(3),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );
@@ -354,66 +358,14 @@ class HomeScreen extends ConsumerWidget {
 
 // ── Device hero card ──────────────────────────────────────────────
 
-class _DeviceHeroCard extends StatefulWidget {
+class _DeviceHeroCard extends StatelessWidget {
   final VoidCallback onScan;
   const _DeviceHeroCard({required this.onScan});
 
-  @override
-  State<_DeviceHeroCard> createState() => _DeviceHeroCardState();
-}
-
-class _DeviceHeroCardState extends State<_DeviceHeroCard> {
-  /// The waving mascot is a WebM with a transparent (VP9 alpha) channel.
-  /// Safari, which every iOS browser uses, can't show that transparency
-  /// and draws it on black, so the web build uses the same animation as
-  /// an animated WebP instead. Null on web.
-  VideoPlayerController? _controller;
-
-  static const _webMascot = 'assets/images/bunny_wave.webp';
-
-  /// False while Home is a hidden tab or covered by another page.
-  bool _onScreen = true;
-
-  @override
-  void initState() {
-    super.initState();
-    if (kIsWeb) return;
-    _controller = VideoPlayerController.asset('assets/videos/BUNNY.webm')
-      ..setLooping(true)
-      ..setVolume(0)
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {});
-          _syncPlayback();
-        }
-      });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // IndexedStack marks inactive tabs invisible, and routes under an
-    // opaque page have tickers disabled. Either way nobody sees the video,
-    // so stop decoding it until it is back on screen.
-    _onScreen = Visibility.of(context) && TickerMode.valuesOf(context).enabled;
-    _syncPlayback();
-  }
-
-  void _syncPlayback() {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
-    if (_onScreen) {
-      controller.play();
-    } else {
-      controller.pause();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
+  /// The waving mascot: an animated WebP with transparency (12 fps, 5 s
+  /// loop). `Image` stops advancing frames while TickerMode is off (a
+  /// hidden tab or a covered page) and when animations are disabled.
+  static const _mascot = 'assets/images/bunny_wave.webp';
 
   static const _radius = BorderRadius.all(Radius.circular(24));
 
@@ -512,7 +464,7 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
                 // CTA
                 PrimaryButton(
                   label: 'Start Dental Scan',
-                  onTap: widget.onScan,
+                  onTap: onScan,
                 ),
               ],
             ),
@@ -534,25 +486,12 @@ class _DeviceHeroCardState extends State<_DeviceHeroCard> {
             height: 100,
             child: IgnorePointer(
               child: ExcludeSemantics(
-                child: switch (_controller) {
-                  null => Image.asset(
-                      _webMascot,
-                      fit: BoxFit.contain,
-                      alignment: Alignment.bottomRight,
-                      gaplessPlayback: true,
-                    ),
-                  final controller when controller.value.isInitialized =>
-                    FittedBox(
-                      fit: BoxFit.contain,
-                      alignment: Alignment.bottomRight,
-                      child: SizedBox(
-                        width: controller.value.size.width,
-                        height: controller.value.size.height,
-                        child: VideoPlayer(controller),
-                      ),
-                    ),
-                  _ => const SizedBox.shrink(),
-                },
+                child: Image.asset(
+                  _mascot,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.bottomRight,
+                  gaplessPlayback: true,
+                ),
               ),
             ),
           ),
@@ -630,10 +569,39 @@ class _StatusPill extends StatelessWidget {
 
 // ── Service button ────────────────────────────────────────────────
 
-enum _ServiceGlyph { tooth, clipboard, chat, compare }
+/// The four Services icons, drawn on the glass with no backing disc.
+/// Public so the loading phase can decode them before Home appears.
+abstract class ServiceIcons {
+  static const teeth = 'assets/images/icons/teeth.svg';
+  static const treatment = 'assets/images/icons/treatment.svg';
+  static const comparison = 'assets/images/icons/comparison.svg';
+  static const rabi = 'assets/images/icons/rabi-ai.svg';
+
+  static const all = [teeth, treatment, comparison, rabi];
+
+  /// Loads every icon into memory, so the row is complete on Home's first
+  /// frame instead of popping in a moment later.
+  static Future<void> precache() => Future.wait([
+        for (final asset in all) _IconLoader(asset).loadBytes(null),
+      ]);
+}
+
+/// Loads an icon compiled at build time (the vector_graphics_compiler
+/// transformer in pubspec.yaml) and keeps its bytes, so the SVG is never
+/// parsed on the device and each icon is read from the bundle once.
+class _IconLoader extends AssetBytesLoader {
+  const _IconLoader(super.assetName);
+
+  static final _bytes = <String, Future<ByteData>>{};
+
+  @override
+  Future<ByteData> loadBytes(BuildContext? context) =>
+      _bytes.putIfAbsent(assetName, () => super.loadBytes(context));
+}
 
 class _ServiceButton extends StatelessWidget {
-  final _ServiceGlyph glyph;
+  /// Icon asset from [ServiceIcons].
+  final String icon;
   final String label;
 
   /// Fuller name for screen readers when the visible label is short.
@@ -642,7 +610,7 @@ class _ServiceButton extends StatelessWidget {
 
   const _ServiceButton({
     super.key,
-    required this.glyph,
+    required this.icon,
     required this.label,
     this.semanticLabel,
     required this.onTap,
@@ -657,29 +625,34 @@ class _ServiceButton extends StatelessWidget {
         excludeSemantics: true,
         child: GlassCard(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 16, 6, 14),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CustomPaint(
-                  size: const Size.square(26),
-                  painter: _ServiceGlyphPainter(glyph),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
-                    height: 1.2,
+          child: CustomPaint(
+            painter: const _ServiceTilePainter(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 15, 6, 17),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  VectorGraphic(
+                    loader: _IconLoader(icon),
+                    width: 30,
+                    height: 30,
+                    excludeFromSemantics: true,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 9),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -688,99 +661,53 @@ class _ServiceButton extends StatelessWidget {
   }
 }
 
-/// Thin-line dental glyphs drawn on a 24×24 grid so all four share
-/// the same stroke weight and visual size.
-class _ServiceGlyphPainter extends CustomPainter {
-  final _ServiceGlyph glyph;
-  const _ServiceGlyphPainter(this.glyph);
+/// The quiet teal inside each Services tile: a soft wash that deepens
+/// toward the lower right corner, and the glass rim catching teal light
+/// along the same edge. No shapes, so the tile still reads as plain white
+/// glass and the icon keeps no backing of its own.
+class _ServiceTilePainter extends CustomPainter {
+  const _ServiceTilePainter();
+
+  /// Matches the GlassCard's corner radius.
+  static const _radius = Radius.circular(16);
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 24, size.height / 24);
+    final rect = Offset.zero & size;
 
-    final stroke = Paint()
-      ..color = AppColors.g2
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.7
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final fill = Paint()..color = AppColors.g2;
-    final tint = Paint()..color = AppColors.g1.withValues(alpha: 0.28);
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.g1.withValues(alpha: 0),
+            AppColors.g1.withValues(alpha: 0.20),
+          ],
+          stops: const [0.35, 1],
+        ).createShader(rect),
+    );
 
-    switch (glyph) {
-      case _ServiceGlyph.tooth:
-        final tooth = Path()
-          ..moveTo(12, 6.5)
-          ..cubicTo(10.5, 5, 8.5, 4.5, 6.8, 5)
-          ..cubicTo(4.6, 5.7, 3.8, 8, 4.3, 10.5)
-          ..cubicTo(4.8, 13, 5.8, 14.5, 6.3, 17)
-          ..cubicTo(6.7, 19, 7.2, 20.5, 8.3, 20.5)
-          ..cubicTo(9.6, 20.5, 9.8, 18.6, 10.2, 17)
-          ..cubicTo(10.5, 15.6, 11, 14.8, 12, 14.8)
-          ..cubicTo(13, 14.8, 13.5, 15.6, 13.8, 17)
-          ..cubicTo(14.2, 18.6, 14.4, 20.5, 15.7, 20.5)
-          ..cubicTo(16.8, 20.5, 17.3, 19, 17.7, 17)
-          ..cubicTo(18.2, 14.5, 19.2, 13, 19.7, 10.5)
-          ..cubicTo(20.2, 8, 19.4, 5.7, 17.2, 5)
-          ..cubicTo(15.5, 4.5, 13.5, 5, 12, 6.5)
-          ..close();
-        canvas.drawPath(tooth, tint);
-        canvas.drawPath(tooth, stroke);
-
-      case _ServiceGlyph.clipboard:
-        // Treatment plan: tinted board, solid clip, medical plus.
-        final board = RRect.fromLTRBR(5, 5, 19, 21, const Radius.circular(2.5));
-        canvas.drawRRect(board, tint);
-        canvas.drawRRect(board, stroke);
-        canvas.drawRRect(
-          RRect.fromLTRBR(9, 3, 15, 7, const Radius.circular(1.3)),
-          fill,
-        );
-        canvas.drawLine(const Offset(12, 10.5), const Offset(12, 17.5), stroke);
-        canvas.drawLine(const Offset(8.5, 14), const Offset(15.5, 14), stroke);
-
-      case _ServiceGlyph.chat:
-        // Chat bubble with a tail, merged so the outline stays seamless.
-        final bubble = Path.combine(
-          PathOperation.union,
-          Path()
-            ..addRRect(
-              RRect.fromLTRBR(3.5, 4, 20.5, 17, const Radius.circular(4.5)),
-            ),
-          Path()
-            ..moveTo(7, 15)
-            ..lineTo(6.5, 20.5)
-            ..lineTo(12, 15.5)
-            ..close(),
-        );
-        canvas.drawPath(bubble, tint);
-        canvas.drawPath(bubble, stroke);
-        // AI spark inside the bubble
-        final spark = Path()
-          ..moveTo(12, 6.9)
-          ..quadraticBezierTo(12.65, 9.85, 15.6, 10.5)
-          ..quadraticBezierTo(12.65, 11.15, 12, 14.1)
-          ..quadraticBezierTo(11.35, 11.15, 8.4, 10.5)
-          ..quadraticBezierTo(11.35, 9.85, 12, 6.9)
-          ..close();
-        canvas.drawPath(spark, fill);
-
-      case _ServiceGlyph.compare:
-        // Two frames side by side with a shared baseline: earlier | later.
-        final left =
-            RRect.fromLTRBR(3.5, 6, 11, 18, const Radius.circular(2.2));
-        final right =
-            RRect.fromLTRBR(13, 6, 20.5, 18, const Radius.circular(2.2));
-        canvas.drawRRect(right, tint);
-        canvas.drawRRect(left, stroke);
-        canvas.drawRRect(right, stroke);
-        canvas.drawLine(const Offset(12, 3.5), const Offset(12, 20.5), stroke);
-        canvas.drawCircle(const Offset(16.75, 12), 1.6, fill);
-    }
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(0.5), _radius),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.white.withValues(alpha: 0),
+            AppColors.g1.withValues(alpha: 0.55),
+          ],
+          stops: const [0.4, 1],
+        ).createShader(rect),
+    );
   }
 
   @override
-  bool shouldRepaint(_ServiceGlyphPainter old) => old.glyph != glyph;
+  bool shouldRepaint(_ServiceTilePainter old) => false;
 }
 
 // ── Daily tip card ────────────────────────────────────────────────

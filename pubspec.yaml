@@ -10,8 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^6.2.1
-  video_player: ^2.9.2
-  fvp: ^0.38.1
   flutter_riverpod: ^2.6.1
   geolocator: ^13.0.2
   google_maps_flutter: ^2.18.0
@@ -29,19 +27,24 @@ dependencies:
   universal_ble: 3.2.0
   wakelock_plus: 1.8.2
   web_socket_channel: 3.0.3
+  vector_graphics: 1.2.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  # Compiles the SVG icons at build time (see the transformer below).
+  vector_graphics_compiler: 1.3.0
 
 flutter:
   uses-material-design: true
   assets:
     - .env
     - assets/images/
+    - path: assets/images/icons/
+      transformers:
+        - package: vector_graphics_compiler
     - assets/images/mascot/
     - assets/images/treatments/
     - assets/images/treatments/icons/
-    - assets/videos/
     - assets/fonts/

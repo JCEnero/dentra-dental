@@ -323,7 +323,8 @@ void main() {
     expect(find.textContaining("the check can't read"), findsNothing);
   });
 
-  test('old screenings keep their own regions, with second photos in place', () {
+  test('old screenings keep their own regions, with second photos in place',
+      () {
     expect(regionsForSession(['ul', 'po']), legacyScanRegions);
     expect(scanRegionById('po').label, 'Posterior');
     expect(
@@ -459,7 +460,8 @@ void main() {
     await tapText(tester, 'Finish with 1 of 9');
     await settle(tester);
     expect(find.text('Partial scan saved'), findsOneWidget);
-    expect(find.textContaining("Smart analysis isn't connected"), findsOneWidget);
+    expect(
+        find.textContaining("Smart analysis isn't connected"), findsOneWidget);
     expect(find.text('Analyzing images…'), findsNothing);
 
     final history = await container.read(screeningSessionsProvider.future);
@@ -556,7 +558,8 @@ void main() {
         .completeError(const AnalysisException(AnalysisFailure.unavailable));
     await settle(tester, steps: 12);
     expect(find.text('Partial scan saved'), findsOneWidget);
-    expect(find.textContaining("Smart analysis isn't connected"), findsOneWidget);
+    expect(
+        find.textContaining("Smart analysis isn't connected"), findsOneWidget);
     expect(find.text('Try again'), findsNothing);
   });
 
@@ -570,7 +573,8 @@ void main() {
     await settle(tester);
     expect(find.text('Scanning your teeth'), findsOneWidget);
 
-    await tester.pump(ScanSessionNotifier.analysisTimeout + const Duration(seconds: 1));
+    await tester
+        .pump(ScanSessionNotifier.analysisTimeout + const Duration(seconds: 1));
     await settle(tester, steps: 12);
     expect(find.text('Scanning your teeth'), findsNothing);
     expect(find.text('Skip for now'), findsOneWidget);
@@ -796,7 +800,8 @@ void main() {
       final action = tester.getRect(find.text('Retake photo'));
       expect(action.bottom,
           lessThanOrEqualTo(tester.getRect(find.byType(AppBottomNav)).top));
-      await tester.ensureVisible(find.text('Keep fingers and tongue out of the way'));
+      await tester
+          .ensureVisible(find.text('Keep fingers and tongue out of the way'));
       expect(tester.takeException(), isNull);
     });
 
@@ -804,10 +809,7 @@ void main() {
       final camera = FakeCamera();
       final analysis = FakeAnalysis();
       await pumpScan(tester,
-          camera: camera,
-          analysis: analysis,
-          size: size,
-          textScale: scale);
+          camera: camera, analysis: analysis, size: size, textScale: scale);
       await captureCurrent(tester, camera);
       await tapText(tester, 'Finish with 1 of 9');
       await settle(tester, steps: 12);
@@ -924,10 +926,12 @@ void main() {
     });
 
     test('no step uses the word AI or leaves a sentence out', () {
-      expect(allScanSteps, hasLength(10));
+      expect(allScanSteps, hasLength(11));
       for (final step in allScanSteps) {
         expect(step.title, isNot(contains('AI')));
         expect(step.body, isNot(matches(RegExp(r'\bAI\b'))));
+        expect(step.detail, isNot(matches(RegExp(r'\bAI\b'))));
+        expect(step.detail, isNotEmpty);
         expect(step.body.split(RegExp(r'[.!?]\s')).length, greaterThan(1));
       }
     });
@@ -1008,7 +1012,8 @@ void main() {
       await tapText(tester, 'Finish with 2 of 9');
       await settle(tester);
       expect(analysis.calls, 2);
-      analysis.pending!.complete(const ScreeningAnalysisResult(summary: 'Good.'));
+      analysis.pending!
+          .complete(const ScreeningAnalysisResult(summary: 'Good.'));
       await finishChamber(tester);
 
       final history = await container.read(screeningSessionsProvider.future);
@@ -1113,8 +1118,7 @@ void main() {
         (tester) async {
       final camera = FakeCamera();
       final check = FakePhotoCheck()..hold = true;
-      final container =
-          await pumpScan(tester, camera: camera, check: check);
+      final container = await pumpScan(tester, camera: camera, check: check);
       await deliverPhoto(tester, camera);
 
       expect(check.calls, 1);
@@ -1136,8 +1140,7 @@ void main() {
       final camera = FakeCamera();
       final check = FakePhotoCheck()
         ..answer = const PhotoVerdict.rejected(PhotoProblem.noTeeth);
-      final container =
-          await pumpScan(tester, camera: camera, check: check);
+      final container = await pumpScan(tester, camera: camera, check: check);
       await deliverPhoto(tester, camera);
 
       expect(find.text('No teeth found'), findsOneWidget);
@@ -1155,8 +1158,7 @@ void main() {
         (tester) async {
       final camera = FakeCamera();
       final check = FakePhotoCheck();
-      final container =
-          await pumpScan(tester, camera: camera, check: check);
+      final container = await pumpScan(tester, camera: camera, check: check);
       await captureCurrent(tester, camera);
 
       check.answer = const PhotoVerdict.rejected(PhotoProblem.blurry);
@@ -1180,8 +1182,7 @@ void main() {
         (tester) async {
       final camera = FakeCamera();
       final check = FakePhotoCheck();
-      final container =
-          await pumpScan(tester, camera: camera, check: check);
+      final container = await pumpScan(tester, camera: camera, check: check);
       await captureCurrent(tester, camera);
       check.answer = const PhotoVerdict.rejected(PhotoProblem.tooDark);
       await deliverPhoto(tester, camera);
@@ -1201,8 +1202,7 @@ void main() {
       final camera = FakeCamera();
       final check = FakePhotoCheck()
         ..error = const PhotoCheckException(offline: true);
-      final container =
-          await pumpScan(tester, camera: camera, check: check);
+      final container = await pumpScan(tester, camera: camera, check: check);
       await deliverPhoto(tester, camera);
 
       expect(find.text("Couldn't check this photo"), findsOneWidget);
@@ -1249,7 +1249,8 @@ void main() {
       expect(find.text("This photo can't be used"), findsOneWidget);
       expect(find.text('Use a JPEG, PNG or WebP photo.'), findsOneWidget);
       await tapText(tester, 'Choose another');
-      expect(camera.calls, [CaptureSource.photoLibrary, CaptureSource.photoLibrary]);
+      expect(camera.calls,
+          [CaptureSource.photoLibrary, CaptureSource.photoLibrary]);
     });
 
     test('every problem says what to do, in the device\'s words', () {
@@ -1275,8 +1276,7 @@ void main() {
     Future<Uint8List> png(int width, int height) async {
       final recorder = ui.PictureRecorder();
       ui.Canvas(recorder).drawColor(const Color(0xFF888888), BlendMode.src);
-      final image =
-          await recorder.endRecording().toImage(width, height);
+      final image = await recorder.endRecording().toImage(width, height);
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();
       return data!.buffer.asUint8List();
@@ -1296,7 +1296,6 @@ void main() {
         expect(await tooSmall(2600, 300), isFalse);
       });
     });
-
 
     Uint8List pixels(int w, int h, int Function(int x, int y) gray) {
       final out = Uint8List(w * h * 4);

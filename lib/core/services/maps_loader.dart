@@ -4,4 +4,5 @@
 // On web the Maps JavaScript API must be on the page first; it's injected
 // at runtime with the key from `.env`, so the key never lives in
 // `web/index.html`.
-export 'maps_loader_stub.dart' if (dart.library.js_interop) 'maps_loader_web.dart';
+export 'maps_loader_stub.dart'
+    if (dart.library.js_interop) 'maps_loader_web.dart';

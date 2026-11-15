@@ -208,7 +208,8 @@ class _BleSession implements CameraSetupSession {
     _link = UniversalBle.connectionStream(id).listen((connected) {
       if (!connected) _end();
     });
-    await UniversalBle.subscribeNotifications(id, CamBle.service, CamBle.events);
+    await UniversalBle.subscribeNotifications(
+        id, CamBle.service, CamBle.events);
   }
 
   @override

@@ -188,9 +188,8 @@ class DetailTextField extends StatelessWidget {
           maxLines: field.multiline ? 6 : 2,
           keyboardType:
               field.multiline ? TextInputType.multiline : TextInputType.text,
-          textInputAction: field.multiline
-              ? TextInputAction.newline
-              : TextInputAction.done,
+          textInputAction:
+              field.multiline ? TextInputAction.newline : TextInputAction.done,
           textCapitalization: TextCapitalization.sentences,
           style: GoogleFonts.outfit(
             fontSize: 14,

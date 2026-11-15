@@ -152,9 +152,8 @@ class DentraCoverImage extends StatelessWidget {
         fit: fit,
         width: c.maxWidth.isFinite ? c.maxWidth : null,
         height: c.maxHeight.isFinite ? c.maxHeight : null,
-        frameBuilder: (_, child, frame, sync) => sync || frame != null
-            ? child
-            : const DentraImagePlaceholder(),
+        frameBuilder: (_, child, frame, sync) =>
+            sync || frame != null ? child : const DentraImagePlaceholder(),
         errorBuilder: (_, __, ___) => const DentraImageError(),
       );
     });
@@ -174,10 +173,9 @@ class CoverResizeImage extends ImageProvider<CoverResizeKey> {
   final int pixels;
 
   @override
-  Future<CoverResizeKey> obtainKey(ImageConfiguration configuration) =>
-      image
-          .obtainKey(configuration)
-          .then((inner) => CoverResizeKey(inner, pixels));
+  Future<CoverResizeKey> obtainKey(ImageConfiguration configuration) => image
+      .obtainKey(configuration)
+      .then((inner) => CoverResizeKey(inner, pixels));
 
   @override
   ImageStreamCompleter loadImage(
@@ -190,7 +188,9 @@ class CoverResizeImage extends ImageProvider<CoverResizeKey> {
         buffer,
         getTargetSize: (width, height) {
           final scale = math.max(pixels / width, pixels / height);
-          if (scale >= 1) return ui.TargetImageSize(width: width, height: height);
+          if (scale >= 1) {
+            return ui.TargetImageSize(width: width, height: height);
+          }
           return ui.TargetImageSize(
             width: (width * scale).ceil(),
             height: (height * scale).ceil(),
@@ -219,9 +219,7 @@ class CoverResizeKey {
 
   @override
   bool operator ==(Object other) =>
-      other is CoverResizeKey &&
-      other.inner == inner &&
-      other.pixels == pixels;
+      other is CoverResizeKey && other.inner == inner && other.pixels == pixels;
 
   @override
   int get hashCode => Object.hash(inner, pixels);

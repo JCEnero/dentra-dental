@@ -124,7 +124,8 @@ class DentalRecord {
   /// Tooth numbers the chart knows, as ints.
   List<int> get teeth => [
         for (final t in toothNumbers)
-          if (int.tryParse(t) case final n? when ToothCatalog.byFdi(n) != null) n,
+          if (int.tryParse(t) case final n? when ToothCatalog.byFdi(n) != null)
+            n,
       ];
 
   static String? _firstLine(String? text) {
@@ -164,8 +165,8 @@ class DentalRecord {
         followUpDate: json['follow_up_date'] == null
             ? null
             : parseDay(json['follow_up_date'] as String),
-        toothNumbers:
-            ((json['tooth_numbers'] as List<dynamic>?) ?? const []).cast<String>(),
+        toothNumbers: ((json['tooth_numbers'] as List<dynamic>?) ?? const [])
+            .cast<String>(),
         notes: json['notes'] as String?,
         attachments: ((json['attachments'] as List<dynamic>?) ?? const [])
             .map((e) => RecordAttachment.fromJson(e as Map<String, dynamic>))
@@ -184,7 +185,8 @@ class DentalRecord {
         'dentist_name': dentistName,
         'procedure': procedure,
         'clinic_notes': clinicNotes,
-        'follow_up_date': followUpDate == null ? null : formatDay(followUpDate!),
+        'follow_up_date':
+            followUpDate == null ? null : formatDay(followUpDate!),
         'tooth_numbers': toothNumbers,
         'notes': notes,
         'attachments': attachments.map((a) => a.toJson()).toList(),

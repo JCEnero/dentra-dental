@@ -73,7 +73,9 @@ class ScanHeader extends StatelessWidget {
                                   : null,
                               color: capturedIds.contains(scanRegions[i].id)
                                   ? null
-                                  : selectedId != null && baseRegionId(selectedId!) == scanRegions[i].id
+                                  : selectedId != null &&
+                                          baseRegionId(selectedId!) ==
+                                              scanRegions[i].id
                                       ? AppColors.lavender
                                       : AppColors.border,
                             ),

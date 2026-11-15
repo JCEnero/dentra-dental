@@ -164,7 +164,8 @@ class _ViewTile extends StatelessWidget {
                           AnimatedSwitcher(
                             duration: ScanMotion.of(context, ScanMotion.slow),
                             child: captured
-                                ? _Thumb(key: const ValueKey('p'), bytes: photo!)
+                                ? _Thumb(
+                                    key: const ValueKey('p'), bytes: photo!)
                                 : RegionGuideView(
                                     key: const ValueKey('g'),
                                     region: region,
@@ -191,8 +192,10 @@ class _ViewTile extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: GoogleFonts.outfit(
                         fontSize: 11,
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                        color: selected ? AppColors.navy : AppColors.secondaryText,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                        color:
+                            selected ? AppColors.navy : AppColors.secondaryText,
                       ),
                     ),
                   ),

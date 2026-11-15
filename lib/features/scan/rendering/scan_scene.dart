@@ -145,22 +145,6 @@ CameraPose cachedRegionPose(
       () => regionPose(model, region, size, fill: fill),
     );
 
-/// Screen position of world point [p] seen from [pose], or null when it's
-/// behind the camera. Same projection as `DentitionRenderer.paint`.
-Offset? projectPoint(CameraPose pose, Size size, Vec3 p) {
-  final r = pose.rotation;
-  final px = p.x - pose.target.x,
-      py = p.y - pose.target.y,
-      pz = p.z - pose.target.z;
-  final d = pose.distance - (r[6] * px + r[7] * py + r[8] * pz);
-  if (d < 4) return null;
-  final f = DentitionRenderer.focalLength(size) / d;
-  return Offset(
-    size.width / 2 + (r[0] * px + r[1] * py + r[2] * pz) * f,
-    size.height / 2 - (r[3] * px + r[4] * py + r[5] * pz) * f,
-  );
-}
-
 /// Writes [region]'s guide into [style]: the teeth to photograph take the
 /// button color, the rest fade back so they don't compete.
 void styleRegion(SceneStyle style, ScanRegion region) {

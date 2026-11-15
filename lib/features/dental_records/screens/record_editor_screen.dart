@@ -86,7 +86,14 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
 
   @override
   void dispose() {
-    for (final c in [_title, _clinic, _dentist, _procedure, _clinicNotes, _notes]) {
+    for (final c in [
+      _title,
+      _clinic,
+      _dentist,
+      _procedure,
+      _clinicNotes,
+      _notes
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -99,8 +106,10 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
       });
 
   String get _pageTitle => switch (_source) {
-        RecordSource.clinicRecord => _isNew ? 'Add clinic visit' : 'Edit clinic visit',
-        RecordSource.personalPhoto => _isNew ? 'Add personal photo' : 'Edit photo details',
+        RecordSource.clinicRecord =>
+          _isNew ? 'Add clinic visit' : 'Edit clinic visit',
+        RecordSource.personalPhoto =>
+          _isNew ? 'Add personal photo' : 'Edit photo details',
         RecordSource.personalNote => _isNew ? 'Add personal note' : 'Edit note',
         RecordSource.aiScreening => '',
       };
@@ -126,7 +135,8 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
       _errors['notes'] = 'Write your note first.';
     }
     if (_followUp != null && _followUp!.isBefore(_date)) {
-      _errors['follow_up_date'] = 'The follow-up date has to be on or after the visit.';
+      _errors['follow_up_date'] =
+          'The follow-up date has to be on or after the visit.';
     }
     if (_source == RecordSource.personalPhoto && _isNew && _pending.isEmpty) {
       _errors['photo'] = 'Choose a photo to add.';
@@ -139,7 +149,9 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
         source: _source,
         recordDate: _date,
         dateUnknown: _source == RecordSource.personalPhoto && _dateUnknown,
-        title: _source == RecordSource.personalNote ? _title.text : widget.existing?.title,
+        title: _source == RecordSource.personalNote
+            ? _title.text
+            : widget.existing?.title,
         clinicName: _clinic.text,
         dentistName: _dentist.text,
         procedure: _procedure.text,
@@ -157,7 +169,7 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
     setState(() => _saving = true);
     final notifier = ref.read(dentalRecordsProvider.notifier);
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     try {
       final DentalRecord saved;
       if (_isNew) {
@@ -169,21 +181,21 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
       var failed = 0;
       for (final file in _pending) {
         try {
-          await notifier.addAttachment(saved.id, file.bytes, fileName: file.name);
+          await notifier.addAttachment(saved.id, file.bytes,
+              fileName: file.name);
         } catch (_) {
           failed++;
         }
       }
 
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar(
-          failed == 0
-              ? (_isNew ? 'Added to your history.' : 'Changes saved.')
-              : 'Saved, but $failed ${failed == 1 ? 'file' : 'files'} '
-                  "couldn't upload. You can add them from the record.",
-          tone: failed == 0 ? DentraFeedbackTone.success : DentraFeedbackTone.error,
-        ));
+      toast.show(
+        failed == 0
+            ? (_isNew ? 'Added to your history.' : 'Changes saved.')
+            : 'Saved, but $failed ${failed == 1 ? 'file' : 'files'} '
+                "couldn't upload. You can add them from the record.",
+        tone:
+            failed == 0 ? DentraFeedbackTone.success : DentraFeedbackTone.error,
+      );
       if (_isNew) {
         navigator.pushReplacement(RecordDetailScreen.route(saved.id));
       } else {
@@ -222,7 +234,9 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
   }) {
     return showDatePicker(
       context: context,
-      initialDate: initial.isAfter(last) ? last : (initial.isBefore(first) ? first : initial),
+      initialDate: initial.isAfter(last)
+          ? last
+          : (initial.isBefore(first) ? first : initial),
       firstDate: first,
       lastDate: last,
       initialEntryMode: DatePickerEntryMode.calendarOnly,
@@ -591,7 +605,8 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
               secondary: DentraPillButton(
                 label: 'Cancel',
                 variant: DentraButtonVariant.outline,
-                onPressed: _saving ? null : () => Navigator.of(context).maybePop(),
+                onPressed:
+                    _saving ? null : () => Navigator.of(context).maybePop(),
               ),
               primary: DentraPillButton(
                 label: _isNew ? 'Save' : 'Save changes',
@@ -665,7 +680,8 @@ class _DateField extends StatelessWidget {
         const SizedBox(height: 7),
         Semantics(
           button: onTap != null,
-          label: '$label, ${value == null ? placeholder : DentraDates.medium(value!)}',
+          label:
+              '$label, ${value == null ? placeholder : DentraDates.medium(value!)}',
           excludeSemantics: true,
           child: Material(
             color: hasError ? const Color(0xFFFFF5F3) : AppColors.lightLavender,
@@ -765,7 +781,8 @@ class _CheckRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: GoogleFonts.outfit(fontSize: 13, color: AppColors.navy),
+                  style:
+                      GoogleFonts.outfit(fontSize: 13, color: AppColors.navy),
                 ),
               ),
             ],

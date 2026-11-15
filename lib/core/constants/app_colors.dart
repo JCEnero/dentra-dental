@@ -8,37 +8,35 @@ abstract class AppColors {
   static const Color g2 = Color(0xFF2CA6A4); // medium teal (dark end)
 
   // ── Card / surface tones ──────────────────────────────────────
-  static const Color cardSolid    = Color(0xFF3BBFB8); // mid teal
-  static const Color cardSolidAlt = Color(0xFF4DD8C8); // bright teal-cyan
-  static const Color cardDeep     = Color(0xFF2CA6A4); // deeper teal
+  static const Color cardSolid = Color(0xFF3BBFB8); // mid teal
 
   // ── Neutrals ──────────────────────────────────────────────────
-  static const Color lavender      = Color(0xFFB2EDE7); // light mint
+  static const Color lavender = Color(0xFFB2EDE7); // light mint
   static const Color lightLavender = Color(0xFFE8F8F7); // very light mint bg
-  static const Color white         = Color(0xFFFFFFFF);
-  static const Color offWhite      = Color(0xFFFAFAF8);
-  static const Color navy          = Color(0xFF1A2E35); // dark navy/charcoal
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color offWhite = Color(0xFFFAFAF8);
+  static const Color navy = Color(0xFF1A2E35); // dark navy/charcoal
   static const Color secondaryText = Color(0xFF6B7B80); // medium gray
-  static const Color border        = Color(0xFFE0E5E4); // light gray
+  static const Color border = Color(0xFFE0E5E4); // light gray
 
   // ── Accent / highlight ────────────────────────────────────────
-  static const Color coral         = Color(0xFFE8896A); // coral/orange accent
-  static const Color warmOrange    = Color(0xFFF4A261); // warm orange
-  static const Color mintGreen     = Color(0xFFA8E6DF); // mint
-  static const Color peachBg       = Color(0xFFF5D5C0); // soft peach background
-  static const Color successGreen  = Color(0xFF4CAF93); // health score green
+  static const Color coral = Color(0xFFE8896A); // coral/orange accent
+  static const Color warmOrange = Color(0xFFF4A261); // warm orange
+  static const Color mintGreen = Color(0xFFA8E6DF); // mint
+  static const Color peachBg = Color(0xFFF5D5C0); // soft peach background
+  static const Color successGreen = Color(0xFF4CAF93); // health score green
 
   /// Destructive actions (log out, delete). Dark enough for 4.5:1 text
   /// contrast on white and glass surfaces.
-  static const Color danger        = Color(0xFFCF4141);
+  static const Color danger = Color(0xFFCF4141);
 
   /// Pale red for anything filled: destructive buttons, error notices,
   /// badges. Red never appears as a solid block.
-  static const Color dangerTint    = Color(0x1FCF4141); // 12%
-  static const Color dangerBorder  = Color(0x47CF4141); // 28%
+  static const Color dangerTint = Color(0x1FCF4141); // 12%
+  static const Color dangerBorder = Color(0x47CF4141); // 28%
 
   /// Text and icons placed on [dangerTint], kept above 4.5:1 contrast.
-  static const Color dangerInk     = Color(0xFFA83232);
+  static const Color dangerInk = Color(0xFFA83232);
 
   // ── Aliases ───────────────────────────────────────────────────
   static const Color primary = g2; // use medium teal as primary for text/icons
@@ -60,29 +58,5 @@ abstract class AppColors {
       Color(0xFF5DE0D0), // bright cyan-mint highlight
       Color(0xFF2CA6A4), // medium teal base
     ],
-  );
-
-  // Vertical variant (headers / scan screen)
-  static const LinearGradient verticalGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [
-      Color(0xFF4DD8C8), // bright top
-      Color(0xFF2CA6A4), // medium teal bottom
-    ],
-  );
-
-  static const LinearGradient horizontalGradient = LinearGradient(
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-    colors: [g1, g2],
-  );
-
-  // ── Page background: very light mint tint → white ─────────────
-  static const LinearGradient pageBackground = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFFEAFAF8), Color(0xFFF8FDFB)],
-    stops: [0.0, 0.6],
   );
 }

@@ -166,7 +166,7 @@ class _DentalQuestionnaireScreenState
 
   Future<void> _submit() async {
     final controller = _controller!;
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     final navigator = Navigator.of(context);
     final ok = await controller.submit((answers) => ref
         .read(dentalProfileProvider.notifier)
@@ -175,7 +175,7 @@ class _DentalQuestionnaireScreenState
 
     if (_onboarding) {
       // The gate already shows the app; this screen may be gone.
-      messenger.showSnackBar(dentraSnackBar('Your dental profile is saved.'));
+      toast.show('Your dental profile is saved.');
     } else if (mounted) {
       navigator.pop(true);
     }
@@ -218,9 +218,7 @@ class _DentalQuestionnaireScreenState
   /// Leaving the screen from where "back" has nowhere else to go.
   bool get _atStart {
     final controller = _controller!;
-    return _onboarding
-        ? _welcome
-        : controller.onReview || controller.step == 0;
+    return _onboarding ? _welcome : controller.onReview || controller.step == 0;
   }
 
   /// System back: previous slide, or close when editing from review.

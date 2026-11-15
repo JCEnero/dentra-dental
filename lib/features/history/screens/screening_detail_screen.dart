@@ -57,7 +57,8 @@ class _ScreeningDetailScreenState extends ConsumerState<ScreeningDetailScreen> {
     }
     final session = _session;
     final previous = _previous;
-    final images = ref.watch(screeningImageCacheProvider)[sessionId] ?? const {};
+    final images =
+        ref.watch(screeningImageCacheProvider)[sessionId] ?? const {};
 
     return Scaffold(
       backgroundColor: AppColors.lightLavender,
@@ -121,23 +122,19 @@ class _BodyState extends ConsumerState<_Body> {
     // Captured up front: the optimistic delete removes this record from
     // the list, which unmounts this widget before the request returns.
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final toast = DentraToast.of(context);
     final id = widget.session.id;
     try {
       await ref.read(screeningSessionsProvider.notifier).delete(id);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar('Screening deleted.'));
+      toast.show('Screening deleted.');
       navigator.pop();
     } catch (_) {
       // The notifier restored the record, so this page is back.
       if (mounted) setState(() => _deleting = false);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(dentraSnackBar(
-          "Couldn't delete this screening.",
-          tone: DentraFeedbackTone.error,
-        ));
+      toast.show(
+        "Couldn't delete this screening.",
+        tone: DentraFeedbackTone.error,
+      );
     }
   }
 
@@ -164,69 +161,72 @@ class _BodyState extends ConsumerState<_Body> {
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.fromLTRB(AppSpacing.screenH, 20, AppSpacing.screenH,
           32 + MediaQuery.paddingOf(context).bottom),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (hasReport)
-                ScanReportView(
-                  report: report,
-                  imageOf: _imageOf,
-                  status: 'Smart screening',
-                  date: DentraDates.long(s.completedAt),
-                  at: s.completedAt,
-                  saved: s,
-                  leading: const ScanIconDisc(
-                    Icons.auto_awesome_outlined,
-                    size: 44,
-                    iconSize: 21,
-                  ),
-                  sessionId: s.id,
-                )
-              else ...[
-                _Summary(session: s),
-                const _SectionTitle('Captured images'),
-                _Images(session: s, images: widget.images),
-                const _SectionTitle('Regions'),
-                _Regions(session: s),
-                const _SectionTitle('Screening findings'),
-                _Findings(session: s),
-              ],
-              if (widget.previous != null) ...[
-                const _SectionTitle('Compared with previous'),
-                _Comparison(current: s, previous: widget.previous!),
-              ],
-              const SizedBox(height: 20),
-              const ScanDisclaimer(),
-              const SizedBox(height: 16),
-              Center(
-                child: TextButton.icon(
-                  onPressed: _deleting ? null : _delete,
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.danger,
-                    minimumSize: const Size(44, 44),
-                  ),
-                  icon: _deleting
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.danger,
-                          ),
-                        )
-                      : const Icon(Icons.delete_outline_rounded, size: 18),
-                  label: Text(
-                    _deleting ? 'Deleting…' : 'Delete this screening',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+      // Scrolling moves this layer instead of re-recording the page.
+      child: RepaintBoundary(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (hasReport)
+                  ScanReportView(
+                    report: report,
+                    imageOf: _imageOf,
+                    status: 'Smart screening',
+                    date: DentraDates.long(s.completedAt),
+                    at: s.completedAt,
+                    saved: s,
+                    leading: const ScanIconDisc(
+                      Icons.auto_awesome_outlined,
+                      size: 44,
+                      iconSize: 21,
+                    ),
+                    sessionId: s.id,
+                  )
+                else ...[
+                  _Summary(session: s),
+                  const _SectionTitle('Captured images'),
+                  _Images(session: s, images: widget.images),
+                  const _SectionTitle('Regions'),
+                  _Regions(session: s),
+                  const _SectionTitle('Screening findings'),
+                  _Findings(session: s),
+                ],
+                if (widget.previous != null) ...[
+                  const _SectionTitle('Compared with previous'),
+                  _Comparison(current: s, previous: widget.previous!),
+                ],
+                const SizedBox(height: 20),
+                const ScanDisclaimer(),
+                const SizedBox(height: 16),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: _deleting ? null : _delete,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      minimumSize: const Size(44, 44),
+                    ),
+                    icon: _deleting
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.danger,
+                            ),
+                          )
+                        : const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: Text(
+                      _deleting ? 'Deleting…' : 'Delete this screening',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -461,8 +461,7 @@ class _Regions extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < regions.length; i++) ...[
-            if (i > 0)
-              Divider(height: 1, indent: 96, color: AppGlass.divider),
+            if (i > 0) Divider(height: 1, indent: 96, color: AppGlass.divider),
             _RegionRow(region: regions[i], session: session),
           ],
         ],
@@ -616,8 +615,7 @@ class _FindingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final where = [
-      if (finding.regionId != null)
-        findScanRegion(finding.regionId!)?.label,
+      if (finding.regionId != null) findScanRegion(finding.regionId!)?.label,
       if (finding.tooth != null) 'Tooth ${finding.tooth}',
     ].whereType<String>().join(' · ');
 
@@ -638,7 +636,8 @@ class _FindingRow extends StatelessWidget {
               ),
               if (where.isNotEmpty || finding.detail != null)
                 Text(
-                  [where, finding.detail].whereType<String>()
+                  [where, finding.detail]
+                      .whereType<String>()
                       .where((t) => t.isNotEmpty)
                       .join(' — '),
                   style: GoogleFonts.outfit(

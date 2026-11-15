@@ -149,14 +149,11 @@ class _GuideMotion extends ChangeNotifier {
       s.tint[o] = mix(_from.tint[o], _to.tint[o]);
       // A surface with no tint yet takes the other side's colour, so
       // fading a tint in or out doesn't pass through black.
-      s.tintR[o] = mix(
-          _from.tint[o] > 0 ? _from.tintR[o] : _to.tintR[o],
+      s.tintR[o] = mix(_from.tint[o] > 0 ? _from.tintR[o] : _to.tintR[o],
           _to.tint[o] > 0 ? _to.tintR[o] : _from.tintR[o]);
-      s.tintG[o] = mix(
-          _from.tint[o] > 0 ? _from.tintG[o] : _to.tintG[o],
+      s.tintG[o] = mix(_from.tint[o] > 0 ? _from.tintG[o] : _to.tintG[o],
           _to.tint[o] > 0 ? _to.tintG[o] : _from.tintG[o]);
-      s.tintB[o] = mix(
-          _from.tint[o] > 0 ? _from.tintB[o] : _to.tintB[o],
+      s.tintB[o] = mix(_from.tint[o] > 0 ? _from.tintB[o] : _to.tintB[o],
           _to.tint[o] > 0 ? _to.tintB[o] : _from.tintB[o]);
     }
     if (!still) {

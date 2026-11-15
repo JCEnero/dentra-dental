@@ -58,7 +58,8 @@ class ApiScreeningRepository implements ScreeningRepository {
       bytes: bytes,
       contentType: imageContentType(bytes),
     );
-    return screeningSessionFromApi(_api, body['session'] as Map<String, dynamic>);
+    return screeningSessionFromApi(
+        _api, body['session'] as Map<String, dynamic>);
   }
 
   @override

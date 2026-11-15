@@ -462,7 +462,8 @@ class DentalAnswers {
       previousProblems:
           _setFrom(PreviousProblem.values, json['previous_problems']),
       previousProblemsOther: text('previous_problems_other'),
-      currentConcerns: _setFrom(CurrentConcern.values, json['current_concerns']),
+      currentConcerns:
+          _setFrom(CurrentConcern.values, json['current_concerns']),
       currentConcernsOther: text('current_concerns_other'),
       concernDuration: _byId(ConcernDuration.values, json['concern_duration']),
       discomfortLevel: _byId(DiscomfortLevel.values, json['discomfort_level']),
@@ -483,8 +484,7 @@ class DentalAnswers {
 
   @override
   bool operator ==(Object other) =>
-      other is DentalAnswers &&
-      _mapEquals(other.toDraftJson(), toDraftJson());
+      other is DentalAnswers && _mapEquals(other.toDraftJson(), toDraftJson());
 
   @override
   int get hashCode => Object.hashAllUnordered(

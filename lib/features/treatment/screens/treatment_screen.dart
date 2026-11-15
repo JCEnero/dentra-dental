@@ -27,6 +27,11 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
+  /// Treatments whose card has already faded in. The list builds cards
+  /// lazily, so without this a card would fade in again every time it
+  /// scrolls back into view.
+  final Set<String> _entered = {};
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -73,8 +78,8 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
                 height: 36,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenH),
                   children: [
                     _CategoryChip(
                       label: 'All',
@@ -111,7 +116,7 @@ class _TreatmentScreenState extends State<TreatmentScreen> {
                           final treatment = filtered[index];
                           return _TreatmentCard(
                             treatment: treatment,
-                            index: index,
+                            fadeIn: _entered.add(treatment.id),
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -255,13 +260,15 @@ class _CategoryChip extends StatelessWidget {
 class _TreatmentCard extends StatelessWidget {
   final TreatmentModel treatment;
   final VoidCallback onTap;
-  final int index;
 
   const _TreatmentCard({
     required this.treatment,
     required this.onTap,
-    required this.index,
+    this.fadeIn = true,
   });
+
+  /// False once this card has faded in before: it then appears at rest.
+  final bool fadeIn;
 
   Color _getCategoryColor() {
     switch (treatment.category) {
@@ -280,7 +287,7 @@ class _TreatmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
       key: ValueKey(treatment.id),
-      tween: Tween(begin: 0.0, end: 1.0),
+      tween: Tween(begin: fadeIn ? 0.0 : 1.0, end: 1.0),
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
       builder: (context, value, child) {

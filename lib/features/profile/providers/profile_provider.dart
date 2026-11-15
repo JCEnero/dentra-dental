@@ -49,7 +49,8 @@ class ProfileNotifier extends AsyncNotifier<UserProfile> {
 
     return stored ??
         UserProfile(
-          fullName: auth.currentDisplayName ?? _nameFromEmail(auth.currentEmail),
+          fullName:
+              auth.currentDisplayName ?? _nameFromEmail(auth.currentEmail),
           email: auth.currentEmail ?? '',
         );
   }

@@ -147,8 +147,8 @@ void main() {
     await tester.tapOnText(find.textRange.ofSubstring('Privacy Policy'));
     await settle(tester, steps: 6);
     expect(find.text('Got it'), findsOneWidget);
-    expect(find.textContaining('collects only the information'),
-        findsOneWidget);
+    expect(
+        find.textContaining('collects only the information'), findsOneWidget);
 
     await tester.tap(find.bySemanticsLabel('Got it'));
     await settle(tester, steps: 6);

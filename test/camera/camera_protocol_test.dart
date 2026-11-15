@@ -64,7 +64,8 @@ void main() {
           '{"type":"status","state":"connected","ip":"10.0.0.7"}\n');
       final lines = <String>[];
       for (var i = 0; i < bytes.length; i += 20) {
-        lines.addAll(decoder.add(bytes.sublist(i, (i + 20).clamp(0, bytes.length))));
+        lines.addAll(
+            decoder.add(bytes.sublist(i, (i + 20).clamp(0, bytes.length))));
       }
       expect(lines, hasLength(2));
       expect((parseSetupEvent(lines[1]) as JoinEvent).ip, '10.0.0.7');
@@ -133,7 +134,8 @@ void main() {
     });
 
     test('anything without a valid address is no camera', () {
-      expect(SavedCamera.fromJson({'host': 'example.com', 'name': 'x'}), isNull);
+      expect(
+          SavedCamera.fromJson({'host': 'example.com', 'name': 'x'}), isNull);
       expect(SavedCamera.fromJson('nope'), isNull);
     });
 

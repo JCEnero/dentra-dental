@@ -322,6 +322,4 @@ class DentitionRenderer {
     }
     return null;
   }
-
-  int get drawnTriangles => _drawn;
 }

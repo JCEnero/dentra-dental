@@ -30,14 +30,16 @@ void main() {
     test('"none" answers are exclusive in both directions', () {
       var a = const DentalAnswers()
           .toggle(DentalQuestionId.currentConcerns, CurrentConcern.toothPain)
-          .toggle(DentalQuestionId.currentConcerns, CurrentConcern.bleedingGums);
+          .toggle(
+              DentalQuestionId.currentConcerns, CurrentConcern.bleedingGums);
       expect(a.currentConcerns,
           {CurrentConcern.toothPain, CurrentConcern.bleedingGums});
 
       a = a.toggle(DentalQuestionId.currentConcerns, CurrentConcern.none);
       expect(a.currentConcerns, {CurrentConcern.none});
 
-      a = a.toggle(DentalQuestionId.currentConcerns, CurrentConcern.sensitivity);
+      a = a.toggle(
+          DentalQuestionId.currentConcerns, CurrentConcern.sensitivity);
       expect(a.currentConcerns, {CurrentConcern.sensitivity});
     });
 
@@ -50,7 +52,8 @@ void main() {
       expect(notSure.asksConcernDuration, isFalse);
 
       // A spot doesn't hurt: how long, but not how it feels.
-      const spot = DentalAnswers(currentConcerns: {CurrentConcern.discoloration});
+      const spot =
+          DentalAnswers(currentConcerns: {CurrentConcern.discoloration});
       expect(spot.asksConcernDuration, isTrue);
       expect(spot.asksDiscomfort, isFalse);
 
@@ -59,11 +62,11 @@ void main() {
       expect(pain.asksDiscomfort, isTrue);
     });
 
-    test('saving drops hidden follow-ups and details without their option',
-        () {
+    test('saving drops hidden follow-ups and details without their option', () {
       final a = sampleAnswers
           .toggle(DentalQuestionId.currentConcerns, CurrentConcern.none)
-          .copyWith(previousProblemsOther: 'left over', additionalInformation: '  ');
+          .copyWith(
+              previousProblemsOther: 'left over', additionalInformation: '  ');
       final json = a.toJson();
       expect(json['current_concerns'], ['none']);
       expect(json['concern_duration'], isNull);
@@ -109,7 +112,8 @@ void main() {
     test('severe discomfort calls for prompt care', () {
       expect(sampleAnswers.needsPromptCare, isFalse);
       expect(
-        sampleAnswers.copyWith(discomfortLevel: DiscomfortLevel.severe)
+        sampleAnswers
+            .copyWith(discomfortLevel: DiscomfortLevel.severe)
             .needsPromptCare,
         isTrue,
       );
@@ -328,10 +332,10 @@ void main() {
       await tapButton(tester, 'Get started');
 
       // Step 1 is split: one question per slide.
-      await choose(tester, 'When was your last dental checkup?',
-          'More than a year ago');
-      expect(find.text('Have you had any dental problems before?'),
-          findsNothing);
+      await choose(
+          tester, 'When was your last dental checkup?', 'More than a year ago');
+      expect(
+          find.text('Have you had any dental problems before?'), findsNothing);
       await tapButton(tester, 'Continue');
       await choose(tester, 'Have you had any dental problems before?',
           'Tooth decay or cavities');
@@ -400,8 +404,8 @@ void main() {
       await choose(tester, 'When was your last dental checkup?',
           'I have never had a dental checkup');
       await tapButton(tester, 'Continue');
-      await choose(tester, 'Have you had any dental problems before?',
-          'Gum problems');
+      await choose(
+          tester, 'Have you had any dental problems before?', 'Gum problems');
       await tapButton(tester, 'Continue');
       expect(find.text(dentalSteps[2].summary!), findsOneWidget);
 
@@ -411,8 +415,8 @@ void main() {
 
       // Signed in on fake time: real async here would let font loading
       // run in the test host.
-      final signedIn = auth.signInWithEmail(
-          email: 'ana@dentra.com', password: 'secret123');
+      final signedIn =
+          auth.signInWithEmail(email: 'ana@dentra.com', password: 'secret123');
       await tester.pump(const Duration(milliseconds: 1500));
       await signedIn;
       await settle(tester);
@@ -436,7 +440,8 @@ void main() {
       expect(find.textContaining('How long'), findsNothing);
       expect(find.textContaining('discomfort right now'), findsNothing);
 
-      await choose(tester, 'right now?', 'Visible spots or discoloration on teeth');
+      await choose(
+          tester, 'right now?', 'Visible spots or discoloration on teeth');
       expect(find.textContaining('How long'), findsOneWidget);
       expect(find.textContaining('discomfort right now'), findsNothing);
 
@@ -535,8 +540,7 @@ void main() {
   }
 
   group('editing from Profile', () {
-    testWidgets('opens on review and saves only real changes',
-        (tester) async {
+    testWidgets('opens on review and saves only real changes', (tester) async {
       tester.view.physicalSize = const Size(390, 844) * 3;
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
@@ -614,8 +618,7 @@ Future<void> choose(WidgetTester tester, String question, String answer) async {
 /// Taps a button by its label, or an icon button by its tooltip.
 Future<void> tapButton(WidgetTester tester, String label) async {
   final labelled = find.bySemanticsLabel(label);
-  final button =
-      labelled.evaluate().isEmpty ? find.byTooltip(label) : labelled;
+  final button = labelled.evaluate().isEmpty ? find.byTooltip(label) : labelled;
   await tester.ensureVisible(button.first);
   await tester.tap(button.first);
   await settle(tester);

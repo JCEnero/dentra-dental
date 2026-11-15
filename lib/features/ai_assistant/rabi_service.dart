@@ -58,7 +58,8 @@ class ApiRabiService implements RabiService {
   /// Longest gap between streamed chunks.
   final Duration chunkTimeout;
 
-  static const _troubleMessage = 'Rabi had trouble answering. Please try again.';
+  static const _troubleMessage =
+      'Rabi had trouble answering. Please try again.';
 
   @override
   bool get savesHistory => true;

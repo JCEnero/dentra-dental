@@ -248,7 +248,8 @@ class _TwoFactorFormState extends ConsumerState<_TwoFactorForm> {
         const SizedBox(height: 6),
         Center(
           child: TextButton(
-            onPressed: _sending || _verifying || _cooldown > 0 ? null : _sendCode,
+            onPressed:
+                _sending || _verifying || _cooldown > 0 ? null : _sendCode,
             style: TextButton.styleFrom(
               foregroundColor: AppColors.g2,
               minimumSize: const Size(44, 44),

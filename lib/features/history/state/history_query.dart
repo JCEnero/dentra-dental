@@ -154,8 +154,10 @@ List<HistoryEntry> applyHistoryQuery(
     }
     if (terms.isNotEmpty) {
       final haystack = switch (e) {
-        ScreeningEntry(:final session) => searchableText(session),
-        RecordEntry(:final record) => searchableRecordText(record),
+        ScreeningEntry(:final session) => _screeningText[session] ??=
+            searchableText(session),
+        RecordEntry(:final record) => _recordText[record] ??=
+            searchableRecordText(record),
       };
       if (!terms.every(haystack.contains)) return false;
     }
@@ -166,6 +168,11 @@ List<HistoryEntry> applyHistoryQuery(
         : a.at.compareTo(b.at));
   return result;
 }
+
+/// Search text per session and record. Both are immutable, so the text is
+/// built once instead of for every entry on every keystroke.
+final _screeningText = Expando<String>();
+final _recordText = Expando<String>();
 
 /// Date spellings a search can match.
 List<String> _dateTerms(DateTime d) => [

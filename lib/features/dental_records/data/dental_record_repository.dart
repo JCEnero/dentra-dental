@@ -20,7 +20,8 @@ abstract class DentalRecordRepository {
 
   Future<DentalRecord> create(String userId, DentalRecordInput input);
 
-  Future<DentalRecord> update(String userId, String id, DentalRecordInput input);
+  Future<DentalRecord> update(
+      String userId, String id, DentalRecordInput input);
 
   Future<void> delete(String userId, String id);
 
@@ -146,8 +147,8 @@ class ApiDentalRecordRepository implements DentalRecordRepository {
 String fileContentType(Uint8List bytes) {
   final image = imageContentType(bytes);
   if (image != 'application/octet-stream') return image;
-  final isPdf = bytes.length >= 5 &&
-      String.fromCharCodes(bytes.sublist(0, 5)) == '%PDF-';
+  final isPdf =
+      bytes.length >= 5 && String.fromCharCodes(bytes.sublist(0, 5)) == '%PDF-';
   return isPdf ? 'application/pdf' : image;
 }
 
@@ -166,14 +167,16 @@ class LocalDentalRecordRepository implements DentalRecordRepository {
     final raw = prefs.getString(_key(userId));
     if (raw == null) return const [];
     return (jsonDecode(raw) as List<dynamic>)
-        .map((e) => _withBytes(DentalRecord.fromJson(e as Map<String, dynamic>)))
+        .map(
+            (e) => _withBytes(DentalRecord.fromJson(e as Map<String, dynamic>)))
         .toList()
       ..sort(compareRecords);
   }
 
   @override
   Future<DentalRecord> fetch(String userId, String id) async {
-    final record = (await fetchAll(userId)).where((r) => r.id == id).firstOrNull;
+    final record =
+        (await fetchAll(userId)).where((r) => r.id == id).firstOrNull;
     if (record == null) throw _notFound;
     return record;
   }

@@ -67,9 +67,14 @@ class _ClinicMapState extends State<ClinicMap> {
 
   GoogleMapController? _controller;
 
-  /// Rendered pins keyed by [_pinKey], plus `user` for the location dot.
-  final Map<String, BitmapDescriptor> _icons = {};
+  /// Rendered pins by pixel ratio, then by [_pinKey] plus `user` for the
+  /// location dot. Static: the map is rebuilt each time the Clinics tab
+  /// comes back, and the pins look the same, so they're drawn only once.
+  static final Map<double, Map<String, BitmapDescriptor>> _iconsByRatio = {};
   double? _iconPixelRatio;
+
+  Map<String, BitmapDescriptor> get _icons =>
+      _iconsByRatio.putIfAbsent(_iconPixelRatio ?? 0, () => {});
 
   @override
   void didChangeDependencies() {
@@ -77,7 +82,6 @@ class _ClinicMapState extends State<ClinicMap> {
     final ratio = MediaQuery.devicePixelRatioOf(context);
     if (ratio != _iconPixelRatio) {
       _iconPixelRatio = ratio;
-      _icons.clear();
       _renderIcons();
     }
   }
@@ -140,14 +144,14 @@ class _ClinicMapState extends State<ClinicMap> {
       })
         for (final selected in const [false, true])
           if (!_icons.containsKey(_pinKey(initials, selected)))
-            _pinKey(initials, selected):
-                _renderPin(initials, selected, ratio),
+            _pinKey(initials, selected): _renderPin(initials, selected, ratio),
     };
     if (pending.isEmpty) return;
 
     final rendered = await Future.wait(pending.values);
+    _iconsByRatio[ratio]!.addAll(Map.fromIterables(pending.keys, rendered));
     if (!mounted || ratio != _iconPixelRatio) return;
-    setState(() => _icons.addAll(Map.fromIterables(pending.keys, rendered)));
+    setState(() {});
   }
 
   /// Frames every clinic plus the center; falls back to the radius
@@ -300,7 +304,8 @@ class _MapUnavailable extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.map_outlined, size: 18, color: AppColors.secondaryText),
+          const Icon(Icons.map_outlined,
+              size: 18, color: AppColors.secondaryText),
           const SizedBox(width: 8),
           Text(
             'Map unavailable',

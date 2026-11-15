@@ -244,8 +244,8 @@ class _Pager extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        arrow(Icons.chevron_left_rounded, 'Previous marked tooth', -1,
-            index > 0),
+        arrow(
+            Icons.chevron_left_rounded, 'Previous marked tooth', -1, index > 0),
         Flexible(
           child: Text(
             '${index + 1} of $count marked teeth',

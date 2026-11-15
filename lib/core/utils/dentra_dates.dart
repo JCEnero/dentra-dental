@@ -2,11 +2,26 @@
 /// depend on `intl`; all output is English, matching the rest of the UI.
 abstract class DentraDates {
   static const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   static const weekdayNames = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
     'Sunday',
   ];
 
@@ -15,14 +30,16 @@ abstract class DentraDates {
       weekdayNames[weekday - 1].substring(0, 3);
 
   /// "Jan 15, 1990".
-  static String medium(DateTime d) => '${monthShort(d.month)} ${d.day}, ${d.year}';
+  static String medium(DateTime d) =>
+      '${monthShort(d.month)} ${d.day}, ${d.year}';
 
   /// "January 15, 1990".
   static String long(DateTime d) =>
       '${monthNames[d.month - 1]} ${d.day}, ${d.year}';
 
   /// "Monday, January 15, 1990".
-  static String full(DateTime d) => '${weekdayNames[d.weekday - 1]}, ${long(d)}';
+  static String full(DateTime d) =>
+      '${weekdayNames[d.weekday - 1]}, ${long(d)}';
 
   /// "September 2026".
   static String monthYear(DateTime d) => '${monthNames[d.month - 1]} ${d.year}';

@@ -2,16 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fvp/fvp.dart' as fvp;
+import 'package:google_fonts/google_fonts.dart';
 import 'app/app.dart';
-import 'features/auth/providers/auth_provider.dart';
-import 'features/auth/services/auth_service.dart';
 import 'features/onboarding/services/onboarding_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env'); // GEMINI_API_KEY, API_BASE_URL, ...
-  fvp.registerWith(); // enables VP9-alpha / transparent WebM via fvp
+  // Every Outfit weight the app uses ships in assets/fonts, so never fetch
+  // fonts from the network: a missing weight would otherwise show in the
+  // system font until the download landed, then swap.
+  GoogleFonts.config.allowRuntimeFetching = false;
+  // Config and the onboarding flag are independent, so read them together.
+  // The flag is read before the first frame so returning users never see
+  // a flash of onboarding.
+  final (_, onboardingCompleted) = await (
+    dotenv.load(fileName: '.env'), // API_BASE_URL, MAPS_API_KEY, ...
+    OnboardingStorage.isCompleted(),
+  ).wait;
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -22,18 +29,11 @@ Future<void> main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
-  // Read before the first frame so returning users never see a flash of
-  // onboarding.
-  final onboardingCompleted = await OnboardingStorage.isCompleted();
-  // Signed-in users skip the login screen. Capped so a slow or offline
-  // server never holds up launch; they just see login instead.
-  final auth = AuthService.fromEnvironment();
-  await auth
-      .restoreSession()
-      .timeout(const Duration(seconds: 4), onTimeout: () => false);
+  // The session is restored by the launch loader, not here: the first
+  // frame never waits on the network, and the loader only lets a user in
+  // once the server has confirmed the session and their data is loaded.
   runApp(
     ProviderScope(
-      overrides: [authServiceProvider.overrideWith((ref) => auth)],
       child: DentraApp(onboardingCompleted: onboardingCompleted),
     ),
   );

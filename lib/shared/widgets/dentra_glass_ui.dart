@@ -7,7 +7,8 @@ import '../../core/constants/app_radius.dart';
 import 'glass_card.dart';
 
 // Shared glass building blocks: glass sheets and dialogs,
-// pill buttons with loading/disabled states, and snackbar feedback.
+// pill buttons with loading/disabled states, and messages at the top of
+// the screen.
 
 /// Respects the platform "reduce motion" setting.
 Duration dentraMotion(BuildContext context, [int ms = 220]) =>
@@ -550,8 +551,9 @@ class DentraButtonRow extends StatelessWidget {
 
 enum DentraFeedbackTone { success, error, info }
 
-/// Shows a floating snackbar in the brand style. Pass [onRetry] to offer
-/// a retry action on errors.
+/// Shows a short glass message that slides down from the top of the screen,
+/// clear of the buttons and the keyboard below. Pass [onRetry] to offer a
+/// retry action on errors.
 void showDentraSnack(
   BuildContext context,
   String message, {
@@ -559,92 +561,250 @@ void showDentraSnack(
   VoidCallback? onRetry,
   String retryLabel = 'Retry',
 }) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(dentraSnackBar(
-      message,
-      tone: tone,
-      onRetry: onRetry,
-      retryLabel: retryLabel,
-    ));
+  DentraToast.of(context).show(
+    message,
+    tone: tone,
+    onRetry: onRetry,
+    retryLabel: retryLabel,
+  );
 }
 
-/// The snackbar used by [showDentraSnack], for callers that hold a
-/// [ScaffoldMessengerState] after their own context is gone.
-SnackBar dentraSnackBar(
-  String message, {
-  DentraFeedbackTone tone = DentraFeedbackTone.success,
-  VoidCallback? onRetry,
-  String retryLabel = 'Retry',
-}) {
-  final (color, icon) = switch (tone) {
-    DentraFeedbackTone.success => (
-        AppColors.successGreen,
-        Icons.check_circle_rounded
-      ),
-    DentraFeedbackTone.error => (AppColors.dangerInk, Icons.error_rounded),
-    DentraFeedbackTone.info => (AppColors.g2, Icons.info_rounded),
-  };
-  const radius = AppRadius.lgAll;
+/// The app's messages, at the top of the screen. One shows at a time: a new
+/// one replaces whatever is up.
+///
+/// Take it with [of] before an `await` when the message comes after the
+/// screen may have gone, the way a `ScaffoldMessenger` would be held.
+class DentraToast {
+  DentraToast._(this._overlay);
 
-  // Glass like the rest of the app: navy text, the tone only in the icon,
-  // a faint wash and the rim. Red is pale, never a solid bar.
-  return SnackBar(
-    backgroundColor: Colors.transparent,
-    elevation: 0,
-    padding: EdgeInsets.zero,
-    behavior: SnackBarBehavior.floating,
-    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-    shape: const RoundedRectangleBorder(borderRadius: radius),
-    duration: Duration(seconds: onRetry != null ? 5 : 3),
-    content: GlassSurface(
-      borderRadius: radius,
-      tint: (tone == DentraFeedbackTone.error ? AppColors.danger : color)
-          .withValues(alpha: 0.08),
-      border: Border.all(
-        color: tone == DentraFeedbackTone.error
-            ? AppColors.dangerBorder
-            : color.withValues(alpha: 0.28),
+  /// The app's top-level overlay, so a message outlives the screen that
+  /// sent it, like a snackbar would.
+  static DentraToast of(BuildContext context) =>
+      DentraToast._(Overlay.of(context, rootOverlay: true));
+
+  final OverlayState _overlay;
+
+  static OverlayEntry? _current;
+
+  void show(
+    String message, {
+    DentraFeedbackTone tone = DentraFeedbackTone.success,
+    VoidCallback? onRetry,
+    String retryLabel = 'Retry',
+  }) {
+    hide();
+    if (!_overlay.mounted) return;
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _ToastView(
+        message: message,
+        tone: tone,
+        onRetry: onRetry,
+        retryLabel: retryLabel,
+        onGone: () {
+          if (entry.mounted) entry.remove();
+          if (_current == entry) _current = null;
+        },
       ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 12, onRetry == null ? 16 : 4, 12),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.navy,
+    );
+    _current = entry;
+    _overlay.insert(entry);
+  }
+
+  /// Takes down the message showing, if any, at once.
+  void hide() {
+    final entry = _current;
+    _current = null;
+    if (entry != null && entry.mounted) entry.remove();
+  }
+}
+
+/// One message: slides down and fades in, waits, then slides back up. A
+/// swipe up or a tap on Retry sends it away early.
+class _ToastView extends StatefulWidget {
+  const _ToastView({
+    required this.message,
+    required this.tone,
+    required this.onRetry,
+    required this.retryLabel,
+    required this.onGone,
+  });
+
+  final String message;
+  final DentraFeedbackTone tone;
+  final VoidCallback? onRetry;
+  final String retryLabel;
+  final VoidCallback onGone;
+
+  @override
+  State<_ToastView> createState() => _ToastViewState();
+}
+
+class _ToastViewState extends State<_ToastView> with TickerProviderStateMixin {
+  late final AnimationController _slide = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+    reverseDuration: const Duration(milliseconds: 220),
+  );
+
+  /// Runs once for as long as the message stays up. A ticker rather than a
+  /// timer, so it pauses with the app and never outlives the message.
+  late final AnimationController _hold = AnimationController(
+    vsync: this,
+    duration: Duration(seconds: widget.onRetry != null ? 5 : 3),
+  );
+
+  bool _leaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hold.addStatusListener((status) {
+      if (status == AnimationStatus.completed) _leave();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_slide.isAnimating || _slide.value > 0 || _leaving) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _slide.value = 1;
+      _hold.forward();
+    } else {
+      _slide.forward().whenComplete(() {
+        if (mounted && !_leaving) _hold.forward();
+      });
+    }
+  }
+
+  Future<void> _leave() async {
+    if (_leaving) return;
+    _leaving = true;
+    _hold.stop();
+    if (!MediaQuery.disableAnimationsOf(context)) {
+      await _slide.reverse();
+    }
+    if (mounted) widget.onGone();
+  }
+
+  @override
+  void dispose() {
+    _slide.dispose();
+    _hold.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = widget.tone;
+    final (color, icon) = switch (tone) {
+      DentraFeedbackTone.success => (
+          AppColors.successGreen,
+          Icons.check_circle_rounded
+        ),
+      DentraFeedbackTone.error => (AppColors.dangerInk, Icons.error_rounded),
+      DentraFeedbackTone.info => (AppColors.g2, Icons.info_rounded),
+    };
+    const radius = AppRadius.lgAll;
+    final curved = CurvedAnimation(
+      parent: _slide,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: SafeArea(
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: FadeTransition(
+                opacity: curved,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, -0.6),
+                    end: Offset.zero,
+                  ).animate(curved),
+                  child: GestureDetector(
+                    // A flick upward puts it away.
+                    onVerticalDragEnd: (d) {
+                      if ((d.primaryVelocity ?? 0) < -100) _leave();
+                    },
+                    child: Semantics(
+                      liveRegion: true,
+                      container: true,
+                      child: Material(
+                        type: MaterialType.transparency,
+                        // Glass like the rest of the app: navy text, the
+                        // tone only in the icon, a faint wash and the rim.
+                        // Red is pale, never a solid bar.
+                        child: GlassSurface(
+                          borderRadius: radius,
+                          tint: (tone == DentraFeedbackTone.error
+                                  ? AppColors.danger
+                                  : color)
+                              .withValues(alpha: 0.08),
+                          border: Border.all(
+                            color: tone == DentraFeedbackTone.error
+                                ? AppColors.dangerBorder
+                                : color.withValues(alpha: 0.28),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(
+                                16, 12, widget.onRetry == null ? 16 : 4, 12),
+                            child: Row(
+                              children: [
+                                Icon(icon, size: 18, color: color),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    widget.message,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.navy,
+                                    ),
+                                  ),
+                                ),
+                                if (widget.onRetry case final retry?)
+                                  TextButton(
+                                    onPressed: () {
+                                      _leave();
+                                      retry();
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.g2,
+                                      minimumSize: const Size(44, 44),
+                                    ),
+                                    child: Text(
+                                      widget.retryLabel,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-            if (onRetry != null)
-              Builder(
-                builder: (context) => TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    onRetry();
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.g2,
-                    minimumSize: const Size(44, 44),
-                  ),
-                  child: Text(
-                    retryLabel,
-                    style: GoogleFonts.outfit(
-                        fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// Inline status line for sheets, e.g. after a switch fails to save.

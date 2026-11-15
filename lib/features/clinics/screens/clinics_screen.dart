@@ -417,26 +417,32 @@ class _ClinicsScreenState extends ConsumerState<ClinicsScreen> {
   /// Cards in a plain column: Places returns at most 20 clinics, and
   /// building them all lets a pin tap scroll to any card.
   Widget _clinicList(List<ClinicModel> sorted, UserLocation location) {
+    // Keys only for the clinics on screen, so searches don't pile up keys.
+    final ids = {for (final c in sorted) c.id};
+    _cardKeys.removeWhere((id, _) => !ids.contains(id));
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
       sliver: SliverToBoxAdapter(
-        child: Column(
-          children: [
-            for (var i = 0; i < sorted.length; i++) ...[
-              if (i > 0) const SizedBox(height: 10),
-              _ClinicCard(
-                key: _cardKeys.putIfAbsent(sorted[i].id, GlobalKey.new),
-                clinic: sorted[i],
-                index: i,
-                distanceKm: _distanceKm(location, sorted[i]),
-                selected: sorted[i].id == _selectedId,
-                onTap: () => _openClinic(
-                  sorted[i],
-                  _distanceKm(location, sorted[i]),
+        // Scrolling moves the cards without re-recording them.
+        child: RepaintBoundary(
+          child: Column(
+            children: [
+              for (var i = 0; i < sorted.length; i++) ...[
+                if (i > 0) const SizedBox(height: 10),
+                _ClinicCard(
+                  key: _cardKeys.putIfAbsent(sorted[i].id, GlobalKey.new),
+                  clinic: sorted[i],
+                  index: i,
+                  distanceKm: _distanceKm(location, sorted[i]),
+                  selected: sorted[i].id == _selectedId,
+                  onTap: () => _openClinic(
+                    sorted[i],
+                    _distanceKm(location, sorted[i]),
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

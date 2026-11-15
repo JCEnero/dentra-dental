@@ -34,7 +34,9 @@ enum MouthArea {
     final upper = arch == DentalArch.upper;
     if (!kind.isPosterior) return upper ? upperFront : lowerFront;
     final left = side == DentalSide.left;
-    return upper ? (left ? upperLeft : upperRight) : (left ? lowerLeft : lowerRight);
+    return upper
+        ? (left ? upperLeft : upperRight)
+        : (left ? lowerLeft : lowerRight);
   }
 
   /// The area a tooth of the reference model belongs to.

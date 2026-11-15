@@ -333,7 +333,8 @@ class _Header extends StatelessWidget {
     final rating = clinic.rating.toStringAsFixed(1);
     final reviews =
         '${clinic.reviewCount} ${clinic.reviewCount == 1 ? 'review' : 'reviews'}';
-    final distance = distanceKm != null ? formatClinicDistance(distanceKm) : null;
+    final distance =
+        distanceKm != null ? formatClinicDistance(distanceKm) : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,8 +501,8 @@ class _ServicesCardState extends State<_ServicesCard> {
             if (i > 0) const _Hairline(),
             MergeSemantics(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 15),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                 child: Row(
                   children: [
                     Expanded(

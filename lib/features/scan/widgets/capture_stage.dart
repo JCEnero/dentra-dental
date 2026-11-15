@@ -60,8 +60,7 @@ class CaptureStage extends StatelessWidget {
           LayoutBuilder(builder: (context, constraints) {
             return SizedBox(
               width: constraints.maxWidth,
-              height:
-                  math.min(constraints.maxWidth * 0.62, maxVisualHeight),
+              height: math.min(constraints.maxWidth * 0.62, maxVisualHeight),
               child: _VisualFrame(
                 session: session,
                 region: region,

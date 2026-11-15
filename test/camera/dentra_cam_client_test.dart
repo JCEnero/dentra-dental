@@ -9,7 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:image/image.dart' as img;
 
-final _photo = Uint8List.fromList(img.encodeJpg(img.Image(width: 16, height: 12)));
+final _photo =
+    Uint8List.fromList(img.encodeJpg(img.Image(width: 16, height: 12)));
 
 void main() {
   late List<Uri> requests;
@@ -92,7 +93,8 @@ void main() {
 
   test('the stream comes from port 81 as whole frames, and ends in an error',
       () async {
-    final frame = Uint8List.fromList([0xFF, 0xD8, ...List.filled(120, 7), 0xFF, 0xD9]);
+    final frame =
+        Uint8List.fromList([0xFF, 0xD8, ...List.filled(120, 7), 0xFF, 0xD9]);
     final body = StreamController<List<int>>();
     late Uri asked;
     final cam = DentraCamClient(

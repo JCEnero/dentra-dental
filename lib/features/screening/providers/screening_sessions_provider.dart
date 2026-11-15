@@ -75,7 +75,8 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
       if (updated == null) continue;
       // The analysis may have been saved while this upload was in flight;
       // don't let the older server copy hide it.
-      final local = state.valueOrNull?.where((s) => s.id == sessionId).firstOrNull;
+      final local =
+          state.valueOrNull?.where((s) => s.id == sessionId).firstOrNull;
       final analysis = updated.analysis ?? local?.analysis;
       _replaceLocal(
         analysis == null ? updated : updated.copyWith(analysis: analysis),
@@ -108,7 +109,9 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
       );
     } catch (_) {
       // Only this answer goes back, so another one saved meanwhile stays.
-      if (stored() case final s?) _replaceLocal(s.withAnswer(findingId, before));
+      if (stored() case final s?) {
+        _replaceLocal(s.withAnswer(findingId, before));
+      }
       rethrow;
     }
   }
@@ -126,11 +129,19 @@ class ScreeningSessionsNotifier extends AsyncNotifier<List<ScreeningSession>> {
     }
   }
 
-  /// Removes all recorded sessions, e.g. when the account is deleted.
-  Future<void> clear() async {
+  /// Deletes every screening of the signed-in user, with their stored
+  /// photos and results. The list empties at once; if the server refuses,
+  /// it comes back and the error is rethrown.
+  Future<void> deleteAll() async {
+    final previous = state.valueOrNull ?? const <ScreeningSession>[];
     state = const AsyncData([]);
-    ref.read(screeningImageCacheProvider.notifier).clear();
-    await _repo.deleteAll(_userId);
+    try {
+      await _repo.deleteAll(_userId);
+      ref.read(screeningImageCacheProvider.notifier).clear();
+    } catch (_) {
+      state = AsyncData(previous);
+      rethrow;
+    }
   }
 
   /// Upserts by id, keeping newest-first order and no duplicates.
@@ -152,18 +163,19 @@ final screeningSessionsProvider =
 /// Images are not persisted yet: they should be uploaded to object
 /// storage by the backend (see `ScreeningCapture.imageUrl`). Until then
 /// this lets the detail page show photos from scans made since launch.
-class ScreeningImageCache extends Notifier<Map<String, Map<String, Uint8List>>> {
+class ScreeningImageCache
+    extends Notifier<Map<String, Map<String, Uint8List>>> {
   @override
   Map<String, Map<String, Uint8List>> build() => const {};
 
   void put(String sessionId, Map<String, Uint8List> images) =>
       state = {...state, sessionId: Map.unmodifiable(images)};
 
-  void remove(String sessionId) =>
-      state = {...state}..remove(sessionId);
+  void remove(String sessionId) => state = {...state}..remove(sessionId);
 
   void clear() => state = const {};
 }
 
-final screeningImageCacheProvider = NotifierProvider<ScreeningImageCache,
-    Map<String, Map<String, Uint8List>>>(ScreeningImageCache.new);
+final screeningImageCacheProvider =
+    NotifierProvider<ScreeningImageCache, Map<String, Map<String, Uint8List>>>(
+        ScreeningImageCache.new);

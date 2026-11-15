@@ -107,7 +107,8 @@ class ApiScreeningAnalysisService implements ScreeningAnalysisService {
 
   Future<ScreeningSession> _request(String method, String path) async {
     final body = await _api.send(method, path);
-    return screeningSessionFromApi(_api, body['session'] as Map<String, dynamic>);
+    return screeningSessionFromApi(
+        _api, body['session'] as Map<String, dynamic>);
   }
 }
 

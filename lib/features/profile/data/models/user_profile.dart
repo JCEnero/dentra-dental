@@ -59,11 +59,13 @@ class UserProfile {
 
   /// Up to two initials for the avatar fallback, e.g. "Ana Cruz" -> "AC".
   String get initials {
-    final parts = fullName.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    final parts =
+        fullName.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
     // First code point, so accented or non-Latin names don't split a
     // surrogate pair.
-    final letters =
-        parts.take(2).map((w) => String.fromCharCode(w.runes.first).toUpperCase());
+    final letters = parts
+        .take(2)
+        .map((w) => String.fromCharCode(w.runes.first).toUpperCase());
     final result = letters.join();
     return result.isEmpty ? '?' : result;
   }

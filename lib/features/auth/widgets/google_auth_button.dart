@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_radius.dart';
 
-/// Google authentication button that matches the DENTRA design system.
-/// Renders a white outlined button with the Google "G" logo and a label.
+/// Google sign-in on a frosted glass bar: the "G" and the label centred,
+/// a hairline teal rim, and a soft press.
 class GoogleAuthButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -17,6 +16,8 @@ class GoogleAuthButton extends StatelessWidget {
     this.isLoading = false,
   });
 
+  static const BorderRadius _radius = BorderRadius.all(Radius.circular(16));
+
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null && !isLoading;
@@ -28,62 +29,66 @@ class GoogleAuthButton extends StatelessWidget {
       label: isLoading ? 'Signing in with Google…' : label,
       onTap: enabled ? onTap : null,
       excludeSemantics: true,
-      child: SizedBox(
-        width: double.infinity,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: isLoading ? null : onTap,
-            borderRadius: AppRadius.mdAll,
-            child: Ink(
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: AppRadius.mdAll,
-                border: Border.all(
-                  color: AppColors.border,
-                  width: 1.5,
-                ),
-              ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 13, horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (isLoading)
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.secondaryText,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 180),
+        opacity: onTap == null && !isLoading ? 0.5 : 1,
+        child: SizedBox(
+          width: double.infinity,
+          child: Material(
+            color: AppColors.white.withValues(alpha: 0.78),
+            shape: RoundedRectangleBorder(
+              borderRadius: _radius,
+              side: BorderSide(color: AppColors.g2.withValues(alpha: 0.16)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: isLoading ? null : onTap,
+              splashColor: AppColors.g1.withValues(alpha: 0.14),
+              highlightColor: AppColors.g1.withValues(alpha: 0.06),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 52),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (isLoading)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.primary,
+                            ),
+                          ),
+                        )
+                      else ...[
+                        // Google "G" logo, drawn with Canvas for zero
+                        // dependencies.
+                        CustomPaint(
+                          size: const Size(18, 18),
+                          painter: _GoogleGPainter(),
+                        ),
+                        const SizedBox(width: 10),
+                        // Wraps instead of overflowing on narrow screens or
+                        // with large accessibility text.
+                        Flexible(
+                          child: Text(
+                            label,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.navy,
+                              letterSpacing: 0.1,
+                            ),
                           ),
                         ),
-                      )
-                    else ...[
-                      // Google "G" logo — hand-drawn with Canvas for zero dependency
-                      CustomPaint(
-                        size: const Size(18, 18),
-                        painter: _GoogleGPainter(),
-                      ),
-                      const SizedBox(width: 10),
-                      // Wraps instead of overflowing on narrow screens or
-                      // with large accessibility text.
-                      Flexible(
-                        child: Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
-                            letterSpacing: 0.1,
-                          ),
-                        ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),

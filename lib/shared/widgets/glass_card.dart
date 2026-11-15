@@ -73,24 +73,20 @@ class GlassCard extends StatelessWidget {
 }
 
 /// Full-width frosted bar for docked chrome (bottom nav, action bars).
-/// Draws a faint teal hairline on the edge facing the content.
+/// Draws a faint teal hairline along its top edge, facing the content.
 class GlassBar extends StatelessWidget {
-  const GlassBar({super.key, required this.child, this.edge = GlassBarEdge.top});
+  const GlassBar({super.key, required this.child});
 
   final Widget child;
-  final GlassBarEdge edge;
 
   @override
   Widget build(BuildContext context) {
-    final side = BorderSide(color: AppGlass.divider);
     return ClipRect(
       child: GlassBlur(
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: AppGlass.barFill,
-            border: edge == GlassBarEdge.top
-                ? Border(top: side)
-                : Border(bottom: side),
+            border: Border(top: BorderSide(color: AppGlass.divider)),
           ),
           child: child,
         ),
@@ -98,8 +94,6 @@ class GlassBar extends StatelessWidget {
     );
   }
 }
-
-enum GlassBarEdge { top, bottom }
 
 /// Background blur behind glass surfaces.
 ///

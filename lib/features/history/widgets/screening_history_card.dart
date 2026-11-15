@@ -5,8 +5,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/dentra_dates.dart';
 import '../../../shared/widgets/dentra_mascot.dart';
 import '../../../shared/widgets/glass_card.dart';
-import '../../dental_records/widgets/record_source_label.dart';
-import '../../scan/data/scan_regions.dart';
 import '../../scan/data/scan_report.dart';
 import '../../scan/widgets/scan_theme.dart' show ScanColors;
 import '../../screening/data/models/screening_session.dart';
@@ -14,13 +12,17 @@ import '../../screening/data/models/screening_session.dart';
 /// The scan's result in a few words, once its analysis has really read something.
 String? _resultOf(ScreeningSession session) {
   final analysis = session.analysis;
-  if (analysis == null || analysis.status != AnalysisStatus.complete) return null;
+  if (analysis == null || analysis.status != AnalysisStatus.complete) {
+    return null;
+  }
   final report = ScreeningReport(analysis, session.capturedRegions);
   if (report.detectorOff || report.photosRead == 0) return null;
   return report.headline;
 }
 
-/// One screening in the history list. The whole card opens the details.
+/// One screening in the history list: what it was, when, what it found and
+/// how much was captured. Photos stay on the details page. The whole card
+/// opens the details.
 class ScreeningHistoryCard extends StatelessWidget {
   const ScreeningHistoryCard({
     super.key,
@@ -32,10 +34,10 @@ class ScreeningHistoryCard extends StatelessWidget {
 
   final ScreeningSession session;
 
-  /// The newest screening overall; labelled "Latest" instead of "View".
+  /// The newest screening overall; gets a small "Latest" mark.
   final bool isLatest;
 
-  /// Alternates the teal rim shade, as in the original design.
+  /// Alternates the teal rim shade.
   final bool alternate;
   final VoidCallback onTap;
 
@@ -44,171 +46,112 @@ class ScreeningHistoryCard extends StatelessWidget {
     final rim = alternate ? AppColors.cardSolid : AppColors.g2;
     final at = session.completedAt;
     final captured = session.capturedViewCount;
-    final regionNames = session.capturedRegions
-        .map((id) => findScanRegion(id)?.label)
-        .whereType<String>()
-        .join(', ');
     final complete = session.isComplete;
-    final statusColor = complete ? AppColors.successGreen : AppColors.warmOrange;
     final result = _resultOf(session);
+    final muted = AppColors.navy.withValues(alpha: 0.55);
 
     return Semantics(
       button: true,
-      label: '${RecordSource.aiScreening.label}. '
-          '${isLatest ? 'Latest screening' : 'Screening'}, '
+      label: '${isLatest ? 'Latest dental screening' : 'Dental screening'}, '
           '${DentraDates.full(at)} at ${DentraDates.time(at)}. '
           '${session.status.label}, $captured of ${session.totalRegions} '
           'views captured.${result == null ? '' : ' $result.'} Opens details.',
       excludeSemantics: true,
       child: GlassCard(
-        borderColor: rim.withValues(alpha: 0.55),
-        borderWidth: 1.5,
+        borderColor: rim.withValues(alpha: 0.45),
+        borderWidth: 1.2,
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
-        padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(18, 16, 16, 14),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const RecordSourceLabel(source: RecordSource.aiScreening),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${DentraDates.long(at)} · ${DentraDates.time(at)}',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.navy.withValues(alpha: 0.55),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
                     'Dental Screening',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: AppColors.navy,
                     ),
                   ),
-                  if (result != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      result,
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: ScanColors.clearInk,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      // One ring per captured image, as in the original.
-                      SizedBox(
-                        width: 22.0 + 16.0 * (captured.clamp(1, 5) - 1),
-                        height: 22,
-                        child: Stack(
-                          children: [
-                            for (var j = 0; j < captured.clamp(0, 5); j++)
-                              Positioned(
-                                left: 16.0 * j,
-                                child: Container(
-                                  width: 22,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: AppColors.g2
-                                        .withValues(alpha: 0.18 - j * 0.025),
-                                    border: Border.all(
-                                      color: AppColors.g2.withValues(alpha: 0.35),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          '$captured ${captured == 1 ? 'image' : 'images'} · '
-                          '$captured of ${session.totalRegions} views',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            color: AppColors.navy.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (regionNames.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      regionNames,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: AppColors.navy.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.g2.withValues(alpha: isLatest ? 0.9 : 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    isLatest ? 'Latest' : 'View',
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: isLatest ? AppColors.white : AppColors.g2,
-                    ),
-                  ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: statusColor,
-                      ),
+                if (isLatest)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.g2.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      session.status.label,
+                    child: Text(
+                      'Latest',
                       style: GoogleFonts.outfit(
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.navy.withValues(alpha: 0.65),
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.g2,
                       ),
                     ),
-                  ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${DentraDates.long(at)} · ${DentraDates.time(at)}',
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: muted,
+              ),
+            ),
+            if (result != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                result,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: ScanColors.clearInk,
                 ),
-                const SizedBox(height: 14),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: complete
+                        ? AppColors.successGreen
+                        : AppColors.warmOrange,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${session.status.label} · '
+                    '$captured of ${session.totalRegions} views',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.navy.withValues(alpha: 0.65),
+                    ),
+                  ),
+                ),
                 Icon(
                   Icons.arrow_forward_rounded,
                   size: 18,
-                  color: AppColors.g2.withValues(alpha: 0.8),
+                  color: AppColors.g2.withValues(alpha: 0.85),
                 ),
               ],
             ),
@@ -235,15 +178,16 @@ class ScreeningCardSkeleton extends StatelessWidget {
         );
     return ExcludeSemantics(
       child: GlassCard(
+        borderRadius: BorderRadius.circular(20),
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            bar(140, 10),
-            const SizedBox(height: 10),
-            bar(160, 14),
-            const SizedBox(height: 12),
-            bar(200, 10),
+            bar(150, 14),
+            const SizedBox(height: 8),
+            bar(120, 10),
+            const SizedBox(height: 14),
+            bar(170, 10),
           ],
         ),
       ),

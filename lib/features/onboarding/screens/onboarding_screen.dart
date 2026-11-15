@@ -3,15 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../shared/widgets/app_backdrop.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../auth/screens/registration_screen.dart';
 import '../../auth/widgets/dentra_logo.dart';
 import '../data/onboarding_content.dart';
 import '../services/onboarding_storage.dart';
 import '../widgets/onboarding_controls.dart';
-import '../widgets/onboarding_palette.dart';
 import '../widgets/onboarding_slide_view.dart';
-import '../widgets/onboarding_stage.dart';
+import '../widgets/welcome_stage.dart';
 
 enum OnboardingMode {
   /// Shown on first launch. Finishing persists completion and hands off to
@@ -24,10 +24,11 @@ enum OnboardingMode {
 
 enum _AuthDestination { login, registration }
 
-/// Three-slide introduction to DENTRA.
+/// The welcome slides: an introduction to DENTRA built around its camera.
 ///
-/// Slide copy and visuals come from `onboardingSlides`. This widget owns only
-/// navigation, completion, and hand-off to the auth screens.
+/// Slide copy comes from `onboardingSlides`; the picture is one shared
+/// `WelcomeStage` that follows the swipe. This widget owns only navigation,
+/// completion, and hand-off to the auth screens.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key, this.mode = OnboardingMode.firstRun});
 
@@ -131,13 +132,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       headerAction = _HeaderAction(
         label: 'Close',
         semanticLabel: 'Close introduction',
+        icon: Icons.close_rounded,
         onTap: _close,
       );
     } else if (_isLast) {
       headerAction = _HeaderAction(
         label: 'Log In',
         semanticLabel: 'Log in',
-        outlined: true,
+        emphasis: true,
         onTap: () => _finish(_AuthDestination.login),
       );
     } else {
@@ -151,11 +153,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final geometry = OnboardingGeometry.of(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // Light status bar icons over the teal stage; dark navigation bar
-      // icons over the white surface.
-      value: SystemUiOverlayStyle.light.copyWith(
+      // Dark status and navigation bar icons over the light glass page.
+      value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: OnboardingPalette.surfaceTint,
+        systemNavigationBarColor: kWelcomeNavigationBar,
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: PopScope(
@@ -165,79 +166,94 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           if (!didPop) _back();
         },
         child: Scaffold(
-          backgroundColor: AppColors.white,
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: OnboardingStage(
-                  pageController: _pageController,
-                  geometry: geometry,
-                ),
-              ),
-              PageView.builder(
-                controller: _pageController,
-                itemCount: _slides.length,
-                onPageChanged: (i) => setState(() => _index = i),
-                itemBuilder: (context, i) => OnboardingSlideView(
-                  content: _slides[i],
-                  index: i,
-                  pageController: _pageController,
-                  isActive: i == _index,
-                  geometry: geometry,
-                ),
-              ),
-              // Overlaid chrome. Empty areas let swipes reach the PageView.
-              const Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  child: _Centered(child: _Header()),
-                ),
-              ),
-              // The action sits in the screen's own top-right corner, not
-              // the centred content column, at any width.
-              Positioned(
-                top: 0,
-                right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  left: false,
-                  child: _HeaderActionButton(
-                    action: headerAction,
-                    enabled: !_isBusy,
+          backgroundColor: AppColors.lightLavender,
+          body: AppBackdrop(
+            child: Stack(
+              children: [
+                // The whole screen, so its light fades out on its own.
+                Positioned.fill(
+                  child: WelcomeStage(
+                    pageController: _pageController,
+                    top: geometry.stageTop,
+                    bottom: geometry.stageBottom,
+                    semanticLabel: _slides[_index].visualDescription,
+                    labelStyle: GoogleFonts.outfit(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: geometry.controlsBottomPadding,
-                child: SafeArea(
-                  top: false,
-                  bottom: false,
-                  child: _Centered(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg,
-                      ),
-                      child: OnboardingControls(
-                        slideCount: _slides.length,
-                        currentIndex: _index,
-                        finalLabel: _isReplay ? 'Done' : 'Get Started',
-                        onNext: _next,
-                        onBack: _back,
-                        isBusy: _isBusy,
-                        buttonSize: kOnboardingButtonSize,
-                        isPrimaryLoading: _pendingDestination ==
-                            _AuthDestination.registration,
+                // Swipes anywhere on the screen move the slides.
+                PageView.builder(
+                  controller: _pageController,
+                  itemCount: _slides.length,
+                  onPageChanged: (i) => setState(() => _index = i),
+                  itemBuilder: (context, i) => OnboardingSlideView(
+                    content: _slides[i],
+                    index: i,
+                    pageController: _pageController,
+                    geometry: geometry,
+                  ),
+                ),
+                // Overlaid chrome. Empty areas let swipes reach the PageView.
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: _Header(),
+                  ),
+                ),
+                // The action sits in the screen's own top-right corner, not
+                // the centred content column, at any width.
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    left: false,
+                    child: _HeaderActionButton(
+                      action: headerAction,
+                      enabled: !_isBusy,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: geometry.controlsBottom,
+                  child: SafeArea(
+                    top: false,
+                    bottom: false,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: kOnboardingMaxContentWidth,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg,
+                          ),
+                          child: OnboardingControls(
+                            pageController: _pageController,
+                            slideCount: _slides.length,
+                            currentIndex: _index,
+                            finalLabel: _isReplay ? 'Done' : 'Get Started',
+                            onNext: _next,
+                            onBack: _back,
+                            isBusy: _isBusy,
+                            isPrimaryLoading: _pendingDestination ==
+                                _AuthDestination.registration,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -245,40 +261,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-/// Centres chrome at the content column's maximum width.
-class _Centered extends StatelessWidget {
-  const _Centered({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: kOnboardingMaxContentWidth,
-        ),
-        child: child,
-      ),
-    );
-  }
-}
+/// The page backdrop's lowest tone, for the system navigation bar.
+const Color kWelcomeNavigationBar = Color(0xFFEBF8F6);
 
 class _HeaderAction {
   const _HeaderAction({
     required this.label,
     required this.semanticLabel,
     required this.onTap,
-    this.outlined = false,
+    this.emphasis = false,
+    this.icon,
   });
 
   final String label;
   final String semanticLabel;
   final VoidCallback onTap;
-  final bool outlined;
+
+  /// Shown on its own, with no pill behind it, in place of [label].
+  final IconData? icon;
+
+  /// Log In on the last slide: teal words and a firmer rim.
+  final bool emphasis;
 }
 
-/// The logo, aligned with the content column.
+/// The full-colour logo at the top left.
 class _Header extends StatelessWidget {
   const _Header();
 
@@ -290,18 +296,16 @@ class _Header extends StatelessWidget {
     return SizedBox(
       height: kOnboardingHeaderExtent,
       child: Padding(
-        padding:
-            EdgeInsets.only(left: AppSpacing.lg, right: width < 360 ? 96 : 120),
-        child: Align(
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg - 4,
+          right: width < 360 ? 96 : 120,
+        ),
+        child: const Align(
           alignment: Alignment.centerLeft,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Semantics(
-              label: 'DENTRA',
-              excludeSemantics: true,
-              child: const DentraLogo(onDark: true, size: 0.72),
-            ),
+            child: DentraLogo(size: 1.22),
           ),
         ),
       ),
@@ -309,8 +313,8 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Skip / Log In / Close, pinned to the top-right corner. The inset and
-/// pill size follow the screen width.
+/// Skip / Log In / Close: a small frosted glass pill in the top-right
+/// corner, clearly a button but quieter than the main one.
 class _HeaderActionButton extends StatelessWidget {
   const _HeaderActionButton({required this.action, required this.enabled});
 
@@ -324,7 +328,7 @@ class _HeaderActionButton extends StatelessWidget {
         : const Duration(milliseconds: 220);
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 360;
-    final inset = compact ? 10.0 : (width >= 600 ? 24.0 : 14.0);
+    final inset = compact ? 12.0 : (width >= 600 ? 24.0 : 18.0);
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
@@ -335,46 +339,82 @@ class _HeaderActionButton extends StatelessWidget {
           child: Center(
             child: AnimatedSwitcher(
               duration: duration,
-              child: Semantics(
-                key: ValueKey(action.label),
-                label: action.semanticLabel,
-                button: true,
-                excludeSemantics: true,
-                child: TextButton(
-                  onPressed: enabled ? action.onTap : null,
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(48, 40),
-                    tapTargetSize: MaterialTapTargetSize.padded,
-                    padding:
-                        EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
-                    foregroundColor: AppColors.white,
-                    // Outlined for Log In; a soft frosted pill otherwise.
-                    backgroundColor: action.outlined
-                        ? Colors.transparent
-                        : AppColors.white.withValues(alpha: 0.16),
-                    shape: StadiumBorder(
-                      side: BorderSide(
-                        color: AppColors.white.withValues(
-                          alpha: action.outlined ? 0.75 : 0.32,
+              child: action.icon != null
+                  ? _bareIcon(action)
+                  : Semantics(
+                      key: ValueKey(action.label),
+                      label: action.semanticLabel,
+                      button: true,
+                      excludeSemantics: true,
+                      child: Material(
+                        color: AppColors.white.withValues(alpha: 0.62),
+                        shape: StadiumBorder(
+                          side: BorderSide(
+                            color: AppColors.g2.withValues(
+                              alpha: action.emphasis ? 0.4 : 0.16,
+                            ),
+                            width: action.emphasis ? 1.3 : 1,
+                          ),
                         ),
-                        width: action.outlined ? 1.2 : 1,
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: enabled ? action.onTap : null,
+                          splashColor: AppColors.g1.withValues(alpha: 0.14),
+                          highlightColor: AppColors.g1.withValues(alpha: 0.06),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minWidth: 64),
+                            child: SizedBox(
+                              height: 44,
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: compact ? 14 : 18,
+                                ),
+                                child: Center(
+                                  widthFactor: 1,
+                                  child: Text(
+                                    action.label,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: compact ? 13.5 : 14,
+                                      fontWeight: action.emphasis
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                      color: action.emphasis
+                                          ? kOnboardingInk
+                                          : AppColors.navy
+                                              .withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  child: Text(
-                    action.label,
-                    style: GoogleFonts.outfit(
-                      fontSize: compact ? 13 : 14,
-                      fontWeight:
-                          action.outlined ? FontWeight.w700 : FontWeight.w600,
-                      color: AppColors.white,
-                    ),
-                  ),
-                ),
-              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Just the glyph, in navy: no pill, no rim. Still a full 48px target.
+  Widget _bareIcon(_HeaderAction action) {
+    return Semantics(
+      key: ValueKey(action.label),
+      label: action.semanticLabel,
+      button: true,
+      excludeSemantics: true,
+      child: IconButton(
+        onPressed: enabled ? action.onTap : null,
+        tooltip: action.label,
+        iconSize: 28,
+        style: IconButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          foregroundColor: AppColors.navy.withValues(alpha: 0.78),
+          highlightColor: AppColors.g1.withValues(alpha: 0.12),
+        ),
+        icon: Icon(action.icon),
       ),
     );
   }

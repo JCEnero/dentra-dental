@@ -14,6 +14,13 @@ import '../data/scan_report.dart';
 import '../data/tooth_guidance.dart';
 
 /// A photo ready for the PDF.
+/// One PDF image per photo, so a photo used for several teeth is embedded
+/// in the file once instead of once per crop.
+final _pdfImages = Expando<pw.MemoryImage>();
+
+pw.MemoryImage _pdfImageOf(ReportPhoto photo) =>
+    _pdfImages[photo] ??= pw.MemoryImage(photo.jpeg);
+
 class ReportPhoto {
   const ReportPhoto({
     required this.jpeg,
@@ -782,7 +789,7 @@ class _Report {
               child: pw.Stack(
                 children: [
                   pw.Image(
-                    pw.MemoryImage(photo.jpeg),
+                    _pdfImageOf(photo),
                     width: w,
                     height: h,
                     fit: pw.BoxFit.fill,
@@ -1063,7 +1070,8 @@ class _Report {
           color: _tint,
           borderRadius: pw.BorderRadius.circular(6),
         ),
-        child: _t('Photo not in this report', _small, align: pw.TextAlign.center),
+        child:
+            _t('Photo not in this report', _small, align: pw.TextAlign.center),
       );
     }
     // A window around the box with the frame's shape, inside the photo.
@@ -1092,7 +1100,7 @@ class _Report {
               left: -vx * scaleX,
               top: -vy * scaleY,
               child: pw.Image(
-                pw.MemoryImage(photo.jpeg),
+                _pdfImageOf(photo),
                 width: scaleX,
                 height: scaleY,
                 fit: pw.BoxFit.fill,

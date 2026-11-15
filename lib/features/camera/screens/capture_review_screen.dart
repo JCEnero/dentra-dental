@@ -92,8 +92,8 @@ class CaptureReviewScreen extends StatelessWidget {
                                 _AreaRow(
                                   area: guide.areas[i],
                                   guide: guide,
-                                  onGoTo: (id) => Navigator.of(context)
-                                      .pop(ReviewGoTo(id)),
+                                  onGoTo: (id) =>
+                                      Navigator.of(context).pop(ReviewGoTo(id)),
                                 ),
                               ],
                             ],

@@ -196,7 +196,12 @@ class AiChatController extends ChangeNotifier {
   bool isLoading = false;
 
   /// The reply so far while it streams in; null before the first words.
-  String? streamingText;
+  ///
+  /// Chunks update this notifier only, not the controller, so a streaming
+  /// reply repaints its own bubble instead of rebuilding the whole chat.
+  final ValueNotifier<String?> partialReply = ValueNotifier(null);
+
+  String? get streamingText => partialReply.value;
 
   ChatView view = ChatView.chat;
   ChatSession? selectedSession;
@@ -354,8 +359,7 @@ class AiChatController extends ChangeNotifier {
         context: contextFor(earlier),
         onPartial: (text) {
           if (sessionId != _sessionId) return;
-          streamingText = text;
-          notifyListeners();
+          partialReply.value = text;
         },
       );
       reply = ChatMessage(text: text, isUser: false, sentAt: DateTime.now());
@@ -379,7 +383,7 @@ class AiChatController extends ChangeNotifier {
     if (sessionId != _sessionId) return;
     messages.add(reply);
     isLoading = false;
-    streamingText = null;
+    partialReply.value = null;
     _saveActive();
     notifyListeners();
   }
@@ -447,7 +451,9 @@ class AiChatController extends ChangeNotifier {
 
   void deleteSession(String id) {
     _sessions.removeWhere((s) => s.id == id);
-    if (_rabi.savesHistory) unawaited(_rabi.deleteSession(id).catchError((_) {}));
+    if (_rabi.savesHistory) {
+      unawaited(_rabi.deleteSession(id).catchError((_) {}));
+    }
     if (selectedSession?.id == id) {
       selectedSession = null;
       view = ChatView.history;
@@ -470,6 +476,7 @@ class AiChatController extends ChangeNotifier {
   @override
   void dispose() {
     _rabi.close();
+    partialReply.dispose();
     super.dispose();
   }
 
@@ -479,7 +486,7 @@ class AiChatController extends ChangeNotifier {
     messages.clear();
     _sessionId = _newId();
     isLoading = false;
-    streamingText = null;
+    partialReply.value = null;
   }
 
   /// The latest [maxContextTurns] answered turns of [all], as

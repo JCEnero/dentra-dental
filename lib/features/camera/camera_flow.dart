@@ -16,9 +16,9 @@ export 'screens/camera_setup_screen.dart' show SetupOutcome;
 /// chose at the end, or null when they closed it before the camera was
 /// saved.
 Future<SetupOutcome?> openCameraSetup(BuildContext context) {
-  final cloud = ProviderScope.containerOf(context, listen: false)
-          .read(camLinkProvider) ==
-      CamLink.cloud;
+  final cloud =
+      ProviderScope.containerOf(context, listen: false).read(camLinkProvider) ==
+          CamLink.cloud;
   return Navigator.of(context, rootNavigator: true).push(
     cloud ? HotspotSetupScreen.route() : CameraSetupScreen.route(),
   );

@@ -20,13 +20,13 @@ String? recordDetailLine(DentalRecord r) {
 
   return switch (r.source) {
     RecordSource.clinicRecord => [
-        if (r.clinicName != null && r.displayTitle != r.clinicName) r.clinicName!,
+        if (r.clinicName != null && r.displayTitle != r.clinicName)
+          r.clinicName!,
         if (r.dentistName != null) r.dentistName!,
       ].join(' · ').ifEmpty(firstLine(r.clinicNotes)),
     RecordSource.personalPhoto => firstLine(r.notes),
     // The title already is the note's first line unless one was given.
-    RecordSource.personalNote =>
-      r.title == null ? null : firstLine(r.notes),
+    RecordSource.personalNote => r.title == null ? null : firstLine(r.notes),
     RecordSource.aiScreening => null,
   };
 }

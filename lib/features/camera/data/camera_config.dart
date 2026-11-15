@@ -70,10 +70,4 @@ abstract final class CameraConfig {
   /// How long to look for the camera on the network after it restarts.
   static const Duration findOnNetworkFor = Duration(seconds: 45);
   static const Duration findEvery = Duration(milliseconds: 1500);
-
-  /// Pictures for each setup step, in order (welcome, permissions, power,
-  /// find, Wi-Fi, connect). Null draws the built-in placeholder; to replace
-  /// one, add a transparent PNG to `assets/images/` (about 600×360) and put
-  /// its path here, e.g. 'assets/images/camera_setup_power.png'.
-  static const List<String?> setupArt = [null, null, null, null, null, null];
 }

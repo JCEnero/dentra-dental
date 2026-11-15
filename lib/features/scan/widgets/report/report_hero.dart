@@ -267,10 +267,10 @@ class _ResultCard extends StatelessWidget {
             _NextStep(plan: plan),
           ],
           if (read) ...[
-            const SizedBox(height: 6),
-            _Figures(report: report, trend: trend),
-            const SizedBox(height: 8),
-            _ScopeLine(report: report),
+            const SizedBox(height: 14),
+            _KeyFacts(report: report, trend: trend),
+            const SizedBox(height: 10),
+            const _ScopeLine(),
           ],
           if (symptoms != null || records > 0) ...[
             const SizedBox(height: 12),
@@ -295,7 +295,8 @@ class _ResultCard extends StatelessWidget {
     );
   }
 
-  /// What the headline means. Only ever about the photos.
+  /// What the headline means, in one or two short sentences. Only ever about
+  /// the photos.
   String get _meaning {
     if (report.photosRead == 0) return report.analysis.summary;
     if (report.signCount > 0) {
@@ -305,18 +306,18 @@ class _ResultCard extends StatelessWidget {
       ];
       final lead = counted.length == 1
           ? '${toothPlace(counted.single, capital: true)} may have tooth decay.'
-          : 'Areas to have checked: '
-              '${describeAreas({for (final s in counted) ...s.areas}).toLowerCase()}.';
-      return '$lead This is a screening, not a diagnosis. Only a dentist can '
-          'say what these marks are.';
+          : 'Have a dentist check: '
+              '${describeAreas({
+                  for (final s in counted) ...s.areas
+                }).toLowerCase()}.';
+      return '$lead A screening, not a diagnosis.';
     }
     if (report.faintCount > 0) {
-      return 'Too unsure to act on. We\'ll compare them on your next scan.';
+      return 'Too faint to act on. We\'ll compare them on your next scan.';
     }
     final n = report.photosRead;
-    return 'Nothing marked in the $n ${n == 1 ? 'photo' : 'photos'} we could '
-        'read. This check can miss early decay, so it can\'t promise there\'s '
-        'none.';
+    return 'Nothing marked in the $n ${n == 1 ? 'photo' : 'photos'} read. '
+        'Early decay can still be missed.';
   }
 
   static String _symptomsLine(ReportedSymptoms s) {
@@ -550,10 +551,148 @@ class _CareScalePainter extends CustomPainter {
       old.t != t || old.index != index || old.count != count;
 }
 
+/// Three plain numbers under the result: what to have checked, how much was
+/// read, and how sure the model was (or, with nothing marked, how this compares
+/// with the last scan). The charts behind them are in [ReportFigures].
+class _KeyFacts extends StatelessWidget {
+  const _KeyFacts({required this.report, required this.trend});
+
+  final ScreeningReport report;
+  final ScanTrend trend;
+
+  @override
+  Widget build(BuildContext context) {
+    final areas = MouthArea.values.length;
+    final range = report.confidenceRange;
+    final facts = <(String, String, String?)>[
+      if (report.areasToCheck > 0)
+        ('Areas to check', '${report.areasToCheck}', ' of $areas')
+      else if (report.areasToWatch > 0)
+        ('Areas to watch', '${report.areasToWatch}', ' of $areas')
+      else
+        ('Areas flagged', 'None', null),
+      (
+        report.guided ? 'Views read' : 'Photos read',
+        '${report.viewsRead}',
+        ' of ${report.viewsTotal}',
+      ),
+      if (range != null)
+        (
+          'Model confidence',
+          range.$1 == range.$2 ? '${range.$1}%' : '${range.$1}–${range.$2}%',
+          null,
+        )
+      else
+        ('Last scan', comparisonOf(trend), null),
+    ];
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    return LayoutBuilder(builder: (context, constraints) {
+      final cells = [
+        for (final (label, value, unit) in facts)
+          _Fact(label: label, value: value, unit: unit),
+      ];
+      // Side by side while the numbers fit; stacked when text is large.
+      if (constraints.maxWidth / scale < 270) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, cell) in cells.indexed) ...[
+              if (i > 0) const SizedBox(height: 8),
+              cell,
+            ],
+          ],
+        );
+      }
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: Border.symmetric(
+            horizontal: BorderSide(color: ReportColors.rule),
+          ),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (i, cell) in cells.indexed) ...[
+                if (i > 0)
+                  VerticalDivider(
+                    width: 17,
+                    thickness: 1,
+                    color: ReportColors.rule,
+                  ),
+                Expanded(child: cell),
+              ],
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}
+
+class _Fact extends StatelessWidget {
+  const _Fact({required this.label, required this.value, this.unit});
+
+  final String label;
+  final String value;
+  final String? unit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$label: $value${unit ?? ''}',
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: reportNote, maxLines: 2),
+          const SizedBox(height: 2),
+          Text.rich(
+            TextSpan(
+              text: value,
+              style: figureText(size: 18, weight: FontWeight.w800),
+              children: [
+                if (unit != null)
+                  TextSpan(
+                    text: unit,
+                    style: figureText(
+                      size: 12,
+                      weight: FontWeight.w600,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// How this scan compares with the last, in a word or two. Only says what both
+/// scans could read.
+String comparisonOf(ScanTrend trend) {
+  if (!trend.hasHistory) return 'First scan';
+  if (trend.mixedVersions) return 'Not comparable';
+  if (trend.newAreas.isNotEmpty) {
+    final n = trend.newAreas.length;
+    return '$n new ${n == 1 ? 'area' : 'areas'}';
+  }
+  if (trend.clearedAreas.isNotEmpty) {
+    final n = trend.clearedAreas.length;
+    return '$n not flagged';
+  }
+  return 'No change';
+}
+
 /// Four small figures, each with a picture of its own: where, how sure, how much
-/// was read, and how it compares. Two across, or one when text is large.
-class _Figures extends StatelessWidget {
-  const _Figures({required this.report, required this.trend});
+/// was read, and how it compares. Two across, or one when text is large. Shown
+/// in a fold, for anyone who wants the numbers behind the result.
+class ReportFigures extends StatelessWidget {
+  const ReportFigures({super.key, required this.report, required this.trend});
 
   final ScreeningReport report;
   final ScanTrend trend;
@@ -621,7 +760,7 @@ class _Figures extends StatelessWidget {
       ),
       _Figure(
         label: 'Compared with last scan',
-        value: _comparison,
+        value: comparisonOf(trend),
         caption: _comparisonCaption,
         visual: _TrendBars(trend: trend),
       ),
@@ -664,21 +803,6 @@ class _Figures extends StatelessWidget {
         ],
       );
     });
-  }
-
-  /// Only says what both scans could read.
-  String get _comparison {
-    if (!trend.hasHistory) return 'First scan';
-    if (trend.mixedVersions) return 'Not comparable';
-    if (trend.newAreas.isNotEmpty) {
-      final n = trend.newAreas.length;
-      return '$n new ${n == 1 ? 'area' : 'areas'}';
-    }
-    if (trend.clearedAreas.isNotEmpty) {
-      final n = trend.clearedAreas.length;
-      return '$n not flagged';
-    }
-    return 'No change';
   }
 
   String get _comparisonCaption {
@@ -964,14 +1088,12 @@ class _TrendBars extends StatelessWidget {
 
 /// What a result can't speak to, kept in view next to the figures.
 class _ScopeLine extends StatelessWidget {
-  const _ScopeLine({required this.report});
-
-  final ScreeningReport report;
+  const _ScopeLine();
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      'Not read by this check: plaque, tartar, gums and inner sides.',
+      'Not checked yet: plaque, tartar, gums and inner sides.',
       style: reportNote,
     );
   }

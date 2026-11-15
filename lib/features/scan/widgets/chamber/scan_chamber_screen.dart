@@ -157,8 +157,11 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
       return;
     }
 
-    final event = (session.uploadedCount, session.uploadsDone,
-        session.analysisProgress?.done);
+    final event = (
+      session.uploadedCount,
+      session.uploadsDone,
+      session.analysisProgress?.done
+    );
     if (event != _lastEvent) {
       _lastEvent = event;
       _lastEventAt = _t;
@@ -218,7 +221,8 @@ class _ScanChamberScreenState extends ConsumerState<ScanChamberScreen>
     }
     // Every photo read is as far as it goes: the reveal waits for the answer.
     if (progress.done >= n) return ChamberTimeline.readEnd;
-    return build + read * (progress.done + ChamberTimeline.readingHold * wait) / n;
+    return build +
+        read * (progress.done + ChamberTimeline.readingHold * wait) / n;
   }
 
   double _rateAt(double p) {
@@ -397,7 +401,8 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// One step at a time: what we're doing and why, in everyday words.
+/// One step at a time: what we're doing and why, in everyday words, with the
+/// method behind it on a line of its own.
 class _StatusPanel extends StatelessWidget {
   const _StatusPanel({required this.status});
 
@@ -438,7 +443,7 @@ class _StatusPanel extends StatelessWidget {
           // Room for the longest step, so the panel doesn't jump between them.
           ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: 110 * MediaQuery.textScalerOf(context).scale(1),
+              minHeight: 150 * MediaQuery.textScalerOf(context).scale(1),
             ),
             child: Semantics(
               liveRegion: true,
@@ -474,6 +479,33 @@ class _StatusPanel extends StatelessWidget {
                         color: AppColors.secondaryText,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    // The method behind the step, for anyone curious.
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 1),
+                          child: Icon(
+                            Icons.memory_rounded,
+                            size: 14,
+                            color: ScanColors.clearInk,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            step.detail,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              height: 1.35,
+                              fontWeight: FontWeight.w600,
+                              color: ScanColors.clearInk,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -506,7 +538,8 @@ class _StepBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(2),
                   gradient: i <= step ? AppColors.primaryGradient : null,
-                  color: i <= step ? null : AppColors.navy.withValues(alpha: 0.08),
+                  color:
+                      i <= step ? null : AppColors.navy.withValues(alpha: 0.08),
                 ),
               ),
             ),

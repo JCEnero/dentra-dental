@@ -42,7 +42,9 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
   static const _connectionError =
       "We couldn't reach DENTRA. Check your connection and try again.";
 
-  final _controllers = {for (final f in _Field.values) f: TextEditingController()};
+  final _controllers = {
+    for (final f in _Field.values) f: TextEditingController()
+  };
   final _focusNodes = {for (final f in _Field.values) f: FocusNode()};
   final _errors = <_Field, String?>{};
 
@@ -67,8 +69,8 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
 
   String? _validate(_Field f) => switch (f) {
         _Field.current => ProfileValidators.currentPassword(_text(f)),
-        _Field.next =>
-          ProfileValidators.newPassword(_text(f), current: _text(_Field.current)),
+        _Field.next => ProfileValidators.newPassword(_text(f),
+            current: _text(_Field.current)),
         _Field.confirm => ProfileValidators.confirmPassword(
             _text(f),
             newPassword: _text(_Field.next),
@@ -170,7 +172,6 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
 
   @override
   Widget build(BuildContext context) {
-
     return AutofillGroup(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -188,9 +189,8 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: widget.email.isEmpty || _sendingReset
-                  ? null
-                  : _sendResetLink,
+              onPressed:
+                  widget.email.isEmpty || _sendingReset ? null : _sendResetLink,
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.g2,
                 minimumSize: const Size(44, 44),

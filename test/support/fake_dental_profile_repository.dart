@@ -23,6 +23,9 @@ class FakeDentalProfileRepository implements DentalProfileRepository {
   /// When set, submits wait for it, to inspect the pending state.
   Completer<void>? holdSave;
 
+  /// When set, status checks wait for it, like a slow server.
+  Completer<void>? holdStatus;
+
   final List<DentalAnswers> submitted = [];
   final List<DentalAnswers> updated = [];
   int statusChecks = 0;
@@ -30,6 +33,7 @@ class FakeDentalProfileRepository implements DentalProfileRepository {
   @override
   Future<bool> fetchOnboardingCompleted(String userId) async {
     statusChecks++;
+    await holdStatus?.future;
     final error = statusError;
     statusError = null;
     if (error != null) throw error;
@@ -40,13 +44,15 @@ class FakeDentalProfileRepository implements DentalProfileRepository {
   Future<DentalProfile?> fetchProfile(String userId) async => profile;
 
   @override
-  Future<DentalProfile> submitProfile(String userId, DentalAnswers answers) async {
+  Future<DentalProfile> submitProfile(
+      String userId, DentalAnswers answers) async {
     submitted.add(answers);
     return _save(answers);
   }
 
   @override
-  Future<DentalProfile> updateProfile(String userId, DentalAnswers answers) async {
+  Future<DentalProfile> updateProfile(
+      String userId, DentalAnswers answers) async {
     updated.add(answers);
     return _save(answers);
   }

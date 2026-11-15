@@ -258,7 +258,8 @@ const List<DentalStep> dentalSteps = [
   DentalStep(
     eyebrow: 'Optional',
     title: 'Your dental care',
-    summary: 'Skip this step if you prefer. It helps us fit your advice to you.',
+    summary:
+        'Skip this step if you prefer. It helps us fit your advice to you.',
     optional: true,
     questions: [
       DentalQuestionId.pastTreatments,
@@ -412,6 +413,6 @@ extension DentalAnswersAccess on DentalAnswers {
       };
 
   /// True when every required question in every step is answered.
-  bool get isComplete => dentalSteps
-      .every((s) => missingIn(s).isEmpty && tooLongIn(s).isEmpty);
+  bool get isComplete =>
+      dentalSteps.every((s) => missingIn(s).isEmpty && tooLongIn(s).isEmpty);
 }

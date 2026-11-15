@@ -64,4 +64,3 @@ class DentraLogo extends StatelessWidget {
     );
   }
 }
-

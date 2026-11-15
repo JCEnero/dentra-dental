@@ -86,7 +86,8 @@ class RecordHistoryCard extends StatelessWidget {
                       [
                         if (record.toothNumbers.isNotEmpty)
                           teethLabel(record.toothNumbers),
-                        if (files > 0) '$files ${files == 1 ? 'file' : 'files'}',
+                        if (files > 0)
+                          '$files ${files == 1 ? 'file' : 'files'}',
                       ].join(' · '),
                       style: GoogleFonts.outfit(
                         fontSize: 12,

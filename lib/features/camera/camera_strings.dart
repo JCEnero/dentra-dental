@@ -22,11 +22,10 @@ abstract final class CamText {
   static const done = 'Done';
 
   // ── Setup guide: frame ──────────────────────────────────────────
-  static const setupTitle = 'Connect your Dentra Cam';
   static const closeSetup = 'Close setup';
   static const rabiSays = 'Rabi says';
 
-  /// Names of the six steps, read out with the progress line.
+  /// Names of the six steps, read out with the step rail.
   static const stepNames = [
     'Welcome',
     'Bluetooth permission',
@@ -38,102 +37,75 @@ abstract final class CamText {
 
   // ── Step 1: welcome ─────────────────────────────────────────────
   static const welcomeTitle = "Let's connect your Dentra Cam.";
-  static const welcomeBody =
-      'It takes about two minutes. Have these ready before you start:';
-  static const welcomeItems = <(String, String)>[
-    (
-      'Camera charged and on',
-      'Top it up over USB-C if the battery is low.',
-    ),
-    (
-      'Bluetooth on',
-      'Your phone uses it to find the camera nearby.',
-    ),
-    (
-      'Your Wi-Fi name and password',
-      'The camera joins your home Wi-Fi, just like your phone.',
-    ),
-    (
-      'A 2.4 GHz Wi-Fi network',
-      'The camera works on 2.4 GHz. Most home routers offer 2.4 GHz and 5 GHz '
-          'together, so you are probably set. If you see two networks, pick '
-          'the one without "5G" in its name.',
-    ),
+  static const welcomeHighlight = 'Dentra Cam';
+  static const welcomeBody = 'Charge it, and have these ready.';
+  static const welcomeItems = [
+    'Camera charged',
+    'Bluetooth on',
+    'A 2.4 GHz Wi-Fi network and its password',
   ];
-  static const welcomeRabi =
-      "Hi, I'm Rabi. I'll walk you through it, one step at a time.";
   static const welcomeLater = 'Not now';
   static const welcomeStart = "Let's go";
 
   // ── Step 2: permissions ─────────────────────────────────────────
   static const permissionTitle = 'Allow Bluetooth';
-  static const permissionBody =
-      'Your phone finds the Dentra Cam over Bluetooth and uses it once to '
-      'send your Wi-Fi details. After that, the camera talks to your phone '
-      'over Wi-Fi.';
+  static const permissionHighlight = 'Bluetooth';
+  static const permissionBody = 'Your phone uses it to find the camera.';
   static const permissionLocationNote =
-      'On older Android phones, Bluetooth scanning also needs location '
-      "access. DENTRA doesn't use or keep your location.";
-  static const permissionAllow = 'Allow Bluetooth';
-  static const permissionChecking = 'Checking Bluetooth…';
+      "Older Android phones also ask for location. DENTRA doesn't use or "
+      'keep it.';
+  static const permissionAllow = 'Allow';
+  static const permissionChecking = 'Checking…';
   static const permissionGranted = 'Bluetooth is ready.';
-  static const permissionDeniedTitle = 'Bluetooth is blocked for DENTRA';
+  static const permissionDeniedTitle = 'Bluetooth is blocked';
   static const permissionDeniedAndroid =
-      'Open Settings, tap Permissions, and allow Nearby devices. On older '
-      'Android phones, allow Location too. Then come back here.';
+      'In Settings, open Permissions and allow Nearby devices. On older '
+      'Android phones, allow Location too.';
   static const permissionDeniedIos =
-      'Open Settings, find DENTRA, and turn on Bluetooth. Then come back here.';
+      'In Settings, open DENTRA and turn on Bluetooth.';
   static const openSettings = 'Open settings';
-  static const settingsUnavailable =
-      "Couldn't open settings. Open your phone's settings and find DENTRA.";
   static const bluetoothOffTitle = 'Bluetooth is off';
-  static const bluetoothOffAndroid =
-      'Turn on Bluetooth so your phone can find the camera.';
-  static const bluetoothOffIos =
-      'Open Control Center or Settings and turn on Bluetooth, then come back '
-      'here.';
+  static const bluetoothOffAndroid = 'Turn it on to find the camera.';
+  static const bluetoothOffIos = 'Turn it on in Control Center or Settings.';
   static const turnOnBluetooth = 'Turn on Bluetooth';
   static const checkAgain = 'Check again';
-  static const bluetoothUnsupported =
-      "This phone can't use Bluetooth Low Energy, so it can't set up the "
-      'camera.';
-  static const permissionRabi =
-      'Bluetooth is only for setup. Your photos travel over Wi-Fi.';
+  static const bluetoothUnsupportedTitle = "This phone can't set up the camera";
+  static const bluetoothUnsupported = 'It has no Bluetooth Low Energy.';
 
   // ── Step 3: turn on the camera ──────────────────────────────────
   static const powerTitle = 'Turn on the camera';
-  static const powerBody =
-      'Power on your Dentra Cam and keep it near your phone.';
-  static const powerResetTitle = 'Set it up before?';
-  static const powerResetBody =
-      'Hold the BOOT button for 5 seconds to reset it, so your phone can find '
-      'it again.';
-  static const powerRabi =
-      'Keep it close. Bluetooth works best within a few steps.';
+  static const powerHighlight = 'Turn on';
+  static const powerBody = 'Slide the switch on its side. Keep it near you.';
+  static const powerSwitchLabel = 'Power';
+  static const usbLabel = 'USB-C';
+  static const artCharging =
+      'How to charge the Dentra Cam: a USB-C cable plugs into its base.';
+  static const artPower =
+      'The Dentra Cam, with the power switch on its side lit up.';
+  static const powerReset =
+      'Set up before? Hold BOOT for 5 seconds to reset it.';
   static const powerReady = "It's on";
 
   // ── Step 4: find your camera ────────────────────────────────────
-  static const findTitle = 'Find your camera';
   static const findSearching = 'Looking for your Dentra Cam…';
-  static const findFoundHint = 'Tap your camera to connect.';
+  static const findPairHint = 'If your phone asks to pair, tap Pair.';
+  static const findFoundTitle = 'Tap your camera';
   static String findConnecting(String name) => 'Connecting to $name…';
   static String findConnectFailed(String name) =>
       "Couldn't connect to $name. Move closer and try again.";
-  static const findNothingTitle = 'No camera found yet';
+  static const findNothingTitle = 'No camera found';
   static const findTips = [
-    'Move your phone closer to the camera.',
-    'Turn the camera off and on again.',
-    'Set up before? Hold the BOOT button for 5 seconds to reset it.',
+    'Move your phone closer.',
+    'Turn the camera off and on.',
+    'Set up before? Hold BOOT for 5 seconds.',
   ];
+
   /// Android only: scanning finds nothing on Android 11 and older while
   /// Location is switched off.
-  static const findLocationTip =
-      'On older Android phones, switch Location on too. Bluetooth scanning '
-      'needs it there.';
+  static const findLocationTip = 'On older Android phones, turn on Location.';
   static const findAgain = 'Scan again';
-  static const findSearchingButton = 'Searching…';
-  static const findRabi =
-      'If your phone asks to pair with the Dentra Cam, tap Pair.';
+  static const searching = 'Searching…';
+  static const connectingShort = 'Connecting…';
   static String cameraSignal(int bars) => 'Signal $bars of 4';
 
   /// For cameras already on Wi-Fi, e.g. a development build that joins a
@@ -149,71 +121,60 @@ abstract final class CamText {
 
   // ── Step 5: choose Wi-Fi ────────────────────────────────────────
   static const wifiTitle = 'Choose your Wi-Fi';
-  static const wifiBody = 'These are the networks your camera can see.';
-  static const wifiLoading = 'Looking for Wi-Fi networks…';
-  static const wifiEmpty = "Your camera didn't find any Wi-Fi networks.";
-  static const wifiFailed = "Couldn't get the network list from your camera.";
+  static const wifiLoading = 'Looking for networks…';
+  static const wifiEmpty = 'No networks found.';
+  static const wifiFailed = "Couldn't get the network list.";
   static const wifiRescan = 'Rescan';
   static const wifiNotListed = "My network isn't listed";
   static const wifiNotListedTips = [
-    'The camera only sees 2.4 GHz Wi-Fi. If your router shows a separate '
-        '5 GHz network, look for its 2.4 GHz twin, or turn 2.4 GHz on in your '
-        'router settings.',
-    'Move the camera closer to your router, then tap Rescan.',
+    "Look for your 2.4 GHz network. The camera can't see 5 GHz.",
+    'Move the camera closer to your router, then rescan.',
   ];
   static const wifiSecured = 'Secured';
   static const wifiOpen = 'Open';
   static const wifiPasswordLabel = 'Wi-Fi password';
-  static String wifiPasswordFor(String ssid) => 'Password for $ssid';
-  static const showPassword = 'Show password';
-  static const hidePassword = 'Hide password';
-  static const wifiPasswordShort = 'Wi-Fi passwords have at least 8 characters.';
+  static const wifiPasswordBody = 'Enter its password.';
+  static const wifiPrivacy =
+      "Sent only to your camera. DENTRA doesn't keep it.";
+  static const wifiPasswordShort =
+      'Wi-Fi passwords have at least 8 characters.';
   static const wifiOpenNote =
-      "This network has no password. Anyone nearby can join it, so a secured "
-      'network is safer.';
+      'No password needed. Anyone nearby can join this network.';
   static const wifiConnect = 'Connect';
   static const wifiChooseAnother = 'Choose another network';
-  static const wifiRabi =
-      "Your password goes straight to your camera. DENTRA doesn't keep it.";
+  static const wifiOther = 'Other network';
 
   // ── Step 6: connecting ──────────────────────────────────────────
-  static const connectTitle = 'Connecting your camera';
   static const stageSending = 'Sending Wi-Fi details';
   static const stageJoining = 'Camera joining Wi-Fi';
   static const stageRestarting = 'Camera restarting';
-  static const stageFinding = 'Finding camera on your network';
-  static const stageDone = 'Connected!';
+  static const stageFinding = 'Finding your camera';
+  static const stageDone = 'Connected';
+  static const connectHint = 'Up to a minute. Keep the camera on.';
 
+  static const errorTitle = "That didn't work";
   static const errorWrongPassword =
-      "That password didn't work. Please check it and try again.";
+      "That password didn't work. Check it and try again.";
   static const errorSsidNotFound =
-      "The camera couldn't find that network. Move closer to your router, "
-      "and make sure it's 2.4 GHz.";
-  static const errorTimeout =
-      'The camera took too long to connect. Let\'s try again.';
+      "The camera couldn't find that network. Move it closer to your router.";
+  static const errorTimeout = 'The camera took too long to connect.';
   static String errorNotOnNetwork(String? ssid) => ssid == null
-      ? 'Make sure your phone is connected to the same Wi-Fi as the camera.'
-      : 'Make sure your phone is connected to the same Wi-Fi ($ssid) as the '
-          'camera.';
+      ? 'Connect your phone to the same Wi-Fi as the camera.'
+      : 'Connect your phone to the same Wi-Fi as the camera ($ssid).';
+
   /// iPhone only, after [errorNotOnNetwork]: a denied Local Network
   /// permission looks the same to the app.
   static const localNetworkHintIos =
-      'Also check that Local Network is on in Settings > DENTRA.';
-  static const errorLinkLost =
-      'We lost touch with the camera before it finished. Keep it close and '
-      "let's try again.";
-  static const errorFailed =
-      "Something went wrong while connecting. Let's try again.";
+      'Also turn on Local Network in Settings > DENTRA.';
+  static const errorLinkLost = 'Lost touch with the camera. Keep it close.';
+  static const errorFailed = "Couldn't connect.";
   static const startOver = 'Start over';
-  static const connectRabi = 'This can take up to a minute. Keep the camera on.';
 
   // Success
   static const successTitle = 'Your Dentra Cam is ready!';
-  static String successBody(String? ssid) => ssid == null
-      ? "Here's what it sees right now."
-      : "It's on $ssid. Here's what it sees right now.";
+  static String successBody(String? ssid) =>
+      ssid == null ? 'This is its live view.' : 'Connected to $ssid.';
   static const startCapturing = 'Start capturing';
-  static const successRabi = "All set! You won't need to do this again.";
 
   // ── Live camera ─────────────────────────────────────────────────
   static const captureScreen = 'Live camera';
@@ -230,8 +191,6 @@ abstract final class CamText {
       'been on a while, press its BOOT button once to connect it again.';
   static const retry = 'Retry';
   static const checkDevice = 'Check device';
-  static const statusConnected = 'Connected';
-  static const statusOffline = 'Not connected';
   static String signalWord(int bars) => switch (bars) {
         >= 4 => 'Strong',
         3 => 'Good',
@@ -242,7 +201,6 @@ abstract final class CamText {
         connected ? 'Camera connected' : 'Camera not connected',
         if (bars != null) 'Wi-Fi signal ${signalWord(bars).toLowerCase()}',
       ].join(', ');
-  static String areaProgress(int n, int total) => '$n of $total';
   static const skip = 'Skip';
   static String skipArea(String area) => 'Skip $area';
   static String takePhoto(String area) => 'Take photo of $area';
@@ -339,9 +297,8 @@ abstract final class CamText {
   static const choiceTitle = 'How will you take your photos?';
   static const choiceSubtitle = 'You can choose again at your next scan.';
   static const choiceCam = 'Dentra Cam';
-  static String choiceCamBody(String? name) => name == null
-      ? "We'll help you connect it first."
-      : 'Use $name.';
+  static String choiceCamBody(String? name) =>
+      name == null ? "We'll help you connect it first." : 'Use $name.';
   // Only where the camera can't be used at all (desktop builds).
   static const choiceCamAppOnly =
       'Works in the DENTRA phone app and on dentrascan.site.';
@@ -359,82 +316,54 @@ abstract final class CamText {
     'Connect',
     'Ready',
   ];
-  static const hotspotWelcomeItems = <(String, String)>[
-    (
-      'Camera charged and on',
-      'Top it up over USB-C if the battery is low.',
-    ),
-    (
-      'Your Wi-Fi name and password',
-      'The camera joins your home Wi-Fi, just like your phone.',
-    ),
-    (
-      'A 2.4 GHz Wi-Fi network',
-      'The camera works on 2.4 GHz. Most home routers offer 2.4 GHz and 5 GHz '
-          'together, so you are probably set. If you see two networks, pick '
-          'the one without "5G" in its name.',
-    ),
-    (
-      'This page open',
-      "You'll leave it for a moment to give the camera your Wi-Fi. It moves "
-          'on by itself when you come back.',
-    ),
+  static const hotspotWelcomeItems = [
+    'Camera charged',
+    'A 2.4 GHz Wi-Fi network and its password',
+    'This page kept open',
   ];
-  static const hotspotWelcomeRabi =
-      "Hi, I'm Rabi. No Bluetooth needed here: the camera makes its own Wi-Fi "
-      'for setup.';
 
   static const hotspotPowerBody =
-      'Power on your Dentra Cam. A new camera starts in setup mode by itself.';
-  static const hotspotPowerResetBody =
-      'Hold the BOOT button for 5 seconds. It restarts in setup mode.';
-  static const hotspotPowerRabi =
-      'In setup mode the camera makes its own Wi-Fi network, named "Dentra '
-      'Cam" and four letters or numbers.';
+      'Slide the switch on its side. It starts in setup mode.';
+  static const hotspotPowerReset = 'Set up before? Hold BOOT for 5 seconds.';
 
   static const hotspotJoinTitle = 'Give the camera your Wi-Fi';
+  static const hotspotJoinHighlight = 'your Wi-Fi';
+  static const artHotspot =
+      'The Dentra Cam sends out its own Wi-Fi, named Dentra Cam and four '
+      'characters.';
   static const hotspotCodeLabel = 'Your code';
-  static const hotspotCodeHint = 'You type this on the camera\'s setup page. '
-      'It works for 15 minutes.';
+  static const hotspotCodeTime = '15 min';
+  static const hotspotCodeHint = 'Works for 15 minutes.';
+  static const hotspotCopy = 'Copy';
   static const hotspotCopyCode = 'Copy code';
   static const hotspotCodeCopied = 'Code copied';
-  static const hotspotSteps = <(String, String)>[
+
+  /// What to do away from this page, in order: the step, and a line for
+  /// when it doesn't go to plan.
+  static const hotspotSteps = <(String, String?)>[
     (
-      "Join the camera's Wi-Fi",
-      'Open your Wi-Fi settings and join the network named "Dentra Cam" and '
-          'four letters or numbers.',
+      'Join the Wi-Fi named "Dentra Cam" and four characters.',
+      'If your phone says it has no internet, stay connected.',
     ),
     (
-      'Wait for the setup page',
-      "It opens by itself. If it doesn't, open your browser and go to "
-          '192.168.4.1.',
+      'A setup page opens.',
+      "If it doesn't, go to 192.168.4.1 in your browser.",
     ),
-    (
-      'Pick your home Wi-Fi',
-      'Type its password and the code above, then tap Connect.',
-    ),
-    (
-      'Come back to this page',
-      'Your phone returns to your home Wi-Fi by itself, and this page moves '
-          'on once the camera is linked.',
-    ),
+    ('Pick your home Wi-Fi. Enter its password and this code.', null),
+    ('Tap Connect, then come back here.', null),
   ];
-  static const hotspotGettingCode = 'Getting a code…';
-  static const hotspotWaiting = 'Waiting for your Dentra Cam…';
-  static const hotspotWaitingButton = 'Waiting for your camera';
-  static const hotspotSlowTitle = 'Still waiting';
+  static const hotspotGettingCode = 'Getting code…';
+  static const hotspotWaiting = 'Waiting…';
+  static const hotspotWaitingFor = 'Waiting for your Dentra Cam';
+  static const hotspotSlowTitle = 'Still waiting?';
   static const hotspotSlowBody =
-      "If the setup page said something didn't work, join the camera's Wi-Fi "
-      'again to see it and try once more. The camera needs a 2.4 GHz network.';
-  static const hotspotExpiredTitle = 'This code has expired';
+      "Join the camera's Wi-Fi again and check its setup page. The camera "
+      'needs a 2.4 GHz network.';
+  static const hotspotExpiredTitle = 'This code expired';
   static const hotspotExpiredBody =
-      "Get a new one, then type it on the camera's setup page.";
-  static const hotspotCodeFailed =
-      "Couldn't get a code. Check your internet connection and try again.";
-  static const hotspotNewCode = 'Get a new code';
-  static const hotspotJoinRabi =
-      "Your phone may say the camera's Wi-Fi has no internet. That's expected: "
-      "it's only for setup.";
-  static const hotspotSuccessBody =
-      "It's linked to your account. Use it here whenever it's on.";
+      'Get a new one and enter it on the setup page.';
+  static const hotspotCodeFailedTitle = "Couldn't get a code";
+  static const hotspotCodeFailed = 'Check your internet and try again.';
+  static const hotspotNewCode = 'New code';
+  static const hotspotSuccessBody = 'Linked to your account.';
 }

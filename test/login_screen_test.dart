@@ -2,12 +2,16 @@ import 'package:dentra_mobile/features/auth/services/auth_service.dart';
 import 'package:dentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dentra_mobile/features/auth/screens/login_screen.dart';
-import 'package:dentra_mobile/features/auth/screens/sign_in_loading_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/reset_password_screen.dart';
+import 'package:dentra_mobile/features/dental_profile/providers/dental_profile_providers.dart';
+import 'package:dentra_mobile/features/splash/screens/session_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/fake_dental_profile_repository.dart';
 
 /// Pumps through route transitions and the stub service's simulated latency.
 Future<void> settle(WidgetTester tester, {int steps = 12}) async {
@@ -155,15 +159,20 @@ void main() {
     await tester.tap(_logIn);
     await settle(tester, steps: 20);
 
-    expect(find.byType(SignInLoadingScreen), findsOneWidget);
-    expect(find.text('HOME'), findsNothing);
-
-    // The loader leaves on its own; wait out its exit and the route fade.
-    await tester.pumpAndSettle();
-
-    expect(find.text('HOME'), findsOneWidget);
-    expect(find.byType(SignInLoadingScreen), findsNothing);
+    expect(find.byType(SessionLoader), findsOneWidget);
     expect(find.byType(LoginScreen), findsNothing);
+
+    // Still waiting on the dental profile: well past any animation, the
+    // app must not show.
+    await settle(tester, steps: 60);
+    expect(find.text('HOME'), findsNothing);
+    expect(find.text('Loading your dental profile…'), findsOneWidget);
+
+    status.complete();
+    await settle(tester, steps: 60);
+    expect(find.text('HOME'), findsOneWidget);
+    expect(find.byType(LoginScreen), findsNothing);
+    expect(find.byTooltip('Back'), findsNothing);
   });
 
   testWidgets('Sign up opens the registration screen', (tester) async {
@@ -189,9 +198,12 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'jane@example.com');
     await tester.tap(find.bySemanticsLabel('Send code'));
     await settle(tester, steps: 4);
-    expect(find.text('Reset password'), findsNothing);
+    // The dialog stays up while the code is sent, then hands over.
+    expect(find.text('Reset password'), findsOneWidget);
 
-    await settle(tester, steps: 10);
+    await settle(tester, steps: 14);
+    expect(find.text("Enter your email and we'll send you a 6-digit code."),
+        findsNothing);
     expect(find.byType(ResetPasswordScreen), findsOneWidget);
   });
 

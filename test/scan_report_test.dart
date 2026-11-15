@@ -189,6 +189,15 @@ Future<void> _pumpReport(
   }
 }
 
+/// Opens a closed row under "More about this scan".
+Future<void> _openFold(WidgetTester tester, String title) async {
+  final row = find.text(title).first;
+  await tester.ensureVisible(row);
+  await tester.pump();
+  await tester.tap(row);
+  await settleFrames(tester);
+}
+
 Future<void> settleFrames(WidgetTester tester) async {
   for (var i = 0; i < 6; i++) {
     await tester.pump(const Duration(milliseconds: 100));
@@ -303,7 +312,8 @@ void main() {
   });
 
   group('the report', () {
-    test('the headline follows the most pressing advice, never the note on braces',
+    test(
+        'the headline follows the most pressing advice, never the note on braces',
         () {
       String headline(List<ScreeningRecommendation> recs) =>
           ScreeningReport(_analysis(recs: recs), _allViews).headline;
@@ -432,7 +442,9 @@ void main() {
     test('questions and tips follow what was seen', () {
       final clear = ScreeningReport(_analysis(), _allViews);
       final back = ScreeningReport(
-        _analysis(findings: [_sign('left', bbox: const [0.3, 0.1, 0.1, 0.1])]),
+        _analysis(findings: [
+          _sign('left', bbox: const [0.3, 0.1, 0.1, 0.1])
+        ]),
         _allViews,
       );
       expect(back.dentistQuestions.first, contains('decay, a stain'));
@@ -441,14 +453,18 @@ void main() {
       expect(clear.careTips, hasLength(1));
     });
 
-    test('the summary for a dentist says what it is and what it can\'t read', () {
+    test('the summary for a dentist says what it is and what it can\'t read',
+        () {
       final text = ScreeningReport(
-        _analysis(findings: [_sign('left', bbox: const [0.3, 0.1, 0.1, 0.1])]),
+        _analysis(findings: [
+          _sign('left', bbox: const [0.3, 0.1, 0.1, 0.1])
+        ]),
         _allViews,
       ).summaryForDentist('November 2, 2026');
       expect(text, contains('November 2, 2026'));
       expect(text, contains('Not a diagnosis'));
-      expect(text, contains('Upper left back, strong sign (90% model confidence)'));
+      expect(text,
+          contains('Upper left back, strong sign (90% model confidence)'));
       expect(text, contains('Not read by this check'));
     });
 
@@ -494,8 +510,7 @@ void main() {
     });
 
     test('a view not taken leaves its surfaces without a photo', () {
-      final coverage =
-          ScreeningReport(_analysis(), const ['front']).coverage!;
+      final coverage = ScreeningReport(_analysis(), const ['front']).coverage!;
       expect(
         coverage[(ToothSurface.outer, MouthArea.upperFront)],
         AreaState.clear,
@@ -512,7 +527,8 @@ void main() {
   });
 
   group('over time', () {
-    final upperFront = _sign('upper-occlusal', bbox: const [0.45, 0.1, 0.1, 0.1]);
+    final upperFront =
+        _sign('upper-occlusal', bbox: const [0.45, 0.1, 0.1, 0.1]);
 
     test('compares with the scan before, newest last', () {
       final trend = ScanTrend.of([
@@ -527,7 +543,8 @@ void main() {
     test('an area not read last time is neither new nor gone', () {
       final trend = ScanTrend.of([
         _session('b', DateTime(2026, 10), _analysis(findings: [upperFront])),
-        _session('a', DateTime(2026, 9), _analysis(), views: const ['lower-occlusal']),
+        _session('a', DateTime(2026, 9), _analysis(),
+            views: const ['lower-occlusal']),
       ]);
       expect(trend.newAreas, isEmpty);
     });
@@ -554,7 +571,8 @@ void main() {
       expect(trend.repeating, {MouthArea.upperFront: 3});
     });
 
-    test('a clear scan breaks the run; a scan that didn\'t read it doesn\'t', () {
+    test('a clear scan breaks the run; a scan that didn\'t read it doesn\'t',
+        () {
       final trend = ScanTrend.of([
         _session('d', DateTime(2026, 12), _analysis(findings: [upperFront])),
         _session('c', DateTime(2026, 11), _analysis(findings: [upperFront])),
@@ -566,7 +584,8 @@ void main() {
       final skipped = ScanTrend.of([
         _session('d', DateTime(2026, 12), _analysis(findings: [upperFront])),
         _session('c', DateTime(2026, 11), _analysis(findings: [upperFront])),
-        _session('b', DateTime(2026, 10), _analysis(), views: const ['lower-occlusal']),
+        _session('b', DateTime(2026, 10), _analysis(),
+            views: const ['lower-occlusal']),
         _session('a', DateTime(2026, 9), _analysis(findings: [upperFront])),
       ]);
       expect(skipped.repeating, {MouthArea.upperFront: 3});
@@ -589,9 +608,11 @@ void main() {
       final trend = ScanTrend.of([
         _session('e', DateTime(2026, 12), _analysis()),
         _session('d', DateTime(2026, 11), null),
-        _session('c', DateTime(2026, 10), _analysis(status: AnalysisStatus.failed)),
+        _session(
+            'c', DateTime(2026, 10), _analysis(status: AnalysisStatus.failed)),
         _session('b', DateTime(2026, 9), _analysis(model: 'det-none+x')),
-        _session('a', DateTime(2026, 8), _analysis(), views: const ['upper-lingual']),
+        _session('a', DateTime(2026, 8), _analysis(),
+            views: const ['upper-lingual']),
       ]);
       expect(trend.points.map((p) => p.sessionId), ['e']);
       expect(trend.hasHistory, isFalse);
@@ -622,12 +643,14 @@ void main() {
 
   group('the marked photo', () {
     test('shows all a box can hold of the photo until told to go closer', () {
-      final view = spotViewport(const Size(400, 300), const Size(800, 600), null);
+      final view =
+          spotViewport(const Size(400, 300), const Size(800, 600), null);
       expect(view, const Rect.fromLTWH(0, 0, 1, 1));
     });
 
     test('crops to the shape of the box', () {
-      final view = spotViewport(const Size(300, 300), const Size(800, 400), null);
+      final view =
+          spotViewport(const Size(300, 300), const Size(800, 400), null);
       expect(view.width, closeTo(0.5, 1e-9));
       expect(view.height, closeTo(1, 1e-9));
     });
@@ -658,7 +681,8 @@ void main() {
         ]),
         _allViews,
       );
-      final marks = markersIn(report.spots, 'left', selected: report.spots.first);
+      final marks =
+          markersIn(report.spots, 'left', selected: report.spots.first);
       expect(marks, hasLength(1));
       expect(marks.single.selected, isTrue);
     });
@@ -675,7 +699,9 @@ void main() {
   group('saved results', () {
     test('marks and faint signs survive a save and a reload', () {
       final analysis = _analysis(
-        findings: [_sign('left', bbox: const [0.1, 0.2, 0.3, 0.4])],
+        findings: [
+          _sign('left', bbox: const [0.1, 0.2, 0.3, 0.4])
+        ],
         faint: [_sign('right', confidence: 0.4)],
       );
       final back = ScreeningAnalysis.fromJson(
@@ -711,10 +737,13 @@ void main() {
       _analysis(
         findings: [
           _sign('upper-occlusal', bbox: const [0.7, 0.6, 0.15, 0.2]),
-          _sign('upper-occlusal', confidence: 0.7, bbox: const [0.1, 0.6, 0.15, 0.2]),
+          _sign('upper-occlusal',
+              confidence: 0.7, bbox: const [0.1, 0.6, 0.15, 0.2]),
           _sign('back-left', bbox: const [0.2, 0.7, 0.2, 0.2]),
         ],
-        faint: [_sign('front', confidence: 0.4, bbox: const [0.4, 0.2, 0.1, 0.2])],
+        faint: [
+          _sign('front', confidence: 0.4, bbox: const [0.4, 0.2, 0.1, 0.2])
+        ],
         recs: [_rec('soon'), _rec('routine', code: 'braces_seen')],
       ),
       _allViews,
@@ -759,7 +788,8 @@ void main() {
       });
     }
 
-    testWidgets('leads with the result, the scale and the figures', (tester) async {
+    testWidgets('leads with the result, the scale and the figures',
+        (tester) async {
       await _pumpReport(tester, busy, history: history, sessionId: 'b');
       expect(find.text('Book a dental visit soon'), findsOneWidget);
       expect(find.text('3 possible signs of decay'), findsOneWidget);
@@ -800,7 +830,8 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('says what each strength means, with no figures', (tester) async {
+    testWidgets('says what each strength means, with no figures',
+        (tester) async {
       expect(signMeaning.keys, unorderedEquals(SignStrength.values));
       await _pumpReport(tester, busy);
       expect(
@@ -818,7 +849,8 @@ void main() {
       );
     });
 
-    testWidgets('says what dental work it saw, apart from signs', (tester) async {
+    testWidgets('says what dental work it saw, apart from signs',
+        (tester) async {
       await _pumpReport(
         tester,
         ScreeningReport(
@@ -893,7 +925,10 @@ void main() {
       expect(find.byType(SignsSection), findsNothing);
       // Still has something to say: keep the check-ups going.
       expect(find.text('Keep your regular check-ups'), findsWidgets);
-      // The first scan: nothing to compare with yet.
+      // The first scan: nothing to compare with yet, said on the closed row.
+      expect(find.text('Your first scan. Scan again to see changes.'),
+          findsOneWidget);
+      await _openFold(tester, 'Over time');
       expect(find.text('This is your starting point'), findsOneWidget);
     });
 
@@ -930,6 +965,11 @@ void main() {
 
     testWidgets('names what it can\'t read', (tester) async {
       await _pumpReport(tester, ScreeningReport(_analysis(), _allViews));
+      // Said on the closed row, and in full once it's opened.
+      expect(find.textContaining("Plaque, tartar and gums aren't read yet"),
+          findsOneWidget);
+      await _openFold(tester, 'What the check looked for');
+      await _openFold(tester, 'What this scan covered');
       expect(find.text('Plaque and tartar'), findsOneWidget);
       expect(find.text('Gum problems'), findsOneWidget);
       expect(find.text('Not read'), findsNWidgets(2));
@@ -941,7 +981,8 @@ void main() {
       expect(find.textContaining(RegExp(r'\b[Tt]ooth \d')), findsNothing);
     });
 
-    testWidgets('shows the change since last scan, and the chart stays in bounds',
+    testWidgets(
+        'shows the change since last scan, and the chart stays in bounds',
         (tester) async {
       final many = [
         for (var i = 0; i < 8; i++)
@@ -971,6 +1012,7 @@ void main() {
     testWidgets('tapping a past scan on the chart shows its numbers',
         (tester) async {
       await _pumpReport(tester, busy, history: history, sessionId: 'b');
+      await _openFold(tester, 'Over time');
       expect(find.text('Nov 2, 2026 · 3 signs · 1 faint'), findsOneWidget);
       final past = find.bySemanticsLabel('Oct 2, 2026 · 0 signs');
       await tester.ensureVisible(past);
@@ -989,15 +1031,18 @@ void main() {
   });
 
   group('the history list', () {
-    testWidgets('shows the result beside a read scan, and nothing beside others',
+    testWidgets(
+        'shows the result beside a read scan, and nothing beside others',
         (tester) async {
-      Future<void> card(ScreeningSession s) => tester.pumpWidget(MaterialApp(
-            home: Scaffold(
-              body: ScreeningHistoryCard(
-                session: s,
-                isLatest: true,
-                alternate: false,
-                onTap: () {},
+      Future<void> card(ScreeningSession s) => tester.pumpWidget(ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: ScreeningHistoryCard(
+                  session: s,
+                  isLatest: true,
+                  alternate: false,
+                  onTap: () {},
+                ),
               ),
             ),
           ));
@@ -1023,7 +1068,8 @@ void main() {
   });
 
   group('home', () {
-    Future<void> pump(WidgetTester tester, List<ScreeningSession> sessions) async {
+    Future<void> pump(
+        WidgetTester tester, List<ScreeningSession> sessions) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [
           screeningRepositoryProvider.overrideWithValue(_Repo(sessions)),
@@ -1050,7 +1096,8 @@ void main() {
           DateTime.now(),
           _analysis(findings: [_sign('left')], recs: [_rec('soon')]),
         ),
-        _session('a', DateTime.now().subtract(const Duration(days: 40)), _analysis()),
+        _session('a', DateTime.now().subtract(const Duration(days: 40)),
+            _analysis()),
       ]);
       expect(find.text('LATEST SCAN'), findsOneWidget);
       expect(find.text('Book a dental visit soon'), findsOneWidget);
@@ -1060,7 +1107,8 @@ void main() {
 
     testWidgets('suggests scanning again after a while', (tester) async {
       await pump(tester, [
-        _session('a', DateTime.now().subtract(const Duration(days: 40)), _analysis()),
+        _session('a', DateTime.now().subtract(const Duration(days: 40)),
+            _analysis()),
       ]);
       expect(find.textContaining('scan again'), findsOneWidget);
     });
@@ -1082,7 +1130,8 @@ void main() {
       }
     }
 
-    testWidgets('shows the same report as right after the scan', (tester) async {
+    testWidgets('shows the same report as right after the scan',
+        (tester) async {
       await pump(
         tester,
         _session(
@@ -1097,13 +1146,15 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('with no analysis it keeps to what was recorded', (tester) async {
+    testWidgets('with no analysis it keeps to what was recorded',
+        (tester) async {
       await pump(tester, _session('a', DateTime(2026, 11, 2), null));
       expect(find.byType(Mouth3D), findsNothing);
       expect(find.textContaining('No analysis was run'), findsOneWidget);
     });
 
-    testWidgets('a service with no model behind it shows no result', (tester) async {
+    testWidgets('a service with no model behind it shows no result',
+        (tester) async {
       await pump(
         tester,
         _session('a', DateTime(2026, 11, 2), _analysis(model: 'det-none+x')),
