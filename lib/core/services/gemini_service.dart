@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
@@ -57,6 +58,11 @@ Guidelines:
   void close() => _client.close();
 
   static String _readKey() {
+    // Everything in the bundled `.env` ships inside the app and website, so
+    // a release build never uses a Gemini key from it: Rabi goes through
+    // the Dentra API, which keeps the key on the server. Direct mode is for
+    // local debug builds only.
+    if (kReleaseMode) return '';
     try {
       return dotenv.env['GEMINI_API_KEY'] ?? '';
     } catch (_) {

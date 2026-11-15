@@ -20,7 +20,7 @@ const ROUTES = {
   '/relay/viewer': '/api/cam/ws',
 };
 
-export async function onRequest({ request }) {
+export async function onRequest({ request, env }) {
   const path = ROUTES[new URL(request.url).pathname];
   if (!path) return new Response('Not found', { status: 404 });
 
@@ -35,6 +35,17 @@ export async function onRequest({ request }) {
   const headers = new Headers(request.headers);
   headers.delete('content-length');
   headers.delete('host');
+  // Every camera reaches the API from Cloudflare's addresses, so name the
+  // camera's own IP for the API's rate limits. The API only believes it
+  // alongside the shared secret (a Pages secret, RELAY_SECRET), and any
+  // copy a caller sent is dropped first.
+  headers.delete('x-dentra-relay-key');
+  headers.delete('x-dentra-client-ip');
+  const clientIp = request.headers.get('cf-connecting-ip');
+  if (env?.RELAY_SECRET && clientIp) {
+    headers.set('x-dentra-relay-key', env.RELAY_SECRET);
+    headers.set('x-dentra-client-ip', clientIp);
+  }
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
   return fetch(API + path, {
     method: request.method,

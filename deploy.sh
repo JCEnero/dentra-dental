@@ -20,6 +20,13 @@ if ! grep -qE '^MAPS_API_KEY=.+' .env 2>/dev/null; then
   exit 1
 fi
 
+# The build bundles .env into the public website: a server-side key in it
+# would be readable by anyone. Rabi's Gemini key lives on the API only.
+if grep -qE '^(GEMINI_API_KEY|JWT_ACCESS_SECRET|SMTP_PASS|INFERENCE_SECRET|RELAY_SECRET|S3_SECRET_ACCESS_KEY|DATABASE_URL)=.+' .env; then
+  echo "error: .env holds a server-side secret; remove it before deploying" >&2
+  exit 1
+fi
+
 echo "==> Building web release"
 flutter build web --release
 
