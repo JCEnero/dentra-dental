@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dentra_mobile/features/auth/services/auth_service.dart';
 import 'package:dentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -148,12 +150,39 @@ void main() {
     await tester.enterText(_password, 'secret123');
     await tester.tap(_logIn);
     await settle(tester, steps: 20);
-    expect(find.byType(SignInLoadingScreen), findsOneWidget);
+    // The corrected password signs in: the stack is replaced with '/home'.
+    expect(find.text('HOME'), findsOneWidget);
+    expect(find.byType(LoginScreen), findsNothing);
   });
 
-  testWidgets('successful login shows the loader, then replaces the stack '
-      'with /home', (tester) async {
-    await pumpLogin(tester);
+  testWidgets('successful login shows the loader, which lets the user in '
+      'only once their data has loaded', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    // A returning user whose onboarding status answers only when released.
+    final status = Completer<void>();
+    final repo = FakeDentalProfileRepository.completed()..holdStatus = status;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          // Demo auth only via this explicit override (the app fails closed).
+          authServiceProvider.overrideWith((ref) => AuthService()),
+          dentalProfileRepositoryProvider.overrideWithValue(repo),
+        ],
+        child: MaterialApp(
+          home: const LoginScreen(),
+          // The real '/home' is the loader, in front of the app.
+          routes: {
+            '/home': (_) =>
+                const SessionLoader(app: Scaffold(body: Text('HOME'))),
+          },
+        ),
+      ),
+    );
+    await settle(tester, steps: 6);
+
     await tester.enterText(_email, 'jane@example.com');
     await tester.enterText(_password, 'secret123');
     await tester.tap(_logIn);

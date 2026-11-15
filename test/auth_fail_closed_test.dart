@@ -7,7 +7,8 @@ void main() {
   test('no backend configured: sign-in, sign-up and code checks fail closed',
       () async {
     final auth = AuthService.fromEnvironment();
-    expect(auth.usesBackend, isFalse);
+    // No backend, so no Google sign-in either.
+    expect(auth.googleSignInAvailable, isFalse);
 
     final signIn = await auth.signInWithEmail(
       email: 'jane@example.com',
