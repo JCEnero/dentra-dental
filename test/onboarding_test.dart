@@ -58,7 +58,7 @@ void main() {
 
   test('content defines four slides, one benefit each', () {
     expect(onboardingSlides, hasLength(4));
-    expect(_headline(0), 'Meet DENTRA');
+    expect(_headline(0), 'Meet Dentra');
     expect(_headline(1), 'Scan Every Side');
     expect(_headline(2), 'See What Needs Care');
     expect(_headline(3), 'Track Your Smile');

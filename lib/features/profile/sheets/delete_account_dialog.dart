@@ -38,7 +38,7 @@ class _DeleteAccountDialog extends ConsumerStatefulWidget {
 class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
   static const _confirmWord = 'DELETE';
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
 
   final _wordCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();

@@ -46,7 +46,7 @@ Future<void> downloadScreeningReport({
   );
   await Printing.sharePdf(
     bytes: bytes,
-    filename: 'DENTRA-screening-${DentraDates.isoDate(patient.at)}.pdf',
+    filename: 'Dentra-screening-${DentraDates.isoDate(patient.at)}.pdf',
   );
 }
 

@@ -214,7 +214,7 @@ const Map<DentalQuestionId, DentalQuestion> dentalQuestions = {
   ),
   DentalQuestionId.additionalInformation: DentalQuestion(
     id: DentalQuestionId.additionalInformation,
-    title: 'Is there anything else you’d like DENTRA to know?',
+    title: 'Is there anything else you’d like Dentra to know?',
     reviewLabel: 'Anything else',
     optional: true,
     detail: DentalDetailField(

@@ -10,7 +10,7 @@ abstract class NotificationEvents {
   static AppNotification welcome() => AppNotification(
         id: 'welcome',
         category: NotificationCategory.system,
-        title: 'Welcome to DENTRA',
+        title: 'Welcome to Dentra',
         body: 'Scan results, account changes and security alerts will '
             'appear here.',
         createdAt: DateTime.now(),

@@ -113,10 +113,17 @@ class ProfileNotifier extends AsyncNotifier<UserProfile> {
     final result =
         await ref.read(authServiceProvider).deleteAccount(code: code);
     if (result.success) {
-      await _service.deleteProfile(userId);
-      // Screening history is keyed by the same user id. On the backend
-      // this is an ON DELETE CASCADE from users.
-      await ref.read(screeningRepositoryProvider).deleteAll(userId);
+      // The account is already gone on the server, so nothing below may
+      // turn this into a failure: cleanup errors are swallowed.
+      try {
+        await _service.deleteProfile(userId);
+        // Screening history: ON DELETE CASCADE on the backend. Only the
+        // on-device store needs clearing; an API call here would run
+        // after the session ended and fail with 401.
+        if (ref.read(apiClientProvider) == null) {
+          await ref.read(screeningRepositoryProvider).deleteAll(userId);
+        }
+      } catch (_) {}
       ref.read(screeningImageCacheProvider.notifier).clear();
       ref.invalidate(screeningSessionsProvider);
       try {

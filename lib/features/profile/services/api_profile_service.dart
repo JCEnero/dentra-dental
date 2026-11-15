@@ -14,7 +14,7 @@ class ApiProfileService implements ProfileService {
   final ApiClient _api;
 
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
 
   @override
   Future<UserProfile?> fetchProfile(String userId) async {

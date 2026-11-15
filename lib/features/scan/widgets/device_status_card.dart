@@ -54,7 +54,7 @@ class DeviceStatusCard extends StatelessWidget {
     return Semantics(
       container: true,
       liveRegion: true,
-      label: 'DENTRA device. ${copy.title}. ${copy.body}',
+      label: 'Dentra device. ${copy.title}. ${copy.body}',
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: GlassBlur(

@@ -510,7 +510,7 @@ class _SessionLoaderState extends ConsumerState<SessionLoader>
       title = Text.rich(
         TextSpan(
           text: name.isEmpty
-              ? (_returning ? hello : 'Welcome to DENTRA')
+              ? (_returning ? hello : 'Welcome to Dentra')
               : '$hello, ',
           children: [
             if (name.isNotEmpty)
@@ -639,7 +639,7 @@ class _SessionLoaderState extends ConsumerState<SessionLoader>
           liveRegion: true,
           child: Text(
             unreachable
-                ? "We couldn't reach DENTRA"
+                ? "We couldn't reach Dentra"
                 : "We couldn't load your account",
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(

@@ -52,7 +52,7 @@ abstract final class CamText {
   static const permissionHighlight = 'Bluetooth';
   static const permissionBody = 'Your phone uses it to find the camera.';
   static const permissionLocationNote =
-      "Older Android phones also ask for location. DENTRA doesn't use or "
+      "Older Android phones also ask for location. Dentra doesn't use or "
       'keep it.';
   static const permissionAllow = 'Allow';
   static const permissionChecking = 'Checking…';
@@ -62,7 +62,7 @@ abstract final class CamText {
       'In Settings, open Permissions and allow Nearby devices. On older '
       'Android phones, allow Location too.';
   static const permissionDeniedIos =
-      'In Settings, open DENTRA and turn on Bluetooth.';
+      'In Settings, open Dentra and turn on Bluetooth.';
   static const openSettings = 'Open settings';
   static const bluetoothOffTitle = 'Bluetooth is off';
   static const bluetoothOffAndroid = 'Turn it on to find the camera.';
@@ -135,7 +135,7 @@ abstract final class CamText {
   static const wifiPasswordLabel = 'Wi-Fi password';
   static const wifiPasswordBody = 'Enter its password.';
   static const wifiPrivacy =
-      "Sent only to your camera. DENTRA doesn't keep it.";
+      "Sent only to your camera. Dentra doesn't keep it.";
   static const wifiPasswordShort =
       'Wi-Fi passwords have at least 8 characters.';
   static const wifiOpenNote =
@@ -165,7 +165,7 @@ abstract final class CamText {
   /// iPhone only, after [errorNotOnNetwork]: a denied Local Network
   /// permission looks the same to the app.
   static const localNetworkHintIos =
-      'Also turn on Local Network in Settings > DENTRA.';
+      'Also turn on Local Network in Settings > Dentra.';
   static const errorLinkLost = 'Lost touch with the camera. Keep it close.';
   static const errorFailed = "Couldn't connect.";
   static const startOver = 'Start over';
@@ -301,7 +301,7 @@ abstract final class CamText {
       name == null ? "We'll help you connect it first." : 'Use $name.';
   // Only where the camera can't be used at all (desktop builds).
   static const choiceCamAppOnly =
-      'Works in the DENTRA phone app and on dentrascan.site.';
+      'Works in the Dentra phone app and on dentrascan.site.';
   static const choiceOwn = 'My own camera';
   static const choiceOwnBody = 'No device? Take the photos with your phone.';
   static const choiceOwnPhotos = 'No device? Choose photos you already have.';

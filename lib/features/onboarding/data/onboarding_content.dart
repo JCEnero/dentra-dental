@@ -32,12 +32,12 @@ class OnboardingSlideContent {
 /// finds, and how it keeps track.
 const List<OnboardingSlideContent> onboardingSlides = [
   OnboardingSlideContent(
-    headline: 'Meet DENTRA',
-    headlineAccent: 'DENTRA',
+    headline: 'Meet Dentra',
+    headlineAccent: 'Dentra',
     description:
         'A wireless dental camera that works hand in hand with your phone.',
     visualDescription:
-        'The DENTRA camera, a slim white handheld with a round lens head, '
+        'The Dentra camera, a slim white handheld with a round lens head, '
         'turning slowly in front of a glass orb.',
   ),
   OnboardingSlideContent(
@@ -62,6 +62,6 @@ const List<OnboardingSlideContent> onboardingSlides = [
         'teeth change over time.',
     visualDescription:
         'A phone showing a line of past scans rising over time, with the '
-        'DENTRA camera standing beside it.',
+        'Dentra camera standing beside it.',
   ),
 ];

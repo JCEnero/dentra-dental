@@ -338,7 +338,7 @@ class _RecordEditorScreenState extends ConsumerState<RecordEditorScreen> {
   Widget _form() {
     final provenance = switch (_source) {
       RecordSource.clinicRecord =>
-        "Saved as you enter it. DENTRA doesn't verify clinic details or "
+        "Saved as you enter it. Dentra doesn't verify clinic details or "
             'documents, and isn\'t connected to clinic systems.',
       RecordSource.personalPhoto =>
         "Saved as your own photo, separate from smart screenings. It isn't "

@@ -510,7 +510,7 @@ class _Attachments extends StatelessWidget {
         ],
         const SizedBox(height: 8),
         Text(
-          'Provided by you. DENTRA does not verify uploaded documents.',
+          'Provided by you. Dentra does not verify uploaded documents.',
           style: GoogleFonts.outfit(
               fontSize: 11.5, color: AppColors.secondaryText),
         ),
@@ -713,7 +713,7 @@ class _ProvenanceNote extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = switch (source) {
       RecordSource.clinicRecord =>
-        "Recorded by you. DENTRA doesn't verify clinic information and isn't "
+        "Recorded by you. Dentra doesn't verify clinic information and isn't "
             'connected to clinic records. Ask your clinic for official records.',
       RecordSource.personalPhoto =>
         "Your own photo. It isn't a smart screening result or clinical evidence.",

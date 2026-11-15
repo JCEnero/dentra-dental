@@ -402,7 +402,7 @@ class ScanDisclaimer extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'DENTRA provides smart screening information and does not '
+              'Dentra provides smart screening information and does not '
               'replace professional dental evaluation.',
               style: GoogleFonts.outfit(
                 fontSize: 11.5,

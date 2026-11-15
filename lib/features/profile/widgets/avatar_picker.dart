@@ -105,7 +105,7 @@ Future<AvatarChoice?> chooseAvatar(
     showDentraSnack(
       context,
       denied
-          ? 'DENTRA needs access to your $what. Allow it in Settings.'
+          ? 'Dentra needs access to your $what. Allow it in Settings.'
           : "Couldn't open your $what. Please try again.",
       tone: DentraFeedbackTone.error,
       retryLabel: 'Settings',

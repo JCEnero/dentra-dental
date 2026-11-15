@@ -32,7 +32,7 @@ class RegistrationScreen extends ConsumerStatefulWidget {
 class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   static const _genericError = 'Something went wrong. Please try again.';
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
 
   // ── Controllers & focus nodes ────────────────────────────────
   final _controllers = {
@@ -245,8 +245,8 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   void _openTerms() => _showInfoSheet(
         title: 'Terms of Service',
         body:
-            'By using DENTRA, you agree to use the application responsibly and '
-            'in accordance with all applicable laws. DENTRA is intended for '
+            'By using Dentra, you agree to use the application responsibly and '
+            'in accordance with all applicable laws. Dentra is intended for '
             'informational purposes and does not constitute medical advice. '
             'Always consult a qualified dental professional for clinical '
             'decisions.',

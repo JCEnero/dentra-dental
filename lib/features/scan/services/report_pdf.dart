@@ -138,9 +138,9 @@ String _stateWord(AreaState s) => switch (s) {
 Future<Uint8List> buildReportPdf(ReportPdfData d) async {
   final f = d.fonts;
   final doc = pw.Document(
-    title: 'DENTRA screening report',
-    author: 'DENTRA',
-    creator: 'DENTRA',
+    title: 'Dentra screening report',
+    author: 'Dentra',
+    creator: 'Dentra',
     subject: 'Preliminary AI-assisted dental screening',
   );
   final content = _Report(d);
@@ -215,7 +215,7 @@ class _Report {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          _t('DENTRA screening report', _label),
+          _t('Dentra screening report', _label),
           _t(DentraDates.long(p.at), _label),
         ],
       ),
@@ -1371,7 +1371,7 @@ class _Report {
         _heading(
           'Your dental records',
           note:
-              'Entries you added. DENTRA has not verified them, and a note or '
+              'Entries you added. Dentra has not verified them, and a note or '
               'photo is your own, not proof of a condition.',
         ),
         _table(

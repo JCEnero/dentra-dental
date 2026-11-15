@@ -41,7 +41,7 @@ enum _Field { name, email, phone }
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
 
   late final Map<_Field, TextEditingController> _controllers;
   final _focusNodes = {for (final f in _Field.values) f: FocusNode()};

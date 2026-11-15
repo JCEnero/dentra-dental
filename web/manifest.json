@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#E2F5F3",
     "theme_color": "#2CA6A4",
-    "description": "DENTRA - AI-assisted dental imaging",
+    "description": "Dentra - AI-assisted dental imaging",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

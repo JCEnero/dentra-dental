@@ -10,13 +10,13 @@ abstract class ProfileContent {
 
   static const faqs = <(String, String)>[
     (
-      'What is DENTRA?',
-      'DENTRA is a smart dental screening app. You scan your teeth at '
+      'What is Dentra?',
+      'Dentra is a smart dental screening app. You scan your teeth at '
           'home and get preliminary observations before visiting a clinic.',
     ),
     (
       'Is the screening a diagnosis?',
-      'No. DENTRA gives preliminary observations only and does not replace an '
+      'No. Dentra gives preliminary observations only and does not replace an '
           'examination. Always consult a licensed dentist for diagnosis and '
           'treatment.',
     ),
@@ -40,12 +40,12 @@ abstract class ProfileContent {
 
   /// Shown above the numbered sections in every privacy policy view.
   static const policyIntro =
-      'DENTRA Health, Inc. ("DENTRA", "we", "us") respects your privacy. '
-      'DENTRA collects only the information it needs to run the app, and we '
+      'Dentra Health, Inc. ("Dentra", "we", "us") respects your privacy. '
+      'Dentra collects only the information it needs to run the app, and we '
       'handle it in line with the Data Privacy Act of 2012 (Republic Act No. '
       '10173) and its implementing rules. This policy explains what we '
       'collect, why we collect it, who we share it with, and the choices you '
-      'have. By creating an account or using DENTRA, you acknowledge that you '
+      'have. By creating an account or using Dentra, you acknowledge that you '
       'have read this policy.';
 
   static const policySections = <(String, String)>[
@@ -96,7 +96,7 @@ abstract class ProfileContent {
     ),
     (
       'Smart screening',
-      'DENTRA uses automated image analysis to review your dental photos and '
+      'Dentra uses automated image analysis to review your dental photos and '
           'to power the in-app assistant. To do this, images and messages are '
           'sent securely to our secure processing provider, which analyzes them on '
           'our behalf and is not allowed to use them for its own purposes.\n\n'
@@ -121,14 +121,14 @@ abstract class ProfileContent {
       'We do not sell your personal information, and we do not share it for '
           'advertising.\n\n'
           'We share information only with:\n'
-          '• Service providers that help us run DENTRA, such as cloud hosting, '
+          '• Service providers that help us run Dentra, such as cloud hosting, '
           'secure file storage, email delivery and image processing. They act on '
           'our instructions and must protect your data.\n'
           '• Dental clinics or professionals, only when you choose to share '
           'your results with them.\n'
           '• Authorities, when required by law or to protect the rights, '
           'safety and property of our users or the public.\n'
-          '• A successor company, if DENTRA is involved in a merger, '
+          '• A successor company, if Dentra is involved in a merger, '
           'acquisition or sale of assets. We will notify you before your data '
           'becomes subject to a different privacy policy.',
     ),
@@ -185,8 +185,8 @@ abstract class ProfileContent {
     ),
     (
       "Children's privacy",
-      'DENTRA is not intended for children under 13. Users between 13 and 17 '
-          'should use DENTRA with the consent and supervision of a parent or '
+      'Dentra is not intended for children under 13. Users between 13 and 17 '
+          'should use Dentra with the consent and supervision of a parent or '
           'guardian. If you believe a child has given us personal information '
           'without that consent, contact us and we will delete it.',
     ),
@@ -199,8 +199,8 @@ abstract class ProfileContent {
     ),
     (
       'Third-party services',
-      'DENTRA works with services such as Google Sign-In and Google Maps. '
-          'When you use them, their own privacy policies also apply. DENTRA '
+      'Dentra works with services such as Google Sign-In and Google Maps. '
+          'When you use them, their own privacy policies also apply. Dentra '
           'may also link to clinic websites and other sites we do not control. '
           'We are not responsible for their privacy practices, so please '
           'review their policies.',
@@ -210,7 +210,7 @@ abstract class ProfileContent {
       'We may update this policy from time to time. The "Last updated" date '
           'shows when it last changed. If we make significant changes, we will '
           'tell you in the app or by email before they take effect. Continuing '
-          'to use DENTRA after an update means you accept the revised policy.',
+          'to use Dentra after an update means you accept the revised policy.',
     ),
     (
       'Contact us',

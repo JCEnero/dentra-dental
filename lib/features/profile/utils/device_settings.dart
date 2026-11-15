@@ -5,7 +5,7 @@ import '../../../shared/widgets/dentra_glass_ui.dart';
 
 /// Copy for when the settings page can't be opened (e.g. on web).
 const deviceSettingsUnavailable =
-    "Couldn't open settings. Open your device settings and find DENTRA.";
+    "Couldn't open settings. Open your device settings and find Dentra.";
 
 /// Opens this app's page in the system settings, where camera, photo and
 /// location access are managed. Returns false when that isn't possible.

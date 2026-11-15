@@ -12,7 +12,7 @@ Future<void> showPrivacyConsentSheet(BuildContext context) {
   return showGlassSheet<void>(
     context: context,
     title: 'Privacy & consent',
-    subtitle: 'Choose how DENTRA may use your data. Changes save right away.',
+    subtitle: 'Choose how Dentra may use your data. Changes save right away.',
     builder: (_) => const _PrivacyConsentBody(),
   );
 }
@@ -88,7 +88,7 @@ class _PrivacyConsentBodyState extends ConsumerState<_PrivacyConsentBody> {
             ProfileSwitchTile(
               icon: Icons.insights_outlined,
               title: 'Usage analytics',
-              subtitle: 'Share anonymous usage data to help improve DENTRA.',
+              subtitle: 'Share anonymous usage data to help improve Dentra.',
               value: profile.analyticsConsent,
               busy: _saving.contains(_Consent.analytics),
               onChanged: (v) => _set(_Consent.analytics, v),

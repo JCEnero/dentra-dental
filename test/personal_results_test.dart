@@ -351,7 +351,7 @@ void main() {
       expect(find.text('Your records'), findsWidgets);
       expect(find.text('Clinic Record'), findsOneWidget);
       expect(find.text('Personal Note'), findsOneWidget);
-      expect(find.textContaining("DENTRA hasn't checked them"), findsOneWidget);
+      expect(find.textContaining("Dentra hasn't checked them"), findsOneWidget);
       expect(find.textContaining("can't tell if it's the same"), findsWidgets);
     });
 

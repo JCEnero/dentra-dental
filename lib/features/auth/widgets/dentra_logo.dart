@@ -27,7 +27,7 @@ class DentraLogo extends StatelessWidget {
         fullAsset,
         height: 34 * size,
         fit: BoxFit.contain,
-        semanticLabel: 'DENTRA',
+        semanticLabel: 'Dentra',
       );
     }
 

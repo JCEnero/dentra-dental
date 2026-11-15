@@ -70,7 +70,7 @@ class FakeDentalProfileRepository implements DentalProfileRepository {
 }
 
 const offline = DentalProfileException(
-  "We couldn't reach DENTRA. Check your connection and try again.",
+  "We couldn't reach Dentra. Check your connection and try again.",
   offline: true,
 );
 

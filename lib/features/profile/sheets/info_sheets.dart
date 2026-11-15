@@ -55,7 +55,7 @@ Future<void> showPrivacyPolicySheet(BuildContext context) {
 Future<void> showAboutSheet(BuildContext context) {
   return showGlassSheet<void>(
     context: context,
-    title: 'About DENTRA',
+    title: 'About Dentra',
     builder: (_) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -73,13 +73,13 @@ Future<void> showAboutSheet(BuildContext context) {
         const ProfileSheetCard(
           children: [
             _InfoRow(label: 'Version', value: ProfileContent.appVersion),
-            _InfoRow(label: 'Developer', value: 'DENTRA Health, Inc.'),
+            _InfoRow(label: 'Developer', value: 'Dentra Health, Inc.'),
             _InfoRow(label: 'Support', value: ProfileContent.supportEmail),
           ],
         ),
         const SizedBox(height: 16),
         Text(
-          'DENTRA provides preliminary observations only and is not a '
+          'Dentra provides preliminary observations only and is not a '
           'substitute for professional dental care.',
           textAlign: TextAlign.center,
           style: GoogleFonts.outfit(
@@ -90,7 +90,7 @@ Future<void> showAboutSheet(BuildContext context) {
         ),
         const SizedBox(height: 10),
         Text(
-          '© 2026 DENTRA Health, Inc. All rights reserved.',
+          '© 2026 Dentra Health, Inc. All rights reserved.',
           textAlign: TextAlign.center,
           style: GoogleFonts.outfit(
             fontSize: 12,

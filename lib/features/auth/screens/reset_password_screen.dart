@@ -34,7 +34,7 @@ enum _Field { code, password, confirm }
 class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   static const _codeLength = 6;
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
 
   final _controllers = {
     for (final f in _Field.values) f: TextEditingController()

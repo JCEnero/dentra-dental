@@ -358,7 +358,7 @@ class _AuthHeader extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Semantics(
-            label: 'DENTRA',
+            label: 'Dentra',
             excludeSemantics: true,
             child: const DentraLogo(size: 1.05),
           ),

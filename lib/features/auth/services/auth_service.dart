@@ -122,7 +122,7 @@ class AuthService extends ChangeNotifier {
       _api != null && _googleServerClientId != null;
 
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
   static const _sessionEndedError =
       'Your session has ended. Please sign in again.';
 
@@ -225,10 +225,9 @@ class AuthService extends ChangeNotifier {
       return _demoSignIn(email, password);
     }
 
-    return _runSignIn(
-      () => api.login(email: email, password: password),
-      invalidCredentialsMessage: 'Incorrect email or password',
-    );
+    // The server says which part is wrong: no account for this email,
+    // a Google-only account, or an incorrect password.
+    return _runSignIn(() => api.login(email: email, password: password));
   }
 
   /// Register with full name, email and password.
@@ -620,10 +619,7 @@ class AuthService extends ChangeNotifier {
 
   /// Runs a backend sign-in and turns API errors into an [AuthResult].
   /// Network errors are rethrown for the screen's connection message.
-  Future<AuthResult> _runSignIn(
-    Future<AuthSession> Function() call, {
-    String? invalidCredentialsMessage,
-  }) async {
+  Future<AuthResult> _runSignIn(Future<AuthSession> Function() call) async {
     try {
       final session = await call();
       await _startSession(session);
@@ -648,9 +644,6 @@ class AuthService extends ChangeNotifier {
           needsVerification: true,
           error: e.message,
         );
-      }
-      if (e.statusCode == 401 && invalidCredentialsMessage != null) {
-        return AuthResult(success: false, error: invalidCredentialsMessage);
       }
       return AuthResult(success: false, error: e.message);
     }

@@ -376,7 +376,7 @@ String notificationFailureMessage(NotificationFailure failure) =>
       NotificationFailure.unauthorized =>
         'Your session has expired. Sign in again to see your notifications.',
       NotificationFailure.server =>
-        "DENTRA couldn't load your notifications right now. Try again in a moment.",
+        "Dentra couldn't load your notifications right now. Try again in a moment.",
       NotificationFailure.storage =>
         "Notifications couldn't be read from this device. Try again.",
     };

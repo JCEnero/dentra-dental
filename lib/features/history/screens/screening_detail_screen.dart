@@ -737,7 +737,7 @@ class _Comparison extends StatelessWidget {
 // ── Small pieces ────────────────────────────────────────────────────────────
 
 String _sourceLabel(String source) => switch (source) {
-      'device' => 'DENTRA device',
+      'device' => 'Dentra device',
       'photoLibrary' => 'Photo library',
       _ => 'Camera',
     };

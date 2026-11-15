@@ -427,7 +427,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     ProfileSettingsTile(
                       icon: Icons.info_outline_rounded,
-                      title: 'About DENTRA',
+                      title: 'About Dentra',
                       subtitle: 'Version ${ProfileContent.appVersion}',
                       onTap: () => showAboutSheet(context),
                     ),

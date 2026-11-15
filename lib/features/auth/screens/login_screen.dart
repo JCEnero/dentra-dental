@@ -28,7 +28,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   static const _genericError = 'Something went wrong. Please try again.';
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
 
   // ── Controllers & focus nodes ────────────────────────────────
   final _emailCtrl = TextEditingController();

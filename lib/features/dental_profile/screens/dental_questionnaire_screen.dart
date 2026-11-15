@@ -465,9 +465,9 @@ class _DentalQuestionnaireScreenState
         const SizedBox(height: 18),
         const _FinePrint(
           icon: Icons.lock_outline_rounded,
-          text: 'Saved privately to your DENTRA profile and shown as context '
-              'with future screenings. Your answers don’t change what DENTRA '
-              'detects in photos. DENTRA gives preliminary, smart '
+          text: 'Saved privately to your Dentra profile and shown as context '
+              'with future screenings. Your answers don’t change what Dentra '
+              'detects in photos. Dentra gives preliminary, smart '
               'screening information and doesn’t replace a dental exam.',
         ),
         DentraInlineNotice(message: controller.submitError),
@@ -564,7 +564,7 @@ class _Welcome extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          'Your answers aren’t a diagnosis and don’t change what DENTRA sees '
+          'Your answers aren’t a diagnosis and don’t change what Dentra sees '
           'in your photos.',
           textAlign: TextAlign.center,
           style: GoogleFonts.outfit(

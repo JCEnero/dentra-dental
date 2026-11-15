@@ -479,7 +479,7 @@ String rabiPromptFor(
     for (final r in report.analysis.recommendations)
       '- ${r.title}: ${r.detail}',
   ];
-  return 'I just finished a DENTRA screening from my own photos. It describes '
+  return 'I just finished a Dentra screening from my own photos. It describes '
       'general areas of the mouth rather than specific teeth, and it can\'t '
       'tell how far decay has gone.\n'
       '${report.photoIds.map(baseRegionId).toSet().length} of '
@@ -487,7 +487,7 @@ String rabiPromptFor(
       'Summary: ${report.analysis.summary}\n'
       'What was seen:\n${seen.isEmpty ? '- Nothing that needs attention.' : seen.join('\n')}\n'
       'Suggested next steps:\n${steps.isEmpty ? '- None.' : steps.join('\n')}\n'
-      '${reported.isEmpty ? '' : 'What I told DENTRA myself (not detected by the '
+      '${reported.isEmpty ? '' : 'What I told Dentra myself (not detected by the '
           'check):\n${reported.map((l) => '- $l').join('\n')}\n'}'
       'Explain what this means in plain language and what I should do next. '
       'Remind me this is a screening, not a diagnosis.';

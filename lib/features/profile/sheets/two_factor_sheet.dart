@@ -46,7 +46,7 @@ class _TwoFactorForm extends ConsumerStatefulWidget {
 
 class _TwoFactorFormState extends ConsumerState<_TwoFactorForm> {
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
 
   final _codeCtrl = TextEditingController();
   final _codeFocus = FocusNode();

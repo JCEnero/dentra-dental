@@ -149,7 +149,7 @@ class ContextSection extends StatelessWidget {
         _Block(
           icon: Icons.folder_outlined,
           title: 'Your records',
-          note: 'Entries you added. DENTRA hasn\'t checked them.',
+          note: 'Entries you added. Dentra hasn\'t checked them.',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

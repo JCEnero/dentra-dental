@@ -15,7 +15,7 @@ class ApiDentalProfileRepository implements DentalProfileRepository {
 
   static const _path = '/api/dental-profile';
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
 
   @override
   Future<bool> fetchOnboardingCompleted(String userId) async {

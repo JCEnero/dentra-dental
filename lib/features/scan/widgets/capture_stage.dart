@@ -242,7 +242,7 @@ class CaptureStage extends StatelessWidget {
         ),
       PhotoProblem.unreadable => (
           title: "Couldn't open this photo",
-          why: 'The file may be damaged, or in a format DENTRA can’t read.',
+          why: 'The file may be damaged, or in a format Dentra can’t read.',
           steps: const ['Take the photo again'],
         ),
       PhotoProblem.other => (
@@ -317,7 +317,7 @@ Widget _topLeftStack(Widget? current, List<Widget> previous) => Stack(
     switch (failure) {
       CaptureFailure.permissionDenied => (
           'Camera access is off',
-          'Allow camera access for DENTRA in Settings, then try again.',
+          'Allow camera access for Dentra in Settings, then try again.',
         ),
       CaptureFailure.cameraUnavailable => (
           'No camera available',

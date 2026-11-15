@@ -47,7 +47,7 @@ Future<void> showHelpSupportSheet(BuildContext hostContext) {
                 // Close first so any fallback message is visible.
                 Navigator.of(sheetContext).pop();
                 final opened = await _composeEmail(
-                  subject: 'DENTRA support request',
+                  subject: 'Dentra support request',
                   body: '',
                 );
                 if (!opened && hostContext.mounted) {

@@ -132,7 +132,7 @@ class _ScanHeroState extends State<ScanHero>
             child: IgnorePointer(
               child: Semantics(
                 image: true,
-                label: 'The DENTRA intraoral camera: a handheld wand with a '
+                label: 'The Dentra intraoral camera: a handheld wand with a '
                     'lens and a ring of lights in its round tip, and Capture '
                     'and Light buttons on its handle.',
                 child: RepaintBoundary(

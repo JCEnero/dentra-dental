@@ -499,7 +499,7 @@ class ScreeningReport {
   /// user [reported] is kept under its own heading.
   String summaryForDentist(String date, {List<String> reported = const []}) {
     final lines = [
-      'DENTRA screening, $date. Not a diagnosis.',
+      'Dentra screening, $date. Not a diagnosis.',
       '$photosRead of ${photoIds.length} photos read.',
       if (spots.isEmpty) 'Nothing flagged.',
       for (final s in spots)
@@ -510,7 +510,7 @@ class ScreeningReport {
       'Not read by this check: plaque, tartar, gums, inner sides.',
       if (reported.isNotEmpty) ...[
         '',
-        'What I told DENTRA (my own words, not detected by the check):',
+        'What I told Dentra (my own words, not detected by the check):',
         for (final line in reported) '- $line',
       ],
     ];

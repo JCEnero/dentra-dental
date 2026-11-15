@@ -40,7 +40,7 @@ class _ChangePasswordForm extends ConsumerStatefulWidget {
 
 class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
   static const _connectionError =
-      "We couldn't reach DENTRA. Check your connection and try again.";
+      "We couldn't reach Dentra. Check your connection and try again.";
 
   final _controllers = {
     for (final f in _Field.values) f: TextEditingController()

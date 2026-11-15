@@ -54,7 +54,7 @@ class RecordFilePicker {
       );
     } catch (_) {
       throw const PickFileException(
-          "Couldn't open your photos. Check DENTRA's photo permission.");
+          "Couldn't open your photos. Check Dentra's photo permission.");
     }
     return file == null ? null : _read(file);
   }

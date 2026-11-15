@@ -938,7 +938,7 @@ class _RecordDetails extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Entered by you. Not verified by DENTRA or a dentist.',
+            'Entered by you. Not verified by Dentra or a dentist.',
             style: GoogleFonts.outfit(
                 fontSize: 11.5, color: AppColors.secondaryText),
           ),

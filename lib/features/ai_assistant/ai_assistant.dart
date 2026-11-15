@@ -172,7 +172,7 @@ class _AiChatOverlayState extends ConsumerState<AiChatOverlay>
     ];
     final analysis = s.analysis;
     final prompt = StringBuffer()
-      ..writeln('Here is my latest DENTRA screening:')
+      ..writeln('Here is my latest Dentra screening:')
       ..writeln('- Date: ${DentraDates.medium(s.completedAt)}')
       ..writeln('- Status: ${s.status.label} '
           '(${s.capturedViewCount} of ${s.totalRegions} views captured)')
