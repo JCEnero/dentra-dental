@@ -102,15 +102,16 @@ class ProfileNotifier extends AsyncNotifier<UserProfile> {
     }
   }
 
-  /// Deletes the account on the backend, then this user's local profile
-  /// and screening history.
+  /// Deletes the account on the backend with the emailed [code], then this
+  /// user's local profile and screening history.
   /// Local data is only removed once the backend confirms, so a failed
   /// request leaves everything as it was.
-  Future<AuthResult> deleteAccount() async {
+  Future<AuthResult> deleteAccount({required String code}) async {
     // Captured first: the session clears during deletion, which resets
     // [_userId] on the next rebuild.
     final userId = _userId;
-    final result = await ref.read(authServiceProvider).deleteAccount();
+    final result =
+        await ref.read(authServiceProvider).deleteAccount(code: code);
     if (result.success) {
       await _service.deleteProfile(userId);
       // Screening history is keyed by the same user id. On the backend

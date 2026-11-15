@@ -72,13 +72,14 @@ void main() {
         .widget<DentraPillButton>(find.byType(DentraPillButton).last)
         .onPressed!
         .call();
-    await _pumpFrames(tester, 4);
-    expect(find.text('Verify it’s you'), findsOneWidget);
+    // Demo mode "emails" the code after ~800 ms.
+    await _pumpFrames(tester, 12);
+    expect(find.text('Confirm with a code'), findsOneWidget);
     final otpField = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextField && widget.decoration?.hintText == '6-digit code',
+      (widget) => widget is TextField && widget.decoration?.hintText == '000000',
     );
     await tester.enterText(otpField, '123456');
+    await tester.pump();
     tester
         .widget<DentraPillButton>(find.byType(DentraPillButton).last)
         .onPressed!

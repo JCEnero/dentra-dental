@@ -208,8 +208,28 @@ class AuthApi {
         bearer: accessToken,
       ));
 
-  Future<void> deleteAccount({required String accessToken}) =>
-      _api.send('DELETE', '/api/users/me', bearer: accessToken);
+  /// Emails the signed-in user a code that confirms deleting the account.
+  /// Returns seconds until another may be requested.
+  Future<int> sendDeleteAccountCode({required String accessToken}) async {
+    final body = await _api.send(
+      'POST',
+      '/api/auth/delete-account/code',
+      bearer: accessToken,
+    );
+    return body['resend_available_in'] as int? ?? 60;
+  }
+
+  /// Permanently deletes the account with the emailed [code].
+  Future<void> deleteAccount({
+    required String accessToken,
+    required String code,
+  }) =>
+      _api.send(
+        'DELETE',
+        '/api/users/me',
+        json: {'code': code},
+        bearer: accessToken,
+      );
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) =>
       _api.send('POST', path, json: body, authorized: false);

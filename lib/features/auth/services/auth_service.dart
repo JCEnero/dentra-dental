@@ -549,11 +549,33 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Permanently delete the signed-in account, then sign out.
-  Future<AuthResult> deleteAccount() async {
+  /// Emails the signed-in user a code that confirms deleting the account.
+  Future<AuthResult> sendDeleteAccountCode() async {
     final api = _api;
     if (api == null) {
-      await Future.delayed(const Duration(milliseconds: 1400));
+      await Future.delayed(const Duration(milliseconds: 800));
+      return const AuthResult(success: true, resendAvailableIn: 30);
+    }
+    final accessToken = await validAccessToken();
+    if (accessToken == null) {
+      return const AuthResult(success: false, error: _sessionEndedError);
+    }
+    try {
+      final resendIn =
+          await api.sendDeleteAccountCode(accessToken: accessToken);
+      return AuthResult(success: true, resendAvailableIn: resendIn);
+    } on ApiException catch (e) {
+      return AuthResult(success: false, error: e.message);
+    }
+  }
+
+  /// Permanently delete the signed-in account with the emailed [code],
+  /// then sign out.
+  Future<AuthResult> deleteAccount({required String code}) async {
+    final api = _api;
+    if (api == null) {
+      final checked = await _demoCode(code);
+      if (!checked.success) return checked;
       _postSignOutMessage = 'Your account has been deleted.';
       await _endSession();
       return const AuthResult(success: true);
@@ -564,7 +586,7 @@ class AuthService extends ChangeNotifier {
       if (accessToken == null) {
         return const AuthResult(success: false, error: _sessionEndedError);
       }
-      await api.deleteAccount(accessToken: accessToken);
+      await api.deleteAccount(accessToken: accessToken, code: code);
     } on ApiException catch (e) {
       return AuthResult(success: false, error: e.message);
     } catch (_) {

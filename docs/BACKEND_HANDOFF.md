@@ -51,14 +51,10 @@ Headers: `Authorization: Bearer <token>`, `Accept: text/event-stream, applicatio
 - [ ] If streaming: `curl -N` shows `data: {"delta": …}` lines arriving one by one, then `data: [DONE]`
 - [ ] The app (signed in) shows text appearing gradually; delete-chat and history still work
 
-## Account deletion OTP (frontend integration required)
+## Account deletion OTP (done)
 
-The delete-account screen now requests and verifies a one-time code before calling the existing account deletion operation. The UI currently uses `MockDeletionOtpRepository` (demo code `123456`); replace it with an API-backed implementation when the backend is ready.
+Live on the API and wired into the app (`delete_account_dialog.dart`):
 
-Required authenticated endpoints:
-
-- `POST /api/auth/account-deletion/otp` — send a short-lived deletion code to the signed-in account email. Return `200` with a generic success response; apply rate limits and avoid revealing whether an email exists.
-- `POST /api/auth/account-deletion/otp/verify` — accept `{ "code": "123456" }`, bind verification to the authenticated account and a short expiry, and return a short-lived deletion authorization token (or equivalent server-side verified state).
-- `DELETE /api/users/me` — the app already calls this route. Require the deletion authorization token from OTP verification, delete the account and associated data, and return success only after deletion is committed.
-
-Use the backend's standard error envelope for invalid, expired, and rate-limited codes. The frontend's deletion-data wording is marked for team confirmation in `delete_account_dialog.dart`.
+- `POST /api/auth/delete-account/code` (signed in) emails a 6-digit code. It uses the shared two-factor code table with purpose `delete`: 10-minute expiry, limited tries, resend cooldown, per-account rate limit. Returns `202 { resend_available_in }`.
+- `DELETE /api/users/me` now requires `{ "code": "123456" }`. A wrong or expired code returns the standard error envelope (`invalid_code` / `code_expired`); a missing one is `422`. On success it deletes the account and its data, returns `204`, and emails the user an "account deleted" confirmation in the background.
+- Demo mode (no backend) accepts any code except `000000`.
