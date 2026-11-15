@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_glass.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -93,6 +94,8 @@ class _TreatmentDetailScreenState extends State<TreatmentDetailScreen> {
                   sliver: SliverList.list(
                     children: [
                       _FactsStrip(treatment: treatment),
+                      const SizedBox(height: 12),
+                      _VisitDetails(treatment: treatment),
                       const SizedBox(height: 32),
                       const _SectionTitle('About this treatment'),
                       const SizedBox(height: 10),
@@ -145,8 +148,9 @@ class _TreatmentDetailScreenState extends State<TreatmentDetailScreen> {
                       const SizedBox(height: 24),
                       const DentraNoteCard(
                         message:
-                            'This is general information, not medical advice. '
-                            "Your dentist will recommend what's right for you.",
+                            'General information only. Your dentist will confirm '
+                            'the actual procedure, number of visits, and duration '
+                            'for your case.',
                       ),
                     ],
                   ),
@@ -177,7 +181,11 @@ class _TreatmentDetailScreenState extends State<TreatmentDetailScreen> {
                     top: false,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.screenH, 14, AppSpacing.screenH, 14),
+                        AppSpacing.screenH,
+                        14,
+                        AppSpacing.screenH,
+                        14,
+                      ),
                       child: DentraPillButton(
                         label: 'Find a clinic near me',
                         icon: Icons.location_on_outlined,
@@ -254,8 +262,9 @@ class _TopBar extends StatelessWidget {
           child: GlassBlur(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color:
-                    AppGlass.barFill.withValues(alpha: AppGlass.barFill.a * t),
+                color: AppGlass.barFill.withValues(
+                  alpha: AppGlass.barFill.a * t,
+                ),
                 border: Border(
                   bottom: BorderSide(
                     color: AppGlass.divider.withValues(
@@ -468,6 +477,63 @@ class _FactsStrip extends StatelessWidget {
   }
 }
 
+class _VisitDetails extends StatelessWidget {
+  const _VisitDetails({required this.treatment});
+  final TreatmentModel treatment;
+
+  @override
+  Widget build(BuildContext context) => GlassCard(
+        borderRadius: BorderRadius.circular(20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          children: [
+            _VisitFact(
+              label: 'Number of sessions/visits',
+              value: treatment.numberOfSessions,
+            ),
+            Divider(height: 18, color: AppColors.g2.withValues(alpha: 0.14)),
+            _VisitFact(
+              label: 'Duration per session',
+              value: treatment.durationPerSession,
+            ),
+          ],
+        ),
+      );
+}
+
+class _VisitFact extends StatelessWidget {
+  const _VisitFact({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+              ),
+            ),
+          ),
+        ],
+      );
+}
+
 class _Fact extends StatelessWidget {
   const _Fact({required this.icon, required this.label, required this.value});
 
@@ -610,7 +676,7 @@ class _PointsCard extends StatelessWidget {
   }
 }
 
-/// Procedure steps as a numbered timeline inside one glass card.
+/// Procedure steps as a read-only checklist inside one glass card.
 class _StepsCard extends StatelessWidget {
   const _StepsCard({required this.steps});
 
@@ -623,13 +689,10 @@ class _StepsCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 20, 18, 20),
       child: Column(
         children: [
-          for (var i = 0; i < steps.length; i++)
-            _StepTile(
-              step: steps[i],
-              number: i + 1,
-              total: steps.length,
-              isLast: i == steps.length - 1,
-            ),
+          for (var i = 0; i < steps.length; i++) ...[
+            if (i > 0) const SizedBox(height: 18),
+            _StepTile(step: steps[i]),
+          ],
         ],
       ),
     );
@@ -637,68 +700,37 @@ class _StepsCard extends StatelessWidget {
 }
 
 class _StepTile extends StatelessWidget {
-  const _StepTile({
-    required this.step,
-    required this.number,
-    required this.total,
-    required this.isLast,
-  });
+  const _StepTile({required this.step});
 
   final TreatmentStep step;
-  final int number;
-  final int total;
-  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Step $number of $total. ${step.title}. ${step.description}',
+      label: '${step.title}. ${step.description}',
       excludeSemantics: true,
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
+            Container(
               width: 30,
-              child: Column(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.white,
-                      border: Border.all(
-                        color: AppColors.g2.withValues(alpha: 0.35),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Text(
-                      '$number',
-                      textScaler: TextScaler.noScaling,
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.g2,
-                      ),
-                    ),
-                  ),
-                  if (!isLast)
-                    Expanded(
-                      child: Container(
-                        width: 1.5,
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        color: AppColors.g2.withValues(alpha: 0.18),
-                      ),
-                    ),
-                ],
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: AppColors.lightLavender,
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                size: 20,
+                color: AppColors.g2,
               ),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.only(top: 4, bottom: isLast ? 0 : 22),
+                padding: const EdgeInsets.only(top: 4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

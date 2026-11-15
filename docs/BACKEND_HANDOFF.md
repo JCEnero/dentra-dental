@@ -50,3 +50,15 @@ Headers: `Authorization: Bearer <token>`, `Accept: text/event-stream, applicatio
 - [ ] Simulate a Gemini failure or timeout: a non-2xx with `error.message`, returned within 15 s
 - [ ] If streaming: `curl -N` shows `data: {"delta": …}` lines arriving one by one, then `data: [DONE]`
 - [ ] The app (signed in) shows text appearing gradually; delete-chat and history still work
+
+## Account deletion OTP (frontend integration required)
+
+The delete-account screen now requests and verifies a one-time code before calling the existing account deletion operation. The UI currently uses `MockDeletionOtpRepository` (demo code `123456`); replace it with an API-backed implementation when the backend is ready.
+
+Required authenticated endpoints:
+
+- `POST /api/auth/account-deletion/otp` — send a short-lived deletion code to the signed-in account email. Return `200` with a generic success response; apply rate limits and avoid revealing whether an email exists.
+- `POST /api/auth/account-deletion/otp/verify` — accept `{ "code": "123456" }`, bind verification to the authenticated account and a short expiry, and return a short-lived deletion authorization token (or equivalent server-side verified state).
+- `DELETE /api/users/me` — the app already calls this route. Require the deletion authorization token from OTP verification, delete the account and associated data, and return success only after deletion is committed.
+
+Use the backend's standard error envelope for invalid, expired, and rate-limited codes. The frontend's deletion-data wording is marked for team confirmation in `delete_account_dialog.dart`.

@@ -1,3 +1,5 @@
+import 'package:dentra_mobile/features/auth/services/auth_service.dart';
+import 'package:dentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:dentra_mobile/features/auth/screens/verify_email_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +28,8 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
+      // Demo auth only via this explicit override (the app fails closed).
+      overrides: [authServiceProvider.overrideWith((ref) => AuthService())],
       child: MaterialApp(
         home: VerifyEmailScreen(
           email: 'jane@example.com',

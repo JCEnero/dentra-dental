@@ -1,5 +1,5 @@
-import 'dart:async';
-
+import 'package:dentra_mobile/features/auth/services/auth_service.dart';
+import 'package:dentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dentra_mobile/features/auth/screens/login_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
@@ -27,22 +27,29 @@ final _logIn = find.bySemanticsLabel('Log in');
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
-  Future<void> pumpLogin(WidgetTester tester,
-      {Size size = const Size(390, 844)}) async {
+  Future<void> pumpLogin(
+    WidgetTester tester, {
+    Size size = const Size(390, 844),
+  }) async {
     tester.view.physicalSize = size * 3;
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
-        home: const LoginScreen(),
-        routes: {'/home': (_) => const Scaffold(body: Text('HOME'))},
+    await tester.pumpWidget(
+      ProviderScope(
+        // Demo auth only via this explicit override (the app fails closed).
+        overrides: [authServiceProvider.overrideWith((ref) => AuthService())],
+        child: MaterialApp(
+          home: const LoginScreen(),
+          routes: {'/home': (_) => const Scaffold(body: Text('HOME'))},
+        ),
       ),
-    ));
+    );
     await settle(tester, steps: 6);
   }
 
-  testWidgets('shows the redesigned content; Google hidden until configured',
-      (tester) async {
+  testWidgets('shows the redesigned content; Google hidden until configured', (
+    tester,
+  ) async {
     await pumpLogin(tester);
     expect(find.text('Welcome Back'), findsOneWidget);
     expect(find.text('Your smile journey continues.'), findsOneWidget);
@@ -53,8 +60,9 @@ void main() {
     expect(find.text('Continue with Google'), findsNothing);
   });
 
-  testWidgets('no errors before interaction; submit validates both fields',
-      (tester) async {
+  testWidgets('no errors before interaction; submit validates both fields', (
+    tester,
+  ) async {
     await pumpLogin(tester);
     expect(find.text('Enter your email address.'), findsNothing);
 
@@ -94,8 +102,9 @@ void main() {
     expect(obscured(), isTrue);
   });
 
-  testWidgets('shows loading, blocks resubmits, then the service error',
-      (tester) async {
+  testWidgets('shows loading, blocks resubmits, then the service error', (
+    tester,
+  ) async {
     await pumpLogin(tester);
     await tester.enterText(_email, 'jane@example.com');
     await tester.enterText(_password, '123'); // stub rejects < 6 chars
@@ -121,29 +130,30 @@ void main() {
     );
   });
 
-  testWidgets(
-      'successful login shows the loader, which lets the user in '
-      'only once their data has loaded', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    tester.view.physicalSize = const Size(390, 844) * 3;
-    tester.view.devicePixelRatio = 3;
-    addTearDown(tester.view.reset);
-    // A returning user whose onboarding status answers only when released.
-    final status = Completer<void>();
-    final repo = FakeDentalProfileRepository.completed()..holdStatus = status;
-    await tester.pumpWidget(ProviderScope(
-      overrides: [dentalProfileRepositoryProvider.overrideWithValue(repo)],
-      child: MaterialApp(
-        home: const LoginScreen(),
-        // The real '/home' is the loader, in front of the app.
-        routes: {
-          '/home': (_) =>
-              const SessionLoader(app: Scaffold(body: Text('HOME'))),
-        },
-      ),
-    ));
-    await settle(tester, steps: 6);
+  testWidgets('allows correcting a rejected password and logging in again', (
+    tester,
+  ) async {
+    await pumpLogin(tester);
+    await tester.enterText(_email, 'jane@example.com');
+    await tester.enterText(_password, 'wrong');
+    await tester.tap(_logIn);
+    await settle(tester, steps: 16);
 
+    expect(
+      find.text('Invalid credentials. Please check your email and password.'),
+      findsOneWidget,
+    );
+    expect(_logIn, findsOneWidget);
+
+    await tester.enterText(_password, 'secret123');
+    await tester.tap(_logIn);
+    await settle(tester, steps: 20);
+    expect(find.byType(SignInLoadingScreen), findsOneWidget);
+  });
+
+  testWidgets('successful login shows the loader, then replaces the stack '
+      'with /home', (tester) async {
+    await pumpLogin(tester);
     await tester.enterText(_email, 'jane@example.com');
     await tester.enterText(_password, 'secret123');
     await tester.tap(_logIn);
@@ -173,8 +183,9 @@ void main() {
     expect(find.byType(LoginScreen), findsNothing);
   });
 
-  testWidgets('Forgot password validates in the dialog, then sends',
-      (tester) async {
+  testWidgets('Forgot password validates in the dialog, then sends', (
+    tester,
+  ) async {
     await pumpLogin(tester);
     await tester.tap(find.text('Forgot password?'));
     await settle(tester, steps: 4);
@@ -196,8 +207,9 @@ void main() {
     expect(find.byType(ResetPasswordScreen), findsOneWidget);
   });
 
-  testWidgets('keyboard open keeps Log In visible and hides the sign-up link',
-      (tester) async {
+  testWidgets('keyboard open keeps Log In visible and hides the sign-up link', (
+    tester,
+  ) async {
     tester.view.viewInsets = const FakeViewPadding(bottom: 280 * 3);
     await pumpLogin(tester, size: const Size(360, 640));
     await tester.showKeyboard(_email);

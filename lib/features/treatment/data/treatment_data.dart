@@ -23,6 +23,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '45 – 60 minutes',
+      numberOfSessions: '1 visit',
+      durationPerSession: '30 to 60 min',
       steps: [
         TreatmentStep(
           title: 'Physical Examination',
@@ -73,6 +75,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF4CAF93),
       iconBackground: Color(0xFFE8F5F1),
       duration: '30 – 60 minutes',
+      numberOfSessions: '1 visit',
+      durationPerSession: '30 to 60 min',
       whyRecommended:
           'To repair a tooth with a cavity: decay that has made a hole in the '
           'enamel or the layer under it. Removing the decay and sealing the '
@@ -152,6 +156,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFFE8896A),
       iconBackground: Color(0xFFFDF0EB),
       duration: '60 – 90 minutes',
+      numberOfSessions: '1 to 2 visits',
+      durationPerSession: '60 to 90 min',
       requiresFollowUp: true,
       whyRecommended:
           'To save a tooth whose nerve (the pulp) is inflamed or infected, '
@@ -235,6 +241,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: '20 – 45 minutes',
+      numberOfSessions: '1 visit',
+      durationPerSession: '20 to 60 min',
       whyRecommended:
           'To remove a tooth that can\'t be saved or is causing problems: a '
           'tooth badly broken or decayed, a severe infection, advanced gum '
@@ -321,6 +329,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: '60 – 90 minutes',
+      numberOfSessions: '1 to 2 visits',
+      durationPerSession: '60 to 90 min',
       steps: [
         TreatmentStep(
           title: 'Pre-Treatment Shade Recording',
@@ -372,6 +382,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '2 visits (1–2 hours each)',
+      numberOfSessions: '2 visits',
+      durationPerSession: '60 to 120 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -425,6 +437,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '12 – 36 months',
+      numberOfSessions: '12 to 36 visits',
+      durationPerSession: '15 to 30 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -478,6 +492,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF4DD8C8),
       iconBackground: Color(0xFFEBFAF9),
       duration: '6 – 18 months',
+      numberOfSessions: '4 to 12 visits',
+      durationPerSession: '15 to 30 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -533,6 +549,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF6B7B80),
       iconBackground: Color(0xFFF0F3F4),
       duration: '3 – 6 months (full process)',
+      numberOfSessions: '3 to 6 visits',
+      durationPerSession: '30 to 120 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -587,6 +605,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFFE8896A),
       iconBackground: Color(0xFFFDF0EB),
       duration: '45 – 90 minutes',
+      numberOfSessions: '1 visit',
+      durationPerSession: '45 to 120 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -642,6 +662,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '2 visits (1 hour each)',
+      numberOfSessions: '2 visits',
+      durationPerSession: '45 to 90 min',
       requiresFollowUp: true,
       whyRecommended:
           'To cover and protect a tooth that is too damaged or weak for a '
@@ -724,6 +746,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF4CAF93),
       iconBackground: Color(0xFFE8F5F1),
       duration: '2 visits (1–2 hours each)',
+      numberOfSessions: '2 visits',
+      durationPerSession: '60 to 120 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -775,6 +799,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: '2 visits (30 minutes each)',
+      numberOfSessions: '2 visits',
+      durationPerSession: '20 to 45 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -826,6 +852,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '15 – 30 minutes',
+      numberOfSessions: '1 visit',
+      durationPerSession: '15 to 30 min',
       whyRecommended:
           'To strengthen enamel and help stop early decay. Fluoride helps '
           'weakened enamel take back minerals, so very early decay that '
@@ -900,6 +928,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: '30 – 60 minutes per tooth',
+      numberOfSessions: '1 visit',
+      durationPerSession: '30 to 60 min per tooth',
       steps: [
         TreatmentStep(
           title: 'Shade Selection',
@@ -950,6 +980,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '1 – 2 hours',
+      numberOfSessions: '1 to 2 visits',
+      durationPerSession: '60 to 120 min',
       steps: [
         TreatmentStep(
           title: 'Consultation & Smile Design',
@@ -1000,6 +1032,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFFF4A261),
       iconBackground: Color(0xFFFEF4EC),
       duration: 'Varies (multiple visits)',
+      numberOfSessions: 'Varies by case',
+      durationPerSession: 'Varies by case',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -1053,6 +1087,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '1 visit (30 minutes)',
+      numberOfSessions: '1 to 2 visits',
+      durationPerSession: '30 to 60 min',
       steps: [
         TreatmentStep(
           title: 'Post-Treatment Scan',
@@ -1103,6 +1139,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF4DD8C8),
       iconBackground: Color(0xFFEBFAF9),
       duration: '1 visit (45 minutes)',
+      numberOfSessions: '1 to 2 visits',
+      durationPerSession: '30 to 60 min',
       steps: [
         TreatmentStep(
           title: 'Assessment',
@@ -1148,6 +1186,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF2CA6A4),
       iconBackground: Color(0xFFE8F8F7),
       duration: '3 – 6 months',
+      numberOfSessions: '3 to 6 visits',
+      durationPerSession: '15 to 30 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -1201,6 +1241,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF6B7B80),
       iconBackground: Color(0xFFF0F3F4),
       duration: '45 – 90 minutes',
+      numberOfSessions: '1 visit',
+      durationPerSession: '45 to 90 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -1254,6 +1296,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFFE8896A),
       iconBackground: Color(0xFFFDF0EB),
       duration: '1.5 – 2 hours',
+      numberOfSessions: '1 visit',
+      durationPerSession: '60 to 120 min',
       requiresFollowUp: true,
       steps: [
         TreatmentStep(
@@ -1307,6 +1351,8 @@ abstract class TreatmentData {
       iconColor: Color(0xFF6B7B80),
       iconBackground: Color(0xFFF0F3F4),
       duration: '15 – 30 minutes',
+      numberOfSessions: '1 visit',
+      durationPerSession: '15 to 60 min',
       steps: [
         TreatmentStep(
           title: 'Diagnosis',

@@ -3,12 +3,7 @@
 import 'package:flutter/material.dart';
 
 /// Categories for dental treatments, matching the filter chips in the UI.
-enum TreatmentCategory {
-  general,
-  cosmetic,
-  orthodontics,
-  surgical,
-}
+enum TreatmentCategory { general, cosmetic, orthodontics, surgical }
 
 extension TreatmentCategoryLabel on TreatmentCategory {
   String get label {
@@ -30,10 +25,7 @@ class TreatmentStep {
   final String title;
   final String description;
 
-  const TreatmentStep({
-    required this.title,
-    required this.description,
-  });
+  const TreatmentStep({required this.title, required this.description});
 }
 
 /// Full data model for a dental treatment.
@@ -59,6 +51,8 @@ class TreatmentModel {
 
   final List<TreatmentStep> steps;
   final String duration;
+  final String numberOfSessions;
+  final String durationPerSession;
   final bool requiresFollowUp;
 
   /// Why a dentist might recommend it. Null where it hasn't been written yet.
@@ -86,6 +80,8 @@ class TreatmentModel {
     this.iconPath,
     required this.steps,
     required this.duration,
+    required this.numberOfSessions,
+    required this.durationPerSession,
     this.requiresFollowUp = false,
     this.whyRecommended,
     this.whenNeeded = const [],

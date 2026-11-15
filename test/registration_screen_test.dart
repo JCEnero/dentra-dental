@@ -1,3 +1,5 @@
+import 'package:dentra_mobile/features/auth/services/auth_service.dart';
+import 'package:dentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dentra_mobile/features/auth/screens/login_screen.dart';
 import 'package:dentra_mobile/features/auth/screens/registration_screen.dart';
@@ -27,6 +29,8 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
+      // Demo auth only via this explicit override (the app fails closed).
+      overrides: [authServiceProvider.overrideWith((ref) => AuthService())],
       child: MaterialApp(
         home: const RegistrationScreen(),
         routes: {'/home': (_) => const Scaffold(body: Text('HOME'))},
