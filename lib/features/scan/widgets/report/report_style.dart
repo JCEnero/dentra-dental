@@ -89,9 +89,13 @@ class ReportFold extends StatefulWidget {
     required this.title,
     required this.child,
     this.count,
+    this.subtitle,
   });
 
   final String title;
+
+  /// The short answer, under the title, so the row says something closed too.
+  final String? subtitle;
 
   /// How many things are inside, shown beside the title.
   final int? count;
@@ -113,9 +117,11 @@ class _ReportFoldState extends State<ReportFold> {
         Semantics(
           button: true,
           expanded: _open,
-          label: widget.count == null
-              ? widget.title
-              : '${widget.title}, ${widget.count}',
+          label: [
+            widget.title,
+            if (widget.count != null) '${widget.count}',
+            if (widget.subtitle != null) widget.subtitle!,
+          ].join(', '),
           excludeSemantics: true,
           child: InkWell(
             onTap: () => setState(() => _open = !_open),
@@ -124,7 +130,21 @@ class _ReportFoldState extends State<ReportFold> {
               constraints: const BoxConstraints(minHeight: 44),
               child: Row(
                 children: [
-                  Expanded(child: Text(widget.title, style: reportCardTitle)),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.title, style: reportCardTitle),
+                          if (widget.subtitle case final subtitle?) ...[
+                            const SizedBox(height: 1),
+                            Text(subtitle, style: reportNote),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                   if (widget.count case final n?) ...[
                     Text('$n', style: reportNote),
                     const SizedBox(width: 6),

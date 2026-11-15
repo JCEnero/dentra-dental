@@ -606,6 +606,11 @@ void main() {
     testWidgets('shows what the check looked for, and what it can\'t read',
         (tester) async {
       await pump(tester);
+      // Folded under "More about this scan" until opened.
+      expect(find.bySemanticsLabel(RegExp('^Plaque and tartar: Not read')),
+          findsNothing);
+      await tapText(tester, 'What the check looked for');
+      await tapText(tester, 'The numbers behind this');
       expect(find.bySemanticsLabel(RegExp('^Possible tooth decay: 2 marked')),
           findsOneWidget);
       expect(find.bySemanticsLabel(RegExp('^Plaque and tartar: Not read')),

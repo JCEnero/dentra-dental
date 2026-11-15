@@ -16,6 +16,7 @@ import '../../../screening/providers/screening_sessions_provider.dart';
 import '../../../treatment/treatment_links.dart';
 import '../../data/care_plan.dart';
 import '../../data/patient_context.dart';
+import '../../data/scan_outcomes.dart';
 import '../../data/scan_regions.dart';
 import '../../data/scan_report.dart';
 import '../../data/tooth_guidance.dart';
@@ -231,7 +232,6 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
     final report = widget.report;
     final issues = report.analysis.qualityIssues;
     final read = report.photosRead > 0;
-    final surfaces = report.surfaces;
     final spots = report.spots;
     final sessions = ref.watch(screeningSessionsProvider).valueOrNull ??
         const <ScreeningSession>[];
@@ -281,8 +281,7 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
             report.signCount == 0 ? 'Faint signs to watch' : 'What we spotted',
             subtitle: report.signCount == 0
                 ? 'On your own photos, one at a time.'
-                : 'Each marked tooth on your own photo, what it could mean and '
-                    'what to do.',
+                : 'Each mark on your own photo, and what to do about it.',
           ),
           child: SignsSection(
             report: report,
@@ -318,48 +317,6 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
               : () => _askRabi(chat, patient, plan),
           onClinics: widget.showActions ? widget.onClinics : null,
         ),
-      if (read && surfaces != null)
-        _Section(
-          heading: const ReportHeading('What this scan covered'),
-          child: GlassCard(
-            width: double.infinity,
-            borderRadius: BorderRadius.circular(24),
-            padding: const EdgeInsets.all(16),
-            child: CoverageRings(
-              rows: [
-                for (final (surface, done, unread) in surfaces)
-                  (
-                    surface.label,
-                    done,
-                    6,
-                    unread > 0 && done == 0
-                        ? 'Saved, can\'t be read yet'
-                        : done == 0
-                            ? 'No photo yet'
-                            : null,
-                  ),
-              ],
-            ),
-          ),
-        ),
-      if (read)
-        _Section(
-          heading: const ReportHeading(
-            'What the check looked for',
-            subtitle: 'What it marked of each, and what it can\'t read yet.',
-          ),
-          child: FindingsByType(report: report),
-        ),
-      if (read)
-        _Section(
-          heading: const ReportHeading('Over time'),
-          child: TrendSection(trend: trend),
-        ),
-      if (read)
-        const _Section(
-          heading: ReportHeading('How decay grows'),
-          child: DecayStages(),
-        ),
       _Section(
         heading: ReportHeading(
           'Your photos',
@@ -375,6 +332,14 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
           report: report,
         ),
       ),
+      if (read)
+        _Section(
+          heading: const ReportHeading(
+            'More about this scan',
+            subtitle: 'The detail behind your result, one tap away.',
+          ),
+          child: _MoreAbout(report: report, trend: trend),
+        ),
     ];
 
     return Column(
@@ -388,6 +353,93 @@ class _ScanReportViewState extends ConsumerState<ScanReportView> {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Everything past the answer, folded: each row says its short answer while
+/// closed, and opens to the chart behind it.
+class _MoreAbout extends StatelessWidget {
+  const _MoreAbout({required this.report, required this.trend});
+
+  final ScreeningReport report;
+  final ScanTrend trend;
+
+  String get _overTime {
+    if (!trend.hasHistory) return 'Your first scan. Scan again to see changes.';
+    if (trend.mixedVersions) {
+      return 'Not comparable: the check has been updated.';
+    }
+    // The one thing over time worth saying while the row is closed.
+    if (trend.repeating.isNotEmpty) {
+      return 'Signs keep showing up: '
+          '${describeAreas(trend.repeating.keys.toSet()).toLowerCase()}.';
+    }
+    return '${comparisonOf(trend)} since your last scan.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final surfaces = report.surfaces;
+    final surfacesRead = surfaces?.fold<int>(0, (sum, s) => sum + s.$2) ?? 0;
+    final rows = <Widget>[
+      ReportFold(
+        title: 'The numbers behind this',
+        subtitle: 'Areas, confidence, views read and change over time.',
+        child: ReportFigures(report: report, trend: trend),
+      ),
+      if (surfaces != null)
+        ReportFold(
+          title: 'What this scan covered',
+          subtitle:
+              '$surfacesRead of ${surfaces.length * MouthArea.values.length} '
+              'tooth surfaces read.',
+          child: CoverageRings(
+            rows: [
+              for (final (surface, done, unread) in surfaces)
+                (
+                  surface.label,
+                  done,
+                  6,
+                  unread > 0 && done == 0
+                      ? 'Saved, can\'t be read yet'
+                      : done == 0
+                          ? 'No photo yet'
+                          : null,
+                ),
+            ],
+          ),
+        ),
+      ReportFold(
+        title: 'What the check looked for',
+        subtitle: 'Tooth decay. Plaque, tartar and gums aren\'t read yet.',
+        child: FindingsByType(report: report),
+      ),
+      ReportFold(
+        title: 'Over time',
+        subtitle: _overTime,
+        child: TrendSection(trend: trend),
+      ),
+      const ReportFold(
+        title: 'How decay grows',
+        subtitle: 'Four stages, from a weak spot to the nerve.',
+        child: DecayStages(),
+      ),
+    ];
+    return GlassCard(
+      width: double.infinity,
+      borderRadius: BorderRadius.circular(24),
+      padding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (i, row) in rows.indexed) ...[
+            if (i > 0)
+              Divider(height: 1, thickness: 1, color: ReportColors.rule),
+            row,
+          ],
+        ],
+      ),
     );
   }
 }

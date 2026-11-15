@@ -401,7 +401,8 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// One step at a time: what we're doing and why, in everyday words.
+/// One step at a time: what we're doing and why, in everyday words, with the
+/// method behind it on a line of its own.
 class _StatusPanel extends StatelessWidget {
   const _StatusPanel({required this.status});
 
@@ -442,7 +443,7 @@ class _StatusPanel extends StatelessWidget {
           // Room for the longest step, so the panel doesn't jump between them.
           ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: 110 * MediaQuery.textScalerOf(context).scale(1),
+              minHeight: 150 * MediaQuery.textScalerOf(context).scale(1),
             ),
             child: Semantics(
               liveRegion: true,
@@ -477,6 +478,33 @@ class _StatusPanel extends StatelessWidget {
                         height: 1.45,
                         color: AppColors.secondaryText,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    // The method behind the step, for anyone curious.
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 1),
+                          child: Icon(
+                            Icons.memory_rounded,
+                            size: 14,
+                            color: ScanColors.clearInk,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            step.detail,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              height: 1.35,
+                              fontWeight: FontWeight.w600,
+                              color: ScanColors.clearInk,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

@@ -189,6 +189,15 @@ Future<void> _pumpReport(
   }
 }
 
+/// Opens a closed row under "More about this scan".
+Future<void> _openFold(WidgetTester tester, String title) async {
+  final row = find.text(title).first;
+  await tester.ensureVisible(row);
+  await tester.pump();
+  await tester.tap(row);
+  await settleFrames(tester);
+}
+
 Future<void> settleFrames(WidgetTester tester) async {
   for (var i = 0; i < 6; i++) {
     await tester.pump(const Duration(milliseconds: 100));
@@ -916,7 +925,10 @@ void main() {
       expect(find.byType(SignsSection), findsNothing);
       // Still has something to say: keep the check-ups going.
       expect(find.text('Keep your regular check-ups'), findsWidgets);
-      // The first scan: nothing to compare with yet.
+      // The first scan: nothing to compare with yet, said on the closed row.
+      expect(find.text('Your first scan. Scan again to see changes.'),
+          findsOneWidget);
+      await _openFold(tester, 'Over time');
       expect(find.text('This is your starting point'), findsOneWidget);
     });
 
@@ -953,6 +965,11 @@ void main() {
 
     testWidgets('names what it can\'t read', (tester) async {
       await _pumpReport(tester, ScreeningReport(_analysis(), _allViews));
+      // Said on the closed row, and in full once it's opened.
+      expect(find.textContaining("Plaque, tartar and gums aren't read yet"),
+          findsOneWidget);
+      await _openFold(tester, 'What the check looked for');
+      await _openFold(tester, 'What this scan covered');
       expect(find.text('Plaque and tartar'), findsOneWidget);
       expect(find.text('Gum problems'), findsOneWidget);
       expect(find.text('Not read'), findsNWidgets(2));
@@ -995,6 +1012,7 @@ void main() {
     testWidgets('tapping a past scan on the chart shows its numbers',
         (tester) async {
       await _pumpReport(tester, busy, history: history, sessionId: 'b');
+      await _openFold(tester, 'Over time');
       expect(find.text('Nov 2, 2026 · 3 signs · 1 faint'), findsOneWidget);
       final past = find.bySemanticsLabel('Oct 2, 2026 · 0 signs');
       await tester.ensureVisible(past);

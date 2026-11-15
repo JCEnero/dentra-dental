@@ -926,10 +926,12 @@ void main() {
     });
 
     test('no step uses the word AI or leaves a sentence out', () {
-      expect(allScanSteps, hasLength(10));
+      expect(allScanSteps, hasLength(11));
       for (final step in allScanSteps) {
         expect(step.title, isNot(contains('AI')));
         expect(step.body, isNot(matches(RegExp(r'\bAI\b'))));
+        expect(step.detail, isNot(matches(RegExp(r'\bAI\b'))));
+        expect(step.detail, isNotEmpty);
         expect(step.body.split(RegExp(r'[.!?]\s')).length, greaterThan(1));
       }
     });
