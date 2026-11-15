@@ -659,93 +659,126 @@ class _TourGuide extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: AnimatedSwitcher(
-                duration: duration,
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                layoutBuilder: (current, previous) => Stack(
-                  alignment: Alignment.topLeft,
-                  children: [
-                    for (final old in previous)
-                      Positioned(top: 0, left: 0, right: 0, child: old),
-                    if (current != null) current,
-                  ],
-                ),
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.08, 0),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                ),
-                child: Semantics(
-                  key: ValueKey(visit),
-                  // Announces each new step to screen readers.
-                  liveRegion: true,
-                  container: true,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _Caption(chapterLabel),
-                        const SizedBox(height: 1),
-                        _Title(step.title),
-                        const SizedBox(height: 4),
-                        _Body(step.body),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            // Lined up with the edge of the bubble's content.
-            Transform.translate(
-              offset: const Offset(-12, 0),
-              child: GuideQuietButton(
-                label: 'Skip',
-                semanticLabel: 'Skip, end the tour',
-                onPressed: onSkip,
-                height: 44,
-              ),
-            ),
-            // The main action keeps its size; it only narrows when Skip,
-            // Back and Next truly cannot share the row.
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              // Every spot step's words are laid out unseen behind the
+              // current one, so the bubble keeps the tallest step's height
+              // and never grows or shrinks between steps.
+              child: Stack(
+                alignment: Alignment.topLeft,
                 children: [
-                  if (canGoBack) ...[
-                    GuideBackButton(
-                      onPressed: onBack,
-                      label: 'Previous step',
-                      size: 44,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Flexible(
-                    child: GuidePrimaryButton(
-                      label: step.action,
-                      onPressed: onNext,
-                      height: 44,
-                      minWidth: 96,
-                    ),
-                  ),
+                  for (final s in appTourSteps)
+                    if (s.spot != null)
+                      Visibility(
+                        visible: false,
+                        maintainSize: true,
+                        maintainAnimation: true,
+                        maintainState: true,
+                        child: _words(chapterLabel, s),
+                      ),
+                  _switcher(duration),
                 ],
               ),
             ),
           ],
         ),
+        ..._controls(),
       ],
     );
+  }
+
+  /// The chapter, title and body of one step.
+  Widget _words(String caption, AppTourStep s) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Caption(caption),
+          const SizedBox(height: 1),
+          _Title(s.title),
+          const SizedBox(height: 4),
+          _Body(s.body),
+        ],
+      ),
+    );
+  }
+
+  Widget _switcher(Duration duration) {
+    return AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (current, previous) => Stack(
+        alignment: Alignment.topLeft,
+        children: [
+          for (final old in previous)
+            Positioned(top: 0, left: 0, right: 0, child: old),
+          if (current != null) current,
+        ],
+      ),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.08, 0),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: Semantics(
+        key: ValueKey(visit),
+        // Announces each new step to screen readers.
+        liveRegion: true,
+        container: true,
+        child: _words(chapterLabel, step),
+      ),
+    );
+  }
+
+  /// Skip, back and the main action under the words.
+  List<Widget> _controls() {
+    return [
+      const SizedBox(height: 10),
+      Row(
+        children: [
+          // Lined up with the edge of the bubble's content.
+          Transform.translate(
+            offset: const Offset(-12, 0),
+            child: GuideQuietButton(
+              label: 'Skip',
+              semanticLabel: 'Skip, end the tour',
+              onPressed: onSkip,
+              height: 44,
+            ),
+          ),
+          // The main action keeps its size; it only narrows when Skip,
+          // Back and Next truly cannot share the row.
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (canGoBack) ...[
+                  GuideBackButton(
+                    onPressed: onBack,
+                    label: 'Previous step',
+                    size: 44,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(
+                  child: GuidePrimaryButton(
+                    label: step.action,
+                    onPressed: onNext,
+                    height: 44,
+                    minWidth: 96,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ];
   }
 }
 

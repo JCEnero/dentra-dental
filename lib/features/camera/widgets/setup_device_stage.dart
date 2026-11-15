@@ -143,37 +143,28 @@ class _NetworkRow extends StatelessWidget {
       fontWeight: FontWeight.w700,
       color: AppColors.navy,
     );
-    final row = Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+    final radius = BorderRadius.circular(16);
+    final row = DecoratedBox(
+      // Soft teal lift under the glass, kept faint so the pill floats.
       decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.g2.withValues(alpha: 0.18)),
+        borderRadius: radius,
         boxShadow: [
           BoxShadow(
-            color: AppColors.g2.withValues(alpha: 0.18),
+            color: AppColors.g2.withValues(alpha: 0.1),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.wifi_rounded, size: 18, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: CamText.product, style: name),
-                TextSpan(
-                  text: ' ····',
-                  style: name.copyWith(color: AppColors.secondaryText),
-                ),
-              ],
-            ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: GlassBlur(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+            decoration: setupClearGlass(radius),
+            child: _label(name),
           ),
-        ],
+        ),
       ),
     );
     if (still) return row;
@@ -193,6 +184,45 @@ class _NetworkRow extends StatelessWidget {
       child: row,
     );
   }
+
+  Widget _label(TextStyle name) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.wifi_rounded, size: 18, color: AppColors.primary),
+        const SizedBox(width: 8),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: CamText.product, style: name),
+              TextSpan(
+                text: ' ····',
+                style: name.copyWith(color: AppColors.secondaryText),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Clear glass for the setup guide's small surfaces (the ready list, the
+/// camera's Wi-Fi row): a thin white sheen fading toward mint, with a
+/// bright rim, so the backdrop shows through instead of a white slab.
+BoxDecoration setupClearGlass(BorderRadius radius) {
+  return BoxDecoration(
+    borderRadius: radius,
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        AppColors.white.withValues(alpha: 0.42),
+        AppColors.lightLavender.withValues(alpha: 0.16),
+      ],
+    ),
+    border: Border.all(color: AppColors.white.withValues(alpha: 0.8)),
+  );
 }
 
 // ── The stage ────────────────────────────────────────────────────────

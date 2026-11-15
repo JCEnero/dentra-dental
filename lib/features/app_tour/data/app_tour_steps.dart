@@ -80,15 +80,14 @@ const List<AppTourStep> appTourSteps = [
     spot: TourSpot.rabi,
     chapter: 'Home',
     title: 'Ask me anything',
-    body: 'About your results or your teeth, in plain words. I guide, a '
-        'dentist diagnoses.',
+    body: 'Plain-word answers. I guide, a dentist diagnoses.',
     mood: MascotMood.wave,
   ),
   AppTourStep(
     spot: TourSpot.notifications,
     chapter: 'Home',
     title: 'Stay in the loop',
-    body: 'Results and reminders land here. A dot means something new.',
+    body: 'Results and reminders. A dot means something new.',
     mood: MascotMood.watch,
   ),
   AppTourStep(
@@ -101,7 +100,7 @@ const List<AppTourStep> appTourSteps = [
     spot: TourSpot.scan,
     chapter: 'Getting around',
     title: 'Scan your smile',
-    body: 'Capture each area with your DENTRA device. I guide every shot.',
+    body: 'Capture each area with your Dentra device.',
     mood: MascotMood.cheer,
   ),
   AppTourStep(

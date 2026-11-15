@@ -435,26 +435,40 @@ class SetupReadyList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      borderRadius: BorderRadius.circular(22),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      child: Column(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 1,
-                thickness: 1,
-                indent: 50,
-                color: AppColors.g2.withValues(alpha: 0.12),
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: CamInfoRow(icon: icons[i % icons.length], title: items[i]),
-            ),
-          ],
-        ],
+    final radius = BorderRadius.circular(22);
+    // Clearer than a stock GlassCard: a thin white sheen with a bright
+    // rim, so the backdrop reads through it as glass.
+    return ClipRRect(
+      borderRadius: radius,
+      child: GlassBlur(
+        child: DecoratedBox(
+          decoration: setupClearGlass(radius),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            child: _rows(),
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _rows() {
+    return Column(
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0)
+            Divider(
+              height: 1,
+              thickness: 1,
+              indent: 50,
+              color: AppColors.g2.withValues(alpha: 0.12),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: CamInfoRow(icon: icons[i % icons.length], title: items[i]),
+          ),
+        ],
+      ],
     );
   }
 }
