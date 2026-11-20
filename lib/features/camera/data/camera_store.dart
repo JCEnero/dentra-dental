@@ -29,6 +29,8 @@ class CameraStore {
   Future<void> saveCamera(SavedCamera camera) =>
       _write((p) => p.setString(_camera, jsonEncode(camera.toJson())));
 
+  Future<void> removeCamera() => _write((p) => p.remove(_camera));
+
   Future<CameraViewSettings> loadSettings() async {
     try {
       final raw = (await SharedPreferences.getInstance()).getString(_settings);

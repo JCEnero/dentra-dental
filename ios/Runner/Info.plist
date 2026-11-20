@@ -57,7 +57,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Dentra needs access to your photo library so you can set a profile picture or choose dental photos for a scan.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Dentra needs access to your camera so you can take a profile photo and capture dental images during a scan.</string>
+	<string>Dentra uses your camera to scan your device setup sticker, take a profile photo, and capture dental images.</string>
 	<!-- geolocator: location access for Clinic Finder -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Dentra uses your location to show dental clinics near you and how far away they are.</string>
@@ -68,7 +68,11 @@
 	<string>Dentra uses Bluetooth to find your Dentra Cam and send it your Wi-Fi details during setup.</string>
 	<!-- The Dentra Cam's live picture and photos come over the home Wi-Fi -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Dentra connects to your Dentra Cam on your Wi-Fi to show its live picture and take photos.</string>
+	<string>Dentra uses your local network to set up your Dentra Cam, find it on home Wi-Fi, and take photos.</string>
+	<key>NSBonjourServices</key>
+	<array><string>_dentracam._tcp</string></array>
+	<key>NSAppTransportSecurity</key>
+	<dict><key>NSAllowsLocalNetworking</key><true/></dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

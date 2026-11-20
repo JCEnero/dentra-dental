@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:dentra_mobile/features/camera/data/camera_protocol.dart';
 import 'package:dentra_mobile/features/camera/services/cloud_cam_client.dart';
 import 'package:dentra_mobile/features/camera/services/dentra_cam_client.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 
 import 'camera_fakes.dart';
 
@@ -53,6 +55,7 @@ Uint8List framed(int kind, List<int> body, {int? id}) => Uint8List.fromList([
     ]);
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late FakeSocket socket;
   late List<Uri> opened;
   late CloudCamClient client;
@@ -94,6 +97,10 @@ void main() {
     socket.incoming.add(framed(1, frameBytes(4)));
     await pumpEventQueue();
     expect(frames.single, frameBytes(4));
+    // Safari's Flutter fallback decodes the whole backing buffer. It must
+    // contain only the JPEG, without the relay's message-type prefix.
+    expect(frames.single.offsetInBytes, 0);
+    expect(frames.single.buffer.asUint8List(), frameBytes(4));
 
     await sub.cancel();
     await pumpEventQueue();
@@ -190,7 +197,36 @@ void main() {
     // Another photo's answer is not this one's.
     socket.incoming.add(framed(2, frameBytes(1), id: 999));
     socket.incoming.add(framed(2, frameBytes(7), id: ask['id']! as int));
-    expect(await photo, frameBytes(7));
+    final bytes = await photo;
+    expect(bytes, frameBytes(7));
+    expect(bytes.offsetInBytes, 0);
+    expect(bytes.buffer.asUint8List(), frameBytes(7));
+  });
+
+  test('a cloud JPEG backing buffer decodes without relay headers', () async {
+    final jpeg = Uint8List.fromList(img.encodeJpg(
+        img.Image(width: 32, height: 24)..clear(img.ColorRgb8(20, 150, 90))));
+    final frames = <Uint8List>[];
+    final sub = client.frames().listen(frames.add);
+    await pumpEventQueue();
+    socket.ready();
+    await pumpEventQueue();
+    final message = framed(1, jpeg);
+    socket.incoming.add(message);
+    await pumpEventQueue();
+    final bytes = frames.single;
+    // Reproduce the browser fallback's buffer access, not just the view.
+    expect(bytes.buffer.asUint8List(), jpeg);
+    final codec = await ui.instantiateImageCodec(bytes.buffer.asUint8List());
+    final decoded = await codec.getNextFrame();
+    expect(decoded.image.width, 32);
+    expect(decoded.image.height, 24);
+    decoded.image.dispose();
+    codec.dispose();
+    // A relay buffer can be reused without changing the decoded frame bytes.
+    message.fillRange(0, message.length, 0);
+    expect(bytes, jpeg);
+    await sub.cancel();
   });
 
   // A widget test, for its fake clock.

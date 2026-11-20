@@ -34,6 +34,9 @@ class CamStatus {
     this.lightOn,
     this.lightLevel,
     this.lightAvailable,
+    this.deviceId,
+    this.cameraReady,
+    this.setupSession,
   });
 
   /// Wi-Fi signal in dBm.
@@ -46,6 +49,9 @@ class CamStatus {
 
   /// False on a camera built without its LED; null when it doesn't say.
   final bool? lightAvailable;
+  final String? deviceId;
+  final bool? cameraReady;
+  final String? setupSession;
 
   static CamStatus fromJson(Map<dynamic, dynamic> json) {
     int? integer(Object? v) => switch (v) {
@@ -61,6 +67,11 @@ class CamStatus {
 
     final rssi = integer(json['rssi']);
     return CamStatus(
+      deviceId: json['id'] is String ? json['id'] as String : null,
+      cameraReady: flag(json['camera_ok']),
+      setupSession: json['setup_session'] is String
+          ? json['setup_session'] as String
+          : null,
       // The ESP32 reports 0 when it has no signal reading.
       rssi: rssi != null && rssi < 0 ? rssi : null,
       frameSize: CamFrameSize.fromValue(integer(json['framesize'])),

@@ -25,6 +25,10 @@ enum DeviceScene {
 
   /// Sending out its own Wi-Fi network, beside the name to look for.
   hotspot,
+  scanning,
+  connecting,
+  verifying,
+  connected,
 }
 
 /// The Dentra Cam, as the 3D model the scan page uses, on a glass stage.
@@ -82,6 +86,11 @@ class _SetupDeviceStageState extends State<SetupDeviceStage>
         DeviceScene.charging => CamText.artCharging,
         DeviceScene.power => CamText.artPower,
         DeviceScene.hotspot => CamText.artHotspot,
+        DeviceScene.scanning => 'Animated Dentra Cam waiting for the setup QR',
+        DeviceScene.connecting =>
+          'Animated Dentra Cam making its account connection',
+        DeviceScene.verifying => 'Animated Dentra Cam being verified',
+        DeviceScene.connected => 'Dentra Cam connected and verified',
       },
       excludeSemantics: true,
       child: GlassCard(
@@ -270,6 +279,11 @@ class _Hold {
         DeviceScene.charging => charging,
         DeviceScene.power => power,
         DeviceScene.hotspot => hotspot,
+        _ => const _Hold(
+            yaw: -0.5,
+            pitch: 0.24,
+            roll: -0.32,
+            area: Rect.fromLTRB(0.14, 0.08, 0.83, 0.92)),
       };
 }
 
@@ -332,7 +346,7 @@ class _StagePainter extends CustomPainter {
     final sway = still ? 0.0 : math.sin(clock * 0.5);
     final pose = _fit(
       size,
-      yaw: 0.08 * sway,
+      yaw: (scene.index >= DeviceScene.scanning.index ? 0.3 : 0.08) * sway,
       pitch: still ? 0 : 0.02 * math.sin(clock * 0.37),
       bob: still ? 0 : 2.5 * math.sin(clock * 0.8),
     );
@@ -356,6 +370,71 @@ class _StagePainter extends CustomPainter {
         _renderer.paint(canvas, pose);
         DeviceRenderer.paintParts(canvas, pose, shine: sway);
         _paintWaves(canvas, size, pose, mm, clock);
+      case DeviceScene.scanning:
+      case DeviceScene.connecting:
+      case DeviceScene.verifying:
+      case DeviceScene.connected:
+        _paintConnectionOrbit(canvas, size, clock, behind: true);
+        _renderer.paint(canvas, pose);
+        DeviceRenderer.paintParts(canvas, pose, shine: sway, switchOn: 1);
+        _paintConnectionOrbit(canvas, size, clock, behind: false);
+    }
+  }
+
+  void _paintConnectionOrbit(Canvas canvas, Size size, double clock,
+      {required bool behind}) {
+    final center = Offset(size.width * 0.5, size.height * 0.57);
+    final orbit = Rect.fromCenter(
+        center: center, width: size.width * 0.78, height: size.height * 0.32);
+    final connected = scene == DeviceScene.connected;
+    final color = connected ? AppColors.primary : AppColors.g2;
+    if (behind) {
+      canvas.drawOval(
+          orbit,
+          Paint()
+            ..color = color.withValues(alpha: 0.12)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+    }
+    for (var i = 0; i < 4; ++i) {
+      final angle = (still || connected ? 0.7 : clock * 1.5) + i * math.pi / 2;
+      final isBehind = math.sin(angle) < 0;
+      if (isBehind != behind) continue;
+      final point = center +
+          Offset(math.cos(angle) * orbit.width / 2,
+              math.sin(angle) * orbit.height / 2);
+      canvas.drawCircle(point, connected ? 3 : 4,
+          Paint()..color = color.withValues(alpha: isBehind ? 0.25 : 0.8));
+      if (!still && !connected) {
+        canvas.drawCircle(
+            point, 9, Paint()..color = color.withValues(alpha: 0.12));
+      }
+    }
+    if (behind) return;
+    final badge = Offset(size.width * 0.79, size.height * 0.25);
+    canvas.drawCircle(badge, 18, Paint()..color = Colors.white);
+    canvas.drawCircle(
+        badge,
+        18,
+        Paint()
+          ..color = color.withValues(alpha: 0.22)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5);
+    final line = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    if (connected) {
+      canvas.drawPath(
+          Path()
+            ..moveTo(badge.dx - 7, badge.dy)
+            ..lineTo(badge.dx - 2, badge.dy + 5)
+            ..lineTo(badge.dx + 7, badge.dy - 5),
+          line);
+    } else {
+      canvas.drawArc(Rect.fromCircle(center: badge, radius: 10),
+          still ? -math.pi / 2 : clock * 2.1, math.pi * 1.35, false, line);
     }
   }
 

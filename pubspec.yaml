@@ -28,6 +28,12 @@ dependencies:
   wakelock_plus: 1.8.2
   web_socket_channel: 3.0.3
   vector_graphics: 1.2.3
+  cryptography: 2.9.0
+  qr_flutter: 4.1.0
+  qr: 3.0.3
+  mobile_scanner: 7.2.0
+  audioplayers: 6.8.1
+  web: 1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -48,3 +54,4 @@ flutter:
     - assets/images/treatments/
     - assets/images/treatments/icons/
     - assets/fonts/
+    - assets/audio/

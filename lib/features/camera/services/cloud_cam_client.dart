@@ -303,10 +303,18 @@ class _CloudSession {
     if (bytes == null || bytes.length < 2) return;
     switch (bytes[0]) {
       case _frame:
-        if (_watchers > 0) _pictures.add(Uint8List.sublistView(bytes, 1));
+        if (_watchers > 0) {
+          // Flutter's Safari image decoder reads the entire backing buffer.
+          // Own exactly the JPEG bytes, excluding the relay's kind byte.
+          _pictures.add(Uint8List.fromList(Uint8List.sublistView(bytes, 1)));
+        }
       case _photo when bytes.length > 5:
         final id = ByteData.sublistView(bytes, 1, 5).getUint32(0);
-        _pending[id]?.complete(Uint8List.sublistView(bytes, 5));
+        final answer = _pending[id];
+        if (answer != null && !answer.isCompleted) {
+          // Photos have the same decoder requirement, with a five-byte header.
+          answer.complete(Uint8List.fromList(Uint8List.sublistView(bytes, 5)));
+        }
     }
   }
 

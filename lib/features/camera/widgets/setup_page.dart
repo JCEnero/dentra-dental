@@ -36,6 +36,7 @@ class SetupFrame extends StatelessWidget {
     required this.scene,
     required this.actions,
     this.onRefresh,
+    this.compactProgress = false,
   });
 
   /// Zero-based.
@@ -58,6 +59,7 @@ class SetupFrame extends StatelessWidget {
 
   /// Pulling down on the scene runs this, where it is set.
   final Future<void> Function()? onRefresh;
+  final bool compactProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +90,7 @@ class SetupFrame extends StatelessWidget {
                     icons: icons,
                     label: label,
                     onClose: onClose,
+                    compact: compactProgress,
                   ),
                   Expanded(
                     child: MascotStage(
@@ -120,12 +123,14 @@ class _Header extends StatelessWidget {
     required this.icons,
     required this.label,
     required this.onClose,
+    this.compact = false,
   });
 
   final int step;
   final List<IconData> icons;
   final String label;
   final VoidCallback onClose;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +139,34 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: GuideStepRail(step: step, icons: icons, label: label),
+            child: compact
+                ? Semantics(
+                    label: 'Step ${step + 1} of ${icons.length}: $label',
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(label,
+                              style: figureText(
+                                  size: 13, weight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          Row(children: [
+                            for (var i = 0; i < icons.length; i++)
+                              Expanded(
+                                  child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      height: 3,
+                                      margin: const EdgeInsets.only(right: 5),
+                                      decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          color: i <= step
+                                              ? AppColors.primary
+                                              : AppColors.primary
+                                                  .withValues(alpha: 0.12)))),
+                          ]),
+                        ]))
+                : GuideStepRail(step: step, icons: icons, label: label),
           ),
           const SizedBox(width: 10),
           ExcludeSemantics(
@@ -265,6 +297,7 @@ class RabiSays extends StatelessWidget {
     this.perched = false,
     this.live = false,
     this.size,
+    this.compact = false,
   });
 
   final String title;
@@ -285,6 +318,7 @@ class RabiSays extends StatelessWidget {
   /// The words are a status: read out when they change.
   final bool live;
   final double? size;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -294,7 +328,7 @@ class RabiSays extends StatelessWidget {
           highlight: highlight,
           center: center,
           live: live,
-          large: true,
+          large: !compact,
         );
 
     switch (place) {

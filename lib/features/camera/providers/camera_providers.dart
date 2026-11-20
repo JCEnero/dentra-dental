@@ -14,19 +14,19 @@ import '../services/dentra_cam_client.dart';
 
 /// How this build reaches the Dentra Cam.
 enum CamLink {
-  /// On the home Wi-Fi, set up over Bluetooth: the Android and iOS apps.
+  /// Legacy cameras reached directly on home Wi-Fi.
   local,
 
-  /// Through the DENTRA API, set up with the camera's own hotspot: the
-  /// website. A web page is HTTPS, so browsers block the camera's
-  /// plain-HTTP pictures, and iPhone browsers have no Bluetooth.
+  /// Account-owned cameras reached through the HTTPS relay on every build.
   cloud,
 }
 
-/// Null where the camera can't be used: the website without a backend,
-/// and desktop builds. Reads the real OS rather than
+/// Account-linked setup uses the backend on every platform. Without it, native
+/// builds can still use a previously saved local camera. Reads the OS rather than
 /// `defaultTargetPlatform`, which widget tests set to Android.
 final camLinkProvider = Provider<CamLink?>((ref) {
+  // Provisioning links every platform to the same account-owned camera.
+  if (ref.watch(apiClientProvider) != null) return CamLink.cloud;
   if (kIsWeb) {
     return ref.watch(apiClientProvider) == null ? null : CamLink.cloud;
   }
@@ -75,20 +75,34 @@ final cameraClientProvider = Provider<CamClient Function(SavedCamera)>((ref) {
       camera.cloudId != null ? cloud(camera.cloudId!) : local(camera.host!);
 });
 
+/// All cameras owned by this account, including offline cameras that need
+/// removing after a full flash erase. Reloads when the account changes.
+final cloudCamerasProvider = FutureProvider<List<CloudCamera>>((ref) async {
+  ref.watch(authServiceProvider.select((a) => a.currentUserId));
+  final api = ref.watch(cloudCamApiProvider);
+  if (api == null) return const [];
+  return api.cameras();
+});
+
 /// The camera this phone was set up with, or on the website the one linked
 /// to the signed-in account. Null when there's none.
 class SavedCameraNotifier extends AsyncNotifier<SavedCamera?> {
+  String? _selectedCloudId;
+
   @override
   Future<SavedCamera?> build() async {
     if (ref.watch(camLinkProvider) != CamLink.cloud) {
       return ref.read(cameraStoreProvider).loadCamera();
     }
-    // Another account signing in on this page has other cameras.
-    ref.watch(authServiceProvider.select((a) => a.currentUserId));
-    final api = ref.watch(cloudCamApiProvider);
-    if (api == null) return null;
-    final cameras = await api.cameras();
-    return cameras.isEmpty ? null : cameras.first.toSaved();
+    final cameras = await ref.watch(cloudCamerasProvider.future);
+    final selected =
+        cameras.where((camera) => camera.id == _selectedCloudId).firstOrNull ??
+            cameras.firstOrNull;
+    _selectedCloudId = selected?.id;
+    if (selected == null && !kIsWeb) {
+      return ref.read(cameraStoreProvider).loadCamera();
+    }
+    return selected?.toSaved();
   }
 
   Future<void> save(SavedCamera camera) async {
@@ -98,10 +112,28 @@ class SavedCameraNotifier extends AsyncNotifier<SavedCamera?> {
     } catch (_) {
       // Nothing was loaded; this replaces it either way.
     }
+    _selectedCloudId = camera.cloudId;
     state = AsyncData(camera);
     // The website's cameras live on the account, not in the browser.
     if (camera.host != null) {
       await ref.read(cameraStoreProvider).saveCamera(camera);
+    } else {
+      ref.invalidate(cloudCamerasProvider);
+    }
+  }
+
+  Future<void> remove(SavedCamera camera) async {
+    final id = camera.cloudId;
+    if (id != null) {
+      final api = ref.read(cloudCamApiProvider);
+      if (api == null) throw StateError('Camera API unavailable');
+      await api.removeCamera(id);
+      // Also rebuilds this provider, selecting another owned camera, if any.
+      ref.invalidate(cloudCamerasProvider);
+    } else {
+      await future;
+      await ref.read(cameraStoreProvider).removeCamera();
+      state = const AsyncData(null);
     }
   }
 }

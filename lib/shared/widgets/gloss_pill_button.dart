@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -47,11 +48,15 @@ class GlossPillButton extends StatefulWidget {
 
 class _GlossPillButtonState extends State<GlossPillButton>
     with SingleTickerProviderStateMixin {
-  /// Loops: the sheen passes in one part of each cycle.
+  // Only tick while the sheen is visible. The original 3.6-second loop
+  // showed it from 55% to 85%; the rest needs no animation frames.
+  static const _firstPause = Duration(milliseconds: 1980);
+  static const _betweenPasses = Duration(milliseconds: 2520);
   late final AnimationController _sheen = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 3600),
-  );
+    duration: const Duration(milliseconds: 1080),
+  )..addStatusListener(_onSheenStatus);
+  Timer? _sheenPause;
 
   bool _down = false;
 
@@ -61,23 +66,55 @@ class _GlossPillButtonState extends State<GlossPillButton>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
+    _syncSheen();
+  }
+
+  @override
+  void didUpdateWidget(GlossPillButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncSheen();
+  }
+
+  void _syncSheen() {
+    if (MediaQuery.disableAnimationsOf(context) ||
+        !TickerMode.valuesOf(context).enabled ||
+        widget.onPressed == null ||
+        widget.loading) {
+      _sheenPause?.cancel();
+      _sheenPause = null;
       _sheen
         ..stop()
         ..value = 0;
-    } else if (!_sheen.isAnimating) {
-      _sheen.repeat();
+    } else if (!_sheen.isAnimating && _sheenPause == null) {
+      _scheduleSheen(_firstPause);
     }
+  }
+
+  void _onSheenStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      _scheduleSheen(_betweenPasses);
+    }
+  }
+
+  void _scheduleSheen(Duration delay) {
+    _sheenPause = Timer(delay, () {
+      _sheenPause = null;
+      _sheen.forward(from: 0);
+    });
   }
 
   @override
   void dispose() {
+    _sheenPause?.cancel();
     _sheen.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      RepaintBoundary(child: _buildButton(context));
+
+  Widget _buildButton(BuildContext context) {
     final height = widget.height;
     final disc = height - 14;
     final radius = BorderRadius.all(Radius.circular(height / 2));
@@ -279,14 +316,13 @@ class _SheenPainter extends CustomPainter {
 
   /// 0 → 1 → 0 while the sheen passes, else 0.
   static double pass(double v) {
-    final t = (v - 0.55) / 0.3;
-    if (t <= 0 || t >= 1) return 0;
-    return math.sin(t * math.pi);
+    if (v <= 0 || v >= 1) return 0;
+    return math.sin(v * math.pi);
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final t = (loop.value - 0.55) / 0.3;
+    final t = loop.value;
     if (t <= 0 || t >= 1) return;
     final width = size.height * 1.4;
     final x = -width + (size.width + width * 2) * Curves.easeInOut.transform(t);

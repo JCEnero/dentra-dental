@@ -292,6 +292,33 @@ abstract final class CamText {
   static String settingsSaved(String name, String? ssid) =>
       ssid == null ? name : '$name on $ssid';
   static const settingsNone = 'Connect your Dentra Cam to Wi-Fi';
+  static const manageCameras = 'Manage cameras';
+  static const manageCamerasSubtitle = 'View and remove saved cameras';
+  static const cameraLinkExplanation =
+      'Turning the camera off disconnects its live view. It stays linked to '
+      'your account until you remove it here.';
+  static const cameraLocalExplanation =
+      'Turning the camera off disconnects its live view. Remove it here to '
+      'forget its saved address on this phone.';
+  static const cameraRecoveryHint =
+      'If pairing says the camera is already linked after a reset or '
+      'firmware upload, remove its old entry here, then set it up again '
+      'with a new code.';
+  static const noCameras = 'No saved cameras';
+  static const noCamerasBody = 'Set up your Dentra Cam to use it for a scan.';
+  static const camerasLoadFailed = "Couldn't load your cameras.";
+  static const removeCamera = 'Remove camera';
+  static String removeCameraTitle(String name) => 'Remove $name?';
+  static const removeCameraBody =
+      'This unlinks the camera from your account and ends its live '
+      'connections. Your account and saved scans stay available. '
+      'To use the camera again, set it up with a new code.';
+  static const removeLocalCameraBody =
+      'This forgets the camera on this phone. Your saved scans stay '
+      'available. You can set up the camera again later.';
+  static const cameraRemoved = 'Camera removed. You can set it up again.';
+  static const cameraRemoveFailed =
+      "Couldn't remove the camera. Check your connection and try again.";
 
   // ── Choosing how to capture, at Start ───────────────────────────
   static const choiceTitle = 'How will you take your photos?';
@@ -324,7 +351,8 @@ abstract final class CamText {
 
   static const hotspotPowerBody =
       'Slide the switch on its side. It starts in setup mode.';
-  static const hotspotPowerReset = 'Set up before? Hold BOOT for 5 seconds.';
+  static const hotspotPowerReset =
+      'Power it off and on to set up Wi-Fi again. Its account link stays saved.';
 
   static const hotspotJoinTitle = 'Give the camera your Wi-Fi';
   static const hotspotJoinHighlight = 'your Wi-Fi';
@@ -357,8 +385,9 @@ abstract final class CamText {
   static const hotspotWaitingFor = 'Waiting for your Dentra Cam';
   static const hotspotSlowTitle = 'Still waiting?';
   static const hotspotSlowBody =
-      "Join the camera's Wi-Fi again and check its setup page. The camera "
-      'needs a 2.4 GHz network.';
+      'Check that your phone is back on Wi-Fi with internet. If the camera '
+      'says it is already linked, open Profile > Dentra Cam > Manage '
+      'cameras, remove its old entry, and set it up with a new code.';
   static const hotspotExpiredTitle = 'This code expired';
   static const hotspotExpiredBody =
       'Get a new one and enter it on the setup page.';

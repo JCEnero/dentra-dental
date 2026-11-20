@@ -1,7 +1,57 @@
 /// How the app talks to the Dentra Cam (ESP32-S3 + OV5640). The firmware must
 /// match this file, so change both together.
 ///
-/// ## Setup over Bluetooth LE (setup mode only)
+/// ## Captive Wi-Fi portal (firmware 2.2+, default on all clients)
+///
+/// Join the open Dentra Cam network; no hotspot password is needed. Wildcard
+/// DNS and HTTP connectivity probes redirect to http://192.168.4.1/.
+/// The self-contained glass page collects Wi-Fi credentials locally. Its
+/// optional six-character account code uses the existing pairing API.
+/// GET /setup/info supplies a per-boot token required by POST /join.
+/// GET /networks lists nearby networks; GET /result reports join status.
+/// Captive DNS and HTTP stop after successful handoff to home Wi-Fi.
+/// /setup/info reports protected=false; the per-boot POST token remains required.
+///
+/// ## Legacy encrypted optical provisioning (firmware 1.7+, opt-in)
+///
+/// The phone remains online. The user enters SSID, password and the 32-hex
+/// device QR key, then shows an encrypted QR to the device camera. Account
+/// linking uses the existing pairing API; passwords never cross the cloud.
+/// Envelope: DENTRA1: + unpadded base64url(12-byte nonce | ciphertext | 16-byte tag).
+/// Cipher: AES-128-GCM. Key: 16 raw bytes from the unique label key.
+/// AAD: UTF-8 DENTRA-QR-1. Plaintext JSON: s=SSID, p=password, c=pairing code,
+/// i=Unix milliseconds. The device rejects timestamps no newer than its last
+/// successful setup, joins the router, and saves the account code and nonce.
+/// The nonce is echoed as uppercase hex in setup_session, alongside id and
+/// camera_ok in the device's live status. All must match before completion.
+/// Account codes expire server-side after 15 minutes; offline devices have
+/// no trusted clock, so they cannot enforce wall-clock expiry before joining.
+/// Firmware must be flashed and its unique QR key labeled before use.
+///
+/// ## Legacy protected SoftAP (firmware 1.5+, opt-in on firmware 1.7)
+///
+/// The OS asks to join "Dentra Cam XXXX" using the unique 16-character
+/// WPA2 setup key on that device's label. No open-hotspot fallback is allowed.
+/// Older apps can still configure via these local API endpoints.
+/// At the fixed gateway 192.168.4.1:
+///
+/// - GET /setup/info: protocol=1, protected=true, id, name, host, token.
+/// - GET /setup/networks: networks=[{ssid, rssi, secure}]. Device scans 2.4 GHz.
+/// - POST /setup/join: form body ssid, password, token. Returns ok=true;
+///   a lost acknowledgement must be reconciled, never treated as success.
+/// - GET /setup/status: id, ssid, state (idle/connecting/connected/failed),
+///   ip and host when connected, error when failed.
+/// - POST /setup/finish: token. Accepted only after connected; acknowledges
+///   before switching off the hotspot and starting the camera servers.
+///
+/// The AP remains for up to 120 seconds after joining if finish is lost.
+/// The app releases its OS Wi-Fi request and verifies /status on the
+/// reported IP, falling back to _dentracam._tcp discovery. Both device id
+/// and camera_ok=true must match before saving or showing success.
+/// Credentials are saved on the ESP32 only after joining, never on the phone.
+/// BOOT held for five seconds clears the saved router and account link.
+///
+/// ## Legacy setup over Bluetooth LE (setup mode only)
 ///
 /// A camera with no Wi-Fi saved, or one reset by holding its button for
 /// 5 seconds, advertises [CamBle.service] under a name that starts with
@@ -30,7 +80,7 @@
 /// `error` is `wrong_password` (WIFI_REASON_AUTH_FAIL, 4WAY_HANDSHAKE_TIMEOUT,
 /// HANDSHAKE_TIMEOUT), `ssid_not_found` (NO_AP_FOUND) or `timeout` (no IP
 /// within about 20 s). After "connected" the camera saves the network, waits
-/// about a second so the phone receives the event, then restarts into Wi-Fi
+/// about a second so the phone receives the event, then hands over to Wi-Fi
 /// mode and stops advertising. "ip" must be its IPv4 address on the home
 /// network.
 ///
@@ -62,8 +112,8 @@
 /// A web page can't use any of the above: iPhone browsers have no Bluetooth,
 /// and an HTTPS page can't load the camera's plain-HTTP pictures. So:
 ///
-/// - Setup mode also opens a Wi-Fi hotspot named like the Bluetooth name,
-///   with a setup page at http://192.168.4.1 that phones open by themselves.
+/// - Setup mode opens an unprotected Wi-Fi hotspot with the setup page at
+///   http://192.168.4.1. Firmware 2.1+ enables captive redirects.
 ///   The user picks the home Wi-Fi there and types the code the website
 ///   shows (POST /api/cam/pairings), which links the camera to the account.
 /// - Once linked, the camera keeps a WebSocket open to the API (through

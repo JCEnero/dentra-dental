@@ -7,6 +7,7 @@ import 'package:dentra_mobile/features/camera/data/saved_camera.dart';
 import 'package:dentra_mobile/features/camera/providers/camera_providers.dart';
 import 'package:dentra_mobile/features/camera/services/cloud_cam_api.dart';
 import 'package:dentra_mobile/features/camera/state/hotspot_setup_controller.dart';
+import 'package:dentra_mobile/features/camera/screens/hotspot_setup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -220,7 +221,7 @@ void main() {
     ('standard phone', const Size(390, 844), 1.0),
     ('large phone, accessibility text', const Size(430, 932), 2.0),
   ]) {
-    testWidgets('the website opens its own guide, start to finish: $name',
+    testWidgets('legacy cloud-linking components remain compatible: $name',
         (tester) async {
       final server = FakeCamApi();
       final cam = FakeCamClient();
@@ -247,8 +248,8 @@ void main() {
             builder: (context) => Scaffold(
               body: Center(
                 child: TextButton(
-                  onPressed: () async =>
-                      outcome = await openCameraSetup(context),
+                  onPressed: () async => outcome = await Navigator.of(context)
+                      .push(HotspotSetupScreen.route()),
                   child: const Text('open'),
                 ),
               ),

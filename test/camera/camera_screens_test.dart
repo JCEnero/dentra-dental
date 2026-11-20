@@ -1,11 +1,13 @@
+import 'package:dentra_mobile/features/camera/services/setup_sound.dart';
+import 'qr_setup_fakes.dart' show QrTestSound;
 import 'dart:convert';
 
-import 'package:dentra_mobile/features/camera/camera_flow.dart';
 import 'package:dentra_mobile/features/camera/camera_strings.dart';
 import 'package:dentra_mobile/features/camera/data/camera_protocol.dart';
 import 'package:dentra_mobile/features/camera/data/saved_camera.dart';
 import 'package:dentra_mobile/features/camera/providers/camera_providers.dart';
 import 'package:dentra_mobile/features/camera/screens/live_capture_screen.dart';
+import 'package:dentra_mobile/features/camera/screens/camera_setup_screen.dart';
 import 'package:dentra_mobile/features/camera/widgets/camera_bits.dart';
 import 'package:dentra_mobile/features/scan/data/models/captured_image.dart';
 import 'package:dentra_mobile/features/scan/providers/scan_session_provider.dart';
@@ -24,6 +26,8 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'camera_fakes.dart';
+import 'wifi_setup_fakes.dart';
+import 'package:dentra_mobile/features/camera/screens/wifi_setup_screen.dart';
 
 Future<void> settle(WidgetTester tester, {int steps = 8}) async {
   for (var i = 0; i < steps; i++) {
@@ -96,11 +100,12 @@ void main() {
     ('standard phone', const Size(390, 844), 1.0),
     ('large phone, accessibility text', const Size(430, 932), 2.0),
   ]) {
-    testWidgets('the setup guide, from welcome to a working camera: $name',
+    testWidgets('the legacy Bluetooth guide remains compatible: $name',
         (tester) async {
       final link = FakeSetupLink();
       final cam = FakeCamClient();
       final container = ProviderContainer(overrides: [
+        setupSoundFactoryProvider.overrideWithValue(QrTestSound.new),
         cameraSetupLinkProvider.overrideWithValue(link),
         camClientFactoryProvider.overrideWithValue((_) => cam),
       ]);
@@ -109,7 +114,8 @@ void main() {
       await pumpLauncher(
         tester,
         container,
-        (context) async => outcome = await openCameraSetup(context),
+        (context) async => outcome =
+            await Navigator.of(context).push(CameraSetupScreen.route()),
         size: size,
         textScale: scale,
       );
@@ -173,6 +179,7 @@ void main() {
       final cam = FakeCamClient();
       final check = FakePhotoCheck();
       final container = ProviderContainer(overrides: [
+        setupSoundFactoryProvider.overrideWithValue(QrTestSound.new),
         camClientFactoryProvider.overrideWithValue((_) => cam),
         photoCheckServiceProvider.overrideWithValue(check),
       ]);
@@ -239,6 +246,7 @@ void main() {
       (tester) async {
     final cam = FakeCamClient();
     final container = ProviderContainer(overrides: [
+      setupSoundFactoryProvider.overrideWithValue(QrTestSound.new),
       camClientFactoryProvider.overrideWithValue((_) => cam),
       photoCheckServiceProvider.overrideWithValue(FakePhotoCheck()),
     ]);
@@ -276,9 +284,13 @@ void main() {
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
       final container = ProviderContainer(overrides: [
+        setupSoundFactoryProvider.overrideWithValue(QrTestSound.new),
         dentraCamAvailableProvider.overrideWithValue(camAvailable),
         if (camLink != null) camLinkProvider.overrideWithValue(camLink),
         if (cloudApi != null) cloudCamApiProvider.overrideWithValue(cloudApi),
+        if (camLink == CamLink.cloud)
+          wifiProvisioningProvider
+              .overrideWithValue(() => FakeProvisioning()..browser = true),
         cameraSetupLinkProvider.overrideWithValue(link ?? FakeSetupLink()),
         camClientFactoryProvider
             .overrideWithValue((_) => cam ?? FakeCamClient()),
@@ -309,17 +321,18 @@ void main() {
       expect(find.text(CamText.cardNotSetUpTitle), findsOneWidget);
 
       await startScan(tester, CamText.choiceCam);
-      expect(find.text(CamText.welcomeTitle), findsOneWidget);
-      await tapText(tester, CamText.welcomeLater);
+      expect(find.text('Connect. Then smile.'), findsOneWidget);
+      await tester.tap(find.byTooltip(CamText.closeSetup));
+      await settle(tester);
       // The scan carries on with the phone's own camera.
-      expect(find.text(CamText.welcomeTitle), findsNothing);
+      expect(find.text('One code.\nA closer connection.'), findsNothing);
       expect(find.text('Take photo'), findsOneWidget);
 
       await tapText(tester, CamText.cardSetUp);
-      expect(find.text(CamText.welcomeTitle), findsOneWidget);
+      expect(find.text('Connect. Then smile.'), findsOneWidget);
       await tester.tap(find.byTooltip(CamText.closeSetup));
       await settle(tester);
-      expect(find.text(CamText.welcomeTitle), findsNothing);
+      expect(find.text('One code.\nA closer connection.'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -400,7 +413,8 @@ void main() {
       expect(find.text('Take photo'), findsOneWidget);
     });
 
-    testWidgets('on the website, the Dentra Cam is set up through its hotspot',
+    testWidgets(
+        'the website opens captive Wi-Fi instructions without credential fields',
         (tester) async {
       // An account with no camera yet.
       final api = CloudCamApi(ApiClient(
@@ -426,12 +440,15 @@ void main() {
       ));
       await pumpScanTab(tester, camLink: CamLink.cloud, cloudApi: api);
       await startScan(tester, CamText.choiceCam);
-      expect(find.text(CamText.welcomeTitle), findsOneWidget);
-      await tapText(tester, CamText.welcomeStart);
-      await tapText(tester, CamText.powerReady);
-      expect(find.byKey(const ValueKey('pairing-code K7P2QX')), findsOneWidget,
-          reason: 'a code, not a Bluetooth search');
-      expect(find.text(CamText.findSearching), findsNothing);
+      expect(find.text('Connect. Then smile.'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('K7P 2QX'), findsOneWidget);
+      await tester.ensureVisible(find.text('Setup page didn’t open?'));
+      await tester.tap(find.text('Setup page didn’t open?'));
+      await settle(tester);
+      expect(find.text('http://192.168.4.1/'), findsOneWidget);
+      expect(find.text('Open camera setup page'), findsOneWidget);
+      expect(find.text('Generate QR'), findsNothing);
 
       await tester.tap(find.byTooltip(CamText.closeSetup));
       await settle(tester);

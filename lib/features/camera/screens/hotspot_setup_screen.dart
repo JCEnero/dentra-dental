@@ -20,6 +20,7 @@ import '../widgets/camera_bits.dart';
 import '../widgets/setup_device_stage.dart';
 import '../widgets/setup_page.dart';
 import 'camera_setup_screen.dart' show SetupOutcome;
+import 'camera_management_screen.dart';
 
 /// The website's guide to putting the Dentra Cam on the home Wi-Fi and
 /// linking it to the account. iPhone browsers have no Bluetooth, so the
@@ -206,6 +207,18 @@ class _HotspotSetupScreenState extends ConsumerState<HotspotSetupScreen> {
                 CamText.hotspotSteps[i].$2,
               ),
           ],
+        ),
+        const SizedBox(height: 12),
+        TextButton.icon(
+          icon: const Icon(Icons.videocam_off_outlined),
+          label: const Text(CamText.manageCameras),
+          onPressed: () async {
+            await Navigator.of(context)
+                .push(CameraManagementScreen.route(allowSetup: false));
+            if (mounted && _setup.step == HotspotStep.join) {
+              await _setup.newCode();
+            }
+          },
         ),
         if (_setup.slow) ...[
           const SizedBox(height: 18),

@@ -477,7 +477,7 @@ class _DeviceHeroCard extends StatelessWidget {
             child: _LiveDot(),
           ),
 
-          // Tooth Bunny video — overlaid right side
+          // Keep the animated image's repaints inside its own small layer.
           Positioned(
             right: 7,
             // Feet float just above the top edge of the CTA.
@@ -486,11 +486,13 @@ class _DeviceHeroCard extends StatelessWidget {
             height: 100,
             child: IgnorePointer(
               child: ExcludeSemantics(
-                child: Image.asset(
-                  _mascot,
-                  fit: BoxFit.contain,
-                  alignment: Alignment.bottomRight,
-                  gaplessPlayback: true,
+                child: RepaintBoundary(
+                  child: Image.asset(
+                    _mascot,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.bottomRight,
+                    gaplessPlayback: true,
+                  ),
                 ),
               ),
             ),

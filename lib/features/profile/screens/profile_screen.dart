@@ -12,6 +12,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../camera/camera_flow.dart';
 import '../../camera/camera_strings.dart';
 import '../../camera/providers/camera_providers.dart';
+import '../../camera/screens/camera_management_screen.dart';
 import '../../dental_profile/data/dental_profile_repository.dart';
 import '../../dental_profile/data/models/dental_answers.dart';
 import '../../dental_profile/providers/dental_profile_providers.dart';
@@ -263,6 +264,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ? CamText.settingsNone
               : CamText.settingsSaved(camera.name, camera.ssid),
           onTap: _setUpCamera,
+        ),
+        ProfileSettingsTile(
+          icon: Icons.videocam_off_outlined,
+          title: CamText.manageCameras,
+          subtitle: CamText.manageCamerasSubtitle,
+          onTap: () => Navigator.of(context, rootNavigator: true)
+              .push(CameraManagementScreen.route()),
         ),
       ],
     );

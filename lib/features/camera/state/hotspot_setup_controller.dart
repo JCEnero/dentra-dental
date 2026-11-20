@@ -126,7 +126,8 @@ class HotspotSetupController extends ChangeNotifier {
           _codeState = CodeState.expired;
           _notify();
         case PairingState.claimed:
-          final camera = status.camera ?? (await _api.cameras()).firstOrNull;
+          // Only the camera returned for this pairing proves account ownership.
+          final camera = status.camera;
           // Asked again on the next tick.
           if (camera == null || _disposed) return;
           _stopWaiting();

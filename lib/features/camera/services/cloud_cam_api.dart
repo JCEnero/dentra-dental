@@ -8,6 +8,7 @@ class CloudCamera {
     required this.name,
     required this.online,
     this.lastSeenAt,
+    this.hardwareId,
   });
 
   final String id;
@@ -18,6 +19,7 @@ class CloudCamera {
   /// Connected to the API right now.
   final bool online;
   final DateTime? lastSeenAt;
+  final String? hardwareId;
 
   static CloudCamera? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -29,6 +31,8 @@ class CloudCamera {
       id: id,
       name: name,
       online: json['online'] == true,
+      hardwareId:
+          json['hardware_id'] is String ? json['hardware_id'] as String : null,
       lastSeenAt: seen is String ? DateTime.tryParse(seen) : null,
     );
   }
@@ -40,8 +44,8 @@ class CloudCamera {
       );
 }
 
-/// A code for linking a camera, shown on the website and typed on the
-/// camera's setup page.
+/// A short-lived account code prepared before joining the setup hotspot.
+/// In-app provisioning sends it to the camera with the Wi-Fi credentials.
 class CamPairing {
   const CamPairing({
     required this.id,
@@ -121,4 +125,14 @@ class CloudCamApi {
   }
 
   static const _badResponse = 'Something went wrong. Please try again.';
+
+  /// Removes an account link and revokes the camera's relay token.
+  Future<void> removeCamera(String id) async {
+    try {
+      await _api.send('DELETE', '/api/cam/devices/${Uri.encodeComponent(id)}');
+    } on ApiException catch (e) {
+      // A retry after a lost response can find the camera already removed.
+      if (e.statusCode != 404 || e.code != 'not_found') rethrow;
+    }
+  }
 }

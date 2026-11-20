@@ -126,7 +126,10 @@ class _GlowButtonState extends State<GlowButton>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      RepaintBoundary(child: _buildButton(context));
+
+  Widget _buildButton(BuildContext context) {
     final enabled = _enabled;
     final intensity = widget.intensity.clamp(0.0, 1.0);
     final duration = ScanMotion.of(context, ScanMotion.slow);
@@ -141,9 +144,9 @@ class _GlowButtonState extends State<GlowButton>
           final t = _cycle.value;
           final breath = 0.5 - 0.5 * math.cos(t * 2 * math.pi);
           final glow = enabled ? intensity * (0.55 + 0.45 * breath) : 0.0;
-          return AnimatedContainer(
-            duration: duration,
-            curve: ScanMotion.curve,
+          // The controller already interpolates the glow each frame;
+          // an implicit animation here would restart on every tick.
+          return DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: _radius,
               boxShadow: [
